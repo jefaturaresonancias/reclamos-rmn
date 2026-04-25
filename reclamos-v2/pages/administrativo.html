@@ -128,7 +128,10 @@
       <span class="nav-title">Panel Administrativo</span>
       <span class="nav-badge">Reclamos RMN</span>
     </div>
-    <a href="../index.html" class="nav-back">← Cambiar rol</a>
+    <div style="display:flex;align-items:center;gap:14px">
+      <button onclick="resetApiUrl()" style="background:none;border:1px solid #252a38;color:#4f5870;padding:5px 10px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.72rem;" title="Reconfigurar URL de API">⚙️ API</button>
+      <a href="../index.html" class="nav-back">← Cambiar rol</a>
+    </div>
   </nav>
 
   <div class="layout">
@@ -414,8 +417,10 @@
     }
 
     // Auto-refresh cada 30 segundos
-    recargar();
-    setInterval(recargar, 30000);
+    verificarConfig(() => {
+      recargar();
+      setInterval(recargar, 30000);
+    });
   </script>
 </body>
 </html>
