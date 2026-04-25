@@ -1,0 +1,24 @@
+{
+  "name": "Reclamos RMN",
+  "short_name": "Reclamos",
+  "description": "Sistema de gestión de reclamos de informes de RMN",
+  "start_url": "/reclamos-rmn/",
+  "display": "standalone",
+  "background_color": "#0d0f14",
+  "theme_color": "#4f7cff",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
