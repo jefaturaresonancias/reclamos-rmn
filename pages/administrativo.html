@@ -425,8 +425,11 @@
     // CARGAR / RECARGAR
     // ══════════════════════════════════════════════════════════
     async function recargar() {
-      document.getElementById('lista').innerHTML =
-        '<div class="loading"><div class="spinner"></div>Cargando...</div>';
+      // No mostrar spinner en recargas automáticas si ya hay datos
+      if (todosLosReclamos.length === 0) {
+        document.getElementById('lista').innerHTML =
+          '<div class="loading"><div class="spinner"></div>Cargando...</div>';
+      }
       try {
         const nuevos = await getReclamos();
 
@@ -531,8 +534,13 @@
     function renderLista(data) {
       const lista = document.getElementById('lista');
       if (!data.length) {
+        const filtroActivo = document.getElementById('filtroEstado').value;
+        const msg = filtroActivo
+          ? 'No hay reclamos con estado "' + filtroActivo + '"'
+          : 'No hay reclamos cargados aún. Los reclamos aparecen cuando ' +
+            'un paciente tiene marcado algún tipo de reclamo (W, X o Y) en la BD.';
         lista.innerHTML =
-          '<div class="empty"><span>📭</span>No hay reclamos que coincidan</div>';
+          '<div class="empty"><span>📭</span>' + msg + '</div>';
         return;
       }
 

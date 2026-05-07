@@ -208,8 +208,19 @@
     async function recargar() {
       try {
         todosLosReclamos = await getReclamos();
-        renderLista();
         actualizarPendingBadge();
+
+        if (todosLosReclamos.length === 0) {
+          document.getElementById('lista').innerHTML =
+            '<div class="empty"><span>📋</span>' +
+            'No hay reclamos activos en la BD.<br>' +
+            '<small style="color:var(--text3)">Los reclamos aparecen cuando ' +
+            'el administrativo carga uno desde su panel.</small></div>';
+          document.getElementById('sectionCount').textContent = '0 reclamos';
+          return;
+        }
+
+        renderLista();
       } catch(e) {
         document.getElementById('lista').innerHTML =
           `<div class="empty"><span>⚠️</span>Error al conectar.<br>
@@ -249,8 +260,18 @@
 
       const lista = document.getElementById('lista');
       if (!data.length) {
+        const msgs = {
+          pendiente:   '🎉 No hay reclamos pendientes',
+          turno:       '✅ No hay reclamos con turno médico próximo',
+          diagnostico: '✅ No hay reclamos de diagnóstico pendientes',
+          informado:   '✅ No hay reclamos sin informe pendientes',
+          resuelto:    '📭 No hay reclamos resueltos',
+          todos:       '📭 No hay reclamos cargados aún',
+        };
         lista.innerHTML =
-          '<div class="empty"><span>🎉</span>No hay reclamos en esta sección</div>';
+          '<div class="empty"><span>' +
+          (filtroActual === 'pendiente' ? '🎉' : '📭') +
+          '</span>' + (msgs[filtroActual] || '📭 Sin resultados') + '</div>';
         return;
       }
 
