@@ -102,6 +102,8 @@
     .badge-turno{background:rgba(239,68,68,.1);color:var(--danger);}
     .badge-dias{background:rgba(255,255,255,.06);color:var(--text2);}
     .badge-origen{background:rgba(255,255,255,.05);color:var(--text3);}
+    .badge-revisado{background:rgba(79,124,255,.12);color:var(--accent);}
+    .reclamo-card.revisado-admin{opacity:.6;border-left:3px solid var(--accent);}
     .card-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
     .btn-sm{padding:6px 12px;border-radius:8px;border:none;cursor:pointer;
       font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:500;
@@ -304,6 +306,7 @@
           <option value="">Todos</option>
           <option value="pendiente">Pendientes</option>
           <option value="resuelto">Resueltos (médico)</option>
+          <option value="revisado-admin">Revisados por admin</option>
           <option value="entregado">Entregados</option>
         </select>
         <select class="filter-select" id="filtroOrden" onchange="filtrarLista()">
@@ -537,9 +540,10 @@
         const esUrgente = r.estado === 'pendiente' && r.reclamoTurno;
 
         const estadoBadge = {
-          pendiente: `<span class="badge badge-pendiente">⏳ Pendiente</span>`,
-          resuelto:  `<span class="badge badge-resuelto">✅ Informado por médico</span>`,
-          entregado: `<span class="badge badge-entregado">📦 Entregado</span>`,
+          pendiente:      `<span class="badge badge-pendiente">⏳ Pendiente</span>`,
+          resuelto:       `<span class="badge badge-resuelto">✅ Informado por médico</span>`,
+          entregado:      `<span class="badge badge-entregado">📦 Entregado</span>`,
+          'revisado-admin': `<span class="badge badge-revisado">👁 Revisado admin</span>`,
         }[r.estado] || '';
 
         // Badges de tipo de reclamo
@@ -550,8 +554,9 @@
         ].join('');
 
         return `
-          <div class="reclamo-card ${r.estado} ${esUrgente ? 'urgente-border' : ''}"
+          <div class="reclamo-card ${r.estado} ${esUrgente ? 'urgente-border' : ''} ${r.estado === 'revisado-admin' ? 'revisado-admin' : ''}"
             onclick="verDetalle('${r.id}')">
+            ${getPrioridadCard(r)}
             <div class="card-num">#${r.nroReclamo || r.id}</div>
             <div>
               <div class="card-paciente">${r.apellido}, ${r.nombre}</div>
@@ -567,6 +572,11 @@
             <div class="card-actions" onclick="event.stopPropagation()">
               ${r.estado === 'resuelto'
                 ? `<button class="btn-sm btn-sm-green" onclick="entregar('${r.id}')">✔ Entregar</button>`
+                : ''}
+              ${r.estado === 'pendiente'
+                ? `<button class="btn-sm btn-sm-blue"
+                    onclick="marcarRevisadoAdmin('${r.id}')">
+                    👁 Revisado</button>`
                 : ''}
               <button class="btn-sm btn-sm-gray"
                 onclick="editarReclamo('${r.id}')">✏ Editar</button>
@@ -831,6 +841,34 @@
       el.className = `toast show ${tipo}`;
       clearTimeout(toastTimer);
       toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+    }
+
+    function getPrioridadCard(r){
+      if (r.reclamoTurno)
+        return '<div style="grid-column:1/-1;height:3px;border-radius:3px;margin-bottom:12px;' +
+               'background:linear-gradient(90deg,var(--danger),transparent)"></div>';
+      if (r.reclamoInformado)
+        return '<div style="grid-column:1/-1;height:3px;border-radius:3px;margin-bottom:12px;' +
+               'background:linear-gradient(90deg,var(--warn),transparent)"></div>';
+      if (r.reclamoDiagnostico)
+        return '<div style="grid-column:1/-1;height:3px;border-radius:3px;margin-bottom:12px;' +
+               'background:linear-gradient(90deg,#a78bfa,transparent)"></div>';
+      return '';
+    }
+
+    async function revisadoAdmin(id) {
+      const result = await apiPost({ action: 'revisado', id });
+      if (!result.ok) throw new Error(result.error);
+      return result;
+    }
+
+    async function marcarRevisadoAdmin(id) {
+      try {
+        await revisadoAdmin(id);
+        await recargar();
+        toast('👁 Reclamo marcado como revisado por administrativo');
+        cerrarModal();
+      } catch(e) { toast('❌ Error: ' + e.message, 'error'); }
     }
 
     function actualizarBadgeEntregar(){
