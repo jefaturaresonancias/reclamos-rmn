@@ -20,7 +20,7 @@
     .nav-badge{font-size:.7rem;background:rgba(79,124,255,.15);color:var(--accent);padding:3px 10px;border-radius:100px;}
     .nav-back{font-size:.8rem;color:var(--text2);text-decoration:none;transition:color .2s;}
     .nav-back:hover{color:var(--text);}
-    .layout{display:grid;grid-template-columns:320px 1fr;min-height:calc(100vh - 57px);}
+    .layout{display:grid;grid-template-columns:340px 1fr;min-height:calc(100vh - 57px);}
     .sidebar{border-right:1px solid var(--border);padding:24px;display:flex;flex-direction:column;gap:16px;
       position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;}
     .sidebar h2{font-family:'DM Serif Display',serif;font-size:1.1rem;font-weight:400;}
@@ -29,7 +29,7 @@
       border:1px solid var(--border);border-radius:var(--r);color:var(--text);
       font-family:'DM Sans',sans-serif;font-size:.875rem;transition:border-color .2s;outline:none;}
     input:focus,select:focus,textarea:focus{border-color:var(--accent);}
-    textarea{resize:vertical;min-height:70px;}
+    textarea{resize:vertical;min-height:60px;}
     select option{background:#1a1e29;}
     .field{display:flex;flex-direction:column;gap:6px;}
     .btn{padding:11px 20px;border-radius:var(--r);border:none;cursor:pointer;
@@ -40,6 +40,8 @@
     .btn-primary:disabled{background:#2a3a6a;color:#5a6a9a;cursor:not-allowed;transform:none;}
     .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text2);}
     .btn-ghost:hover{border-color:var(--text2);color:var(--text);}
+
+    /* Stats */
     .stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
     .stat-box{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:12px;text-align:center;}
     .stat-num{font-size:1.5rem;font-weight:600;}
@@ -48,6 +50,28 @@
     .stat-num.success{color:var(--success);}
     .stat-num.accent{color:var(--accent);}
     .stat-label{font-size:.7rem;color:var(--text2);margin-top:2px;}
+
+    /* Tipos de reclamo — checkboxes visuales */
+    .reclamo-tipos{display:flex;flex-direction:column;gap:8px;}
+    .reclamo-tipo-label{font-size:.78rem;color:var(--text2);font-weight:500;
+      letter-spacing:.03em;text-transform:uppercase;margin-bottom:2px;}
+    .tipo-check{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;
+      background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+      cursor:pointer;transition:all .2s;user-select:none;}
+    .tipo-check:hover{border-color:var(--accent);}
+    .tipo-check input[type=checkbox]{width:16px;height:16px;min-width:16px;
+      accent-color:var(--accent);cursor:pointer;margin-top:2px;}
+    .tipo-check.checked{border-color:var(--accent);background:rgba(79,124,255,.08);}
+    .tipo-check.urgente.checked{border-color:var(--danger);background:rgba(239,68,68,.08);}
+    .tipo-check.diagnostico.checked{border-color:#a78bfa;background:rgba(167,139,250,.08);}
+    .tipo-check-icon{font-size:1rem;flex-shrink:0;}
+    .tipo-check-text{display:flex;flex-direction:column;gap:2px;}
+    .tipo-check-title{font-size:.85rem;font-weight:600;color:var(--text);}
+    .tipo-check-desc{font-size:.72rem;color:var(--text2);line-height:1.4;}
+    .turno-fecha-wrap{display:none;margin-top:6px;}
+    .turno-fecha-wrap.visible{display:block;}
+
+    /* Main */
     .main{padding:24px;display:flex;flex-direction:column;gap:20px;}
     .top-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
     .search-wrap{flex:1;position:relative;min-width:220px;}
@@ -55,24 +79,29 @@
     .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:14px;}
     .filter-select{width:160px;}
     .reclamos-list{display:flex;flex-direction:column;gap:10px;}
+
+    /* Cards */
     .reclamo-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
       padding:16px 20px;display:grid;grid-template-columns:auto 1fr auto;
       gap:16px;align-items:start;transition:all .2s;cursor:pointer;}
     .reclamo-card:hover{border-color:var(--accent);background:var(--surface2);}
     .reclamo-card.resuelto{opacity:.65;}
     .reclamo-card.entregado{opacity:.45;}
-    .card-num{font-size:.75rem;color:var(--text3);font-weight:600;min-width:36px;}
+    .reclamo-card.urgente-border{border-left:3px solid var(--danger);}
+    .card-num{font-size:.75rem;color:var(--text3);font-weight:600;min-width:40px;}
     .card-paciente{font-weight:600;font-size:.95rem;}
     .card-estudio{font-size:.8rem;color:var(--text2);margin-top:2px;}
-    .card-diag{font-size:.75rem;color:var(--text3);margin-top:2px;}
-    .card-meta{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap;align-items:center;}
+    .card-meta{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;}
     .badge{font-size:.68rem;padding:3px 8px;border-radius:100px;font-weight:500;white-space:nowrap;}
     .badge-pendiente{background:rgba(245,158,11,.12);color:var(--warn);}
     .badge-resuelto{background:rgba(16,185,129,.12);color:var(--success);}
     .badge-entregado{background:rgba(79,124,255,.12);color:var(--accent);}
     .badge-urgente{background:rgba(239,68,68,.15);color:var(--danger);}
-    .badge-imagen{background:rgba(124,58,237,.12);color:#a78bfa;}
+    .badge-diag{background:rgba(167,139,250,.12);color:#a78bfa;}
+    .badge-inform{background:rgba(245,158,11,.12);color:var(--warn);}
+    .badge-turno{background:rgba(239,68,68,.1);color:var(--danger);}
     .badge-dias{background:rgba(255,255,255,.06);color:var(--text2);}
+    .badge-origen{background:rgba(255,255,255,.05);color:var(--text3);}
     .card-actions{display:flex;flex-direction:column;gap:6px;align-items:flex-end;}
     .btn-sm{padding:6px 12px;border-radius:8px;border:none;cursor:pointer;
       font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:500;
@@ -83,14 +112,22 @@
     .btn-sm-green:hover{background:var(--success);color:#fff;}
     .btn-sm-gray{background:rgba(255,255,255,.05);color:var(--text2);}
     .btn-sm-gray:hover{background:rgba(255,255,255,.1);color:var(--text);}
+
+    /* Info vinculado */
+    .vinculado-info{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);
+      border-radius:var(--r);padding:10px 14px;font-size:.78rem;color:var(--success);
+      display:none;}
+    .vinculado-info.visible{display:block;}
+
+    /* Empty / Loading */
     .empty{text-align:center;color:var(--text2);padding:60px 20px;}
     .empty span{font-size:3rem;display:block;margin-bottom:12px;}
-    /* Loading */
     .loading{display:flex;align-items:center;justify-content:center;gap:10px;
       padding:60px;color:var(--text2);font-size:.9rem;}
     .spinner{width:20px;height:20px;border:2px solid var(--border);
       border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;}
     @keyframes spin{to{transform:rotate(360deg)}}
+
     /* Modal */
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);
       display:flex;align-items:center;justify-content:center;
@@ -98,7 +135,7 @@
       opacity:0;pointer-events:none;transition:opacity .25s;}
     .modal-overlay.open{opacity:1;pointer-events:all;}
     .modal{background:var(--surface);border:1px solid var(--border);
-      border-radius:20px;padding:28px;width:480px;max-width:95vw;
+      border-radius:20px;padding:28px;width:520px;max-width:95vw;
       max-height:90vh;overflow-y:auto;
       transform:scale(.95);transition:transform .25s;}
     .modal-overlay.open .modal{transform:scale(1);}
@@ -108,6 +145,14 @@
     .modal-close:hover{color:var(--text);}
     .modal-fields{display:flex;flex-direction:column;gap:14px;}
     .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+
+    /* Detalle grid */
+    .detail-grid{background:var(--surface2);border-radius:10px;padding:16px;
+      display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+    .detail-item .detail-label{font-size:.7rem;color:var(--text2);text-transform:uppercase;margin-bottom:2px;}
+    .detail-item .detail-val{font-size:.875rem;}
+    .detail-full{grid-column:1/-1;}
+
     /* Toast */
     .toast{position:fixed;bottom:24px;right:24px;z-index:300;
       background:var(--surface2);border:1px solid var(--border);
@@ -118,7 +163,14 @@
     .toast.success{border-color:rgba(16,185,129,.3);}
     .toast.warn{border-color:rgba(245,158,11,.3);}
     .toast.error{border-color:rgba(239,68,68,.3);}
-    @media(max-width:768px){.layout{grid-template-columns:1fr;}.sidebar{position:static;height:auto;}}
+
+    /* Separador de sección */
+    .section-divider{height:1px;background:var(--border);margin:4px 0;}
+
+    @media(max-width:768px){
+      .layout{grid-template-columns:1fr;}
+      .sidebar{position:static;height:auto;}
+    }
   </style>
 </head>
 <body>
@@ -135,34 +187,98 @@
   </nav>
 
   <div class="layout">
+    <!-- ══════════ SIDEBAR — NUEVO RECLAMO ══════════ -->
     <aside class="sidebar">
       <h2>Nuevo Reclamo</h2>
+
       <div class="stats-grid" id="statsGrid">
         <div class="stat-box"><div class="spinner" style="margin:auto"></div></div>
         <div class="stat-box"></div><div class="stat-box"></div><div class="stat-box"></div>
       </div>
+
+      <div class="section-divider"></div>
+
+      <!-- Búsqueda de turno existente -->
+      <div class="field">
+        <label>Buscar por DNI del paciente</label>
+        <div style="display:flex;gap:8px">
+          <input id="f-dni-buscar" placeholder="Ej: 12345678" type="number"
+            style="flex:1" oninput="buscarPorDni(this.value)" />
+        </div>
+      </div>
+      <div id="vinculadoInfo" class="vinculado-info">
+        ✅ Turno encontrado en la BD — el reclamo se vinculará automáticamente
+      </div>
+
+      <!-- Datos del paciente -->
       <div class="field"><label>Apellido *</label><input id="f-apellido" placeholder="Ej: García" /></div>
       <div class="field"><label>Nombre *</label><input id="f-nombre" placeholder="Ej: Juan Carlos" /></div>
-      <div class="field"><label>DNI *</label><input id="f-dni" placeholder="Ej: 12345678" /></div>
       <div class="field"><label>Estudio *</label><input id="f-estudio" placeholder="Ej: Cerebro con contraste" /></div>
       <div class="field"><label>Fecha del Estudio *</label><input type="date" id="f-fechaEstudio" /></div>
-      <div class="field"><label>Diagnóstico / Motivo</label><input id="f-diagnostico" placeholder="Ej: Control post ACV" /></div>
-      <div class="field"><label>Tiene imagen</label>
-        <select id="f-imagen">
-          <option>SUITESTENSA</option><option>Deja DVD</option><option>No tiene</option>
-        </select>
+
+      <div class="section-divider"></div>
+
+      <!-- Tipos de reclamo -->
+      <div>
+        <div class="reclamo-tipo-label">Tipo de reclamo *</div>
+        <div class="reclamo-tipos" style="margin-top:8px">
+
+          <!-- Reclamo: no tiene informe -->
+          <label class="tipo-check" id="check-informado-wrap"
+            onclick="toggleCheck('informado', this)">
+            <input type="checkbox" id="f-reclamo-informado" onclick="event.stopPropagation()" />
+            <span class="tipo-check-icon">📄</span>
+            <div class="tipo-check-text">
+              <span class="tipo-check-title">Sin informe / fuera de fecha</span>
+              <span class="tipo-check-desc">El paciente reclama que no tiene el informe o está fuera de fecha</span>
+            </div>
+          </label>
+
+          <!-- Reclamo: diagnóstico -->
+          <label class="tipo-check diagnostico" id="check-diagnostico-wrap"
+            onclick="toggleCheck('diagnostico', this)">
+            <input type="checkbox" id="f-reclamo-diagnostico" onclick="event.stopPropagation()" />
+            <span class="tipo-check-icon">🔬</span>
+            <div class="tipo-check-text">
+              <span class="tipo-check-title">Reclamo de diagnóstico</span>
+              <span class="tipo-check-desc">El paciente está en desacuerdo con el diagnóstico del informe</span>
+            </div>
+          </label>
+
+          <!-- Reclamo: tiene turno médico -->
+          <label class="tipo-check urgente" id="check-turno-wrap"
+            onclick="toggleCheck('turno', this)">
+            <input type="checkbox" id="f-reclamo-turno" onclick="event.stopPropagation()" />
+            <span class="tipo-check-icon">🚨</span>
+            <div class="tipo-check-text">
+              <span class="tipo-check-title">Turno médico próximo</span>
+              <span class="tipo-check-desc">El estudio está atrasado y el paciente tiene turno próximo</span>
+            </div>
+            <div class="turno-fecha-wrap" id="turno-fecha-wrap" onclick="event.stopPropagation()">
+              <input type="date" id="f-turno-fecha" placeholder="Fecha del turno médico"
+                style="margin-top:8px" />
+            </div>
+          </label>
+
+        </div>
       </div>
-      <div class="field"><label>Turno médico</label><input id="f-turno" placeholder="Ej: 15/05/26 Neurólogo" /></div>
-      <div class="field"><label>Observaciones</label><textarea id="f-obs" placeholder="Notas adicionales..."></textarea></div>
+
+      <div class="field">
+        <label>Observaciones</label>
+        <textarea id="f-obs" placeholder="Notas adicionales sobre el reclamo..."></textarea>
+      </div>
+
       <button class="btn btn-primary" id="btnNuevo" onclick="nuevoReclamo()">➕ Cargar Reclamo</button>
       <button class="btn btn-ghost" onclick="limpiarForm()">Limpiar</button>
     </aside>
 
+    <!-- ══════════ MAIN — LISTA DE RECLAMOS ══════════ -->
     <main class="main">
       <div class="top-bar">
         <div class="search-wrap">
           <span class="search-icon">🔍</span>
-          <input id="buscar" placeholder="Buscar por paciente, estudio o DNI..." oninput="filtrarLista()" />
+          <input id="buscar" placeholder="Buscar por paciente, estudio o DNI..."
+            oninput="filtrarLista()" />
         </div>
         <select class="filter-select" id="filtroEstado" onchange="filtrarLista()">
           <option value="">Todos</option>
@@ -171,19 +287,26 @@
           <option value="entregado">Entregados</option>
         </select>
         <select class="filter-select" id="filtroOrden" onchange="filtrarLista()">
+          <option value="urgente">Urgentes primero</option>
           <option value="reciente">Más reciente</option>
           <option value="retraso">Mayor retraso</option>
           <option value="az">A → Z</option>
         </select>
-        <button class="btn-sm btn-sm-gray" onclick="recargar()" style="padding:8px 14px">🔄 Actualizar</button>
+        <button class="btn-sm btn-sm-gray" onclick="recargar()"
+          style="padding:8px 14px">🔄 Actualizar</button>
       </div>
+
       <div class="reclamos-list" id="lista">
-        <div class="loading"><div class="spinner"></div>Cargando reclamos desde Google Sheets...</div>
+        <div class="loading">
+          <div class="spinner"></div>Cargando reclamos desde Google Sheets...
+        </div>
       </div>
     </main>
   </div>
 
-  <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)cerrarModal()">
+  <!-- ══════════ MODAL ══════════ -->
+  <div class="modal-overlay" id="modalOverlay"
+    onclick="if(event.target===this)cerrarModal()">
     <div class="modal">
       <div class="modal-header">
         <div class="modal-title" id="modalTitle"></div>
@@ -192,21 +315,97 @@
       <div id="modalBody"></div>
     </div>
   </div>
+
   <div class="toast" id="toast"></div>
 
   <script src="../js/api.js"></script>
   <script>
     let todosLosReclamos = [];
     let editId = null;
+    let turnoVinculado = null; // datos del turno encontrado en BD
 
+    // ══════════════════════════════════════════════════════════
+    // CHECKBOXES DE TIPO DE RECLAMO
+    // ══════════════════════════════════════════════════════════
+    function toggleCheck(tipo, labelEl) {
+      const checkbox = labelEl.querySelector('input[type=checkbox]');
+      checkbox.checked = !checkbox.checked;
+      labelEl.classList.toggle('checked', checkbox.checked);
+
+      // Mostrar campo de fecha si es turno médico
+      if (tipo === 'turno') {
+        const fechaWrap = document.getElementById('turno-fecha-wrap');
+        fechaWrap.classList.toggle('visible', checkbox.checked);
+      }
+    }
+
+    function getTiposReclamo() {
+      const informado  = document.getElementById('f-reclamo-informado').checked;
+      const diagnostico = document.getElementById('f-reclamo-diagnostico').checked;
+      const turno      = document.getElementById('f-reclamo-turno').checked;
+      const turnoFecha = document.getElementById('f-turno-fecha').value;
+      return {
+        reclamoInformado:   informado   ? 'Si' : '',
+        reclamoDiagnostico: diagnostico ? 'Si' : '',
+        reclamoTurno:       turno ? (turnoFecha || 'Si') : '',
+      };
+    }
+
+    function hayAlgunTipoSeleccionado() {
+      return document.getElementById('f-reclamo-informado').checked  ||
+             document.getElementById('f-reclamo-diagnostico').checked ||
+             document.getElementById('f-reclamo-turno').checked;
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // BÚSQUEDA DE TURNO EN BD POR DNI
+    // ══════════════════════════════════════════════════════════
+    let buscarTimer;
+    function buscarPorDni(dni) {
+      clearTimeout(buscarTimer);
+      if (!dni || dni.length < 7) {
+        turnoVinculado = null;
+        document.getElementById('vinculadoInfo').classList.remove('visible');
+        return;
+      }
+      buscarTimer = setTimeout(async () => {
+        try {
+          const todos = await getReclamos({});
+          // Buscar en todos los reclamos por DNI (sin importar estado)
+          const encontrado = todosLosReclamos.find(r =>
+            String(r.dni).replace(/\D/g,'') === String(dni).replace(/\D/g,'')
+          );
+          if (encontrado) {
+            turnoVinculado = encontrado;
+            document.getElementById('f-apellido').value  = encontrado.apellido  || '';
+            document.getElementById('f-nombre').value    = encontrado.nombre    || '';
+            document.getElementById('f-estudio').value   = encontrado.estudio   || '';
+            if (encontrado.fechaEstudio) {
+              document.getElementById('f-fechaEstudio').value = encontrado.fechaEstudio;
+            }
+            document.getElementById('vinculadoInfo').classList.add('visible');
+          } else {
+            turnoVinculado = null;
+            document.getElementById('vinculadoInfo').classList.remove('visible');
+          }
+        } catch(e) {}
+      }, 500);
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // CARGAR / RECARGAR
+    // ══════════════════════════════════════════════════════════
     async function recargar() {
-      document.getElementById('lista').innerHTML = '<div class="loading"><div class="spinner"></div>Cargando...</div>';
+      document.getElementById('lista').innerHTML =
+        '<div class="loading"><div class="spinner"></div>Cargando...</div>';
       try {
         todosLosReclamos = await getReclamos();
         filtrarLista();
         cargarStats();
       } catch(e) {
-        document.getElementById('lista').innerHTML = `<div class="empty"><span>⚠️</span>Error al conectar con Google Sheets.<br><small style="color:var(--text3)">${e.message}</small></div>`;
+        document.getElementById('lista').innerHTML =
+          `<div class="empty"><span>⚠️</span>Error al conectar con Google Sheets.<br>
+          <small style="color:var(--text3)">${e.message}</small></div>`;
         toast('❌ Error de conexión', 'error');
       }
     }
@@ -215,30 +414,57 @@
       try {
         const s = await getStats();
         document.getElementById('statsGrid').innerHTML = `
-          <div class="stat-box"><div class="stat-num accent">${s.total}</div><div class="stat-label">Total</div></div>
-          <div class="stat-box"><div class="stat-num warn">${s.pendientes}</div><div class="stat-label">Pendientes</div></div>
-          <div class="stat-box"><div class="stat-num danger">${s.urgentes}</div><div class="stat-label">Urgentes +200d</div></div>
-          <div class="stat-box"><div class="stat-num success">${s.resueltos + s.entregados}</div><div class="stat-label">Resueltos</div></div>
-        `;
+          <div class="stat-box">
+            <div class="stat-num accent">${s.total}</div>
+            <div class="stat-label">Total</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num warn">${s.pendientes}</div>
+            <div class="stat-label">Pendientes</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num danger">${s.urgentes}</div>
+            <div class="stat-label">Con turno</div>
+          </div>
+          <div class="stat-box">
+            <div class="stat-num success">${s.resueltos + s.entregados}</div>
+            <div class="stat-label">Resueltos</div>
+          </div>`;
       } catch(e) {}
     }
 
+    // ══════════════════════════════════════════════════════════
+    // FILTRAR Y RENDERIZAR LISTA
+    // ══════════════════════════════════════════════════════════
     function filtrarLista() {
-      const busq   = (document.getElementById('buscar').value||'').toLowerCase();
+      const busq   = (document.getElementById('buscar').value || '').toLowerCase();
       const estado = document.getElementById('filtroEstado').value;
       const orden  = document.getElementById('filtroOrden').value;
 
       let data = [...todosLosReclamos];
+
       if (busq) data = data.filter(r =>
-        (r.apellido+' '+r.nombre).toLowerCase().includes(busq)||
-        String(r.dni).includes(busq)||
-        r.estudio.toLowerCase().includes(busq)||
-        (r.diagnostico||'').toLowerCase().includes(busq)
+        (r.apellido + ' ' + r.nombre).toLowerCase().includes(busq) ||
+        String(r.dni).includes(busq) ||
+        (r.estudio || '').toLowerCase().includes(busq)
       );
       if (estado) data = data.filter(r => r.estado === estado);
-      if (orden==='retraso') data.sort((a,b)=>(b.retraso||0)-(a.retraso||0));
-      else if (orden==='az') data.sort((a,b)=>a.apellido.localeCompare(b.apellido));
-      else data.sort((a,b)=>b.id-a.id);
+
+      if (orden === 'urgente') {
+        data.sort((a, b) => {
+          const aU = a.reclamoTurno ? 1 : 0;
+          const bU = b.reclamoTurno ? 1 : 0;
+          if (bU !== aU) return bU - aU;
+          return (b.retraso || 0) - (a.retraso || 0);
+        });
+      } else if (orden === 'retraso') {
+        data.sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
+      } else if (orden === 'az') {
+        data.sort((a, b) => a.apellido.localeCompare(b.apellido));
+      } else {
+        // reciente
+        data.sort((a, b) => (b.nroReclamo || 0) - (a.nroReclamo || 0));
+      }
 
       renderLista(data);
     }
@@ -246,177 +472,314 @@
     function renderLista(data) {
       const lista = document.getElementById('lista');
       if (!data.length) {
-        lista.innerHTML = '<div class="empty"><span>📭</span>No hay reclamos que coincidan</div>';
+        lista.innerHTML =
+          '<div class="empty"><span>📭</span>No hay reclamos que coincidan</div>';
         return;
       }
+
       lista.innerHTML = data.map(r => {
-        const urgente = r.estado==='pendiente' && r.retraso > 200;
+        const esUrgente = r.estado === 'pendiente' && r.reclamoTurno;
+
         const estadoBadge = {
-          pendiente:`<span class="badge badge-pendiente">⏳ Pendiente</span>`,
-          resuelto: `<span class="badge badge-resuelto">✅ Informado por médico</span>`,
-          entregado:`<span class="badge badge-entregado">📦 Entregado</span>`,
-        }[r.estado]||'';
+          pendiente: `<span class="badge badge-pendiente">⏳ Pendiente</span>`,
+          resuelto:  `<span class="badge badge-resuelto">✅ Informado por médico</span>`,
+          entregado: `<span class="badge badge-entregado">📦 Entregado</span>`,
+        }[r.estado] || '';
+
+        // Badges de tipo de reclamo
+        const tiposBadges = [
+          r.reclamoInformado   ? `<span class="badge badge-inform">📄 Sin informe</span>` : '',
+          r.reclamoDiagnostico ? `<span class="badge badge-diag">🔬 Diagnóstico</span>` : '',
+          r.reclamoTurno       ? `<span class="badge badge-turno">🚨 Turno: ${r.reclamoTurno !== 'Si' ? r.reclamoTurno : 'próximo'}</span>` : '',
+        ].join('');
+
         return `
-          <div class="reclamo-card ${r.estado}" onclick="verDetalle(${r.id})">
-            <div class="card-num">#${r.id}</div>
+          <div class="reclamo-card ${r.estado} ${esUrgente ? 'urgente-border' : ''}"
+            onclick="verDetalle('${r.id}')">
+            <div class="card-num">#${r.nroReclamo || r.id}</div>
             <div>
               <div class="card-paciente">${r.apellido}, ${r.nombre}</div>
-              <div class="card-estudio">${r.estudio}</div>
-              ${r.diagnostico&&r.diagnostico!=='-'?`<div class="card-diag">Dx: ${r.diagnostico}</div>`:''}
+              <div class="card-estudio">${r.estudio}
+                ${r.origen ? `<span class="badge badge-origen" style="margin-left:6px">${r.origen}</span>` : ''}
+              </div>
               <div class="card-meta">
                 ${estadoBadge}
-                ${urgente?'<span class="badge badge-urgente">🚨 Urgente</span>':''}
-                ${r.retraso?`<span class="badge badge-dias">${r.retraso}d</span>`:''}
-                ${r.tieneImagen?`<span class="badge badge-imagen">📁 ${r.tieneImagen}</span>`:''}
-                ${r.turnoMedico?`<span class="badge badge-dias">🗓 ${r.turnoMedico}</span>`:''}
+                ${tiposBadges}
+                ${r.retraso ? `<span class="badge badge-dias">${r.retraso}d retraso</span>` : ''}
               </div>
             </div>
             <div class="card-actions" onclick="event.stopPropagation()">
-              ${r.estado==='resuelto'?`<button class="btn-sm btn-sm-green" onclick="entregar(${r.id})">✔ Entregar</button>`:''}
-              <button class="btn-sm btn-sm-gray" onclick="editarReclamo(${r.id})">✏ Editar</button>
+              ${r.estado === 'resuelto'
+                ? `<button class="btn-sm btn-sm-green" onclick="entregar('${r.id}')">✔ Entregar</button>`
+                : ''}
+              <button class="btn-sm btn-sm-gray"
+                onclick="editarReclamo('${r.id}')">✏ Editar</button>
             </div>
           </div>`;
       }).join('');
     }
 
+    // ══════════════════════════════════════════════════════════
+    // NUEVO RECLAMO
+    // ══════════════════════════════════════════════════════════
     async function nuevoReclamo() {
       const apellido     = document.getElementById('f-apellido').value.trim();
       const nombre       = document.getElementById('f-nombre').value.trim();
-      const dni          = document.getElementById('f-dni').value.trim();
+      const dni          = document.getElementById('f-dni-buscar').value.trim();
       const estudio      = document.getElementById('f-estudio').value.trim();
       const fechaEstudio = document.getElementById('f-fechaEstudio').value;
-      if (!apellido||!nombre||!dni||!estudio||!fechaEstudio) {
-        toast('⚠️ Completá los campos obligatorios (*)','warn'); return;
+
+      if (!apellido || !nombre || !dni || !estudio || !fechaEstudio) {
+        toast('⚠️ Completá los campos obligatorios (*)', 'warn'); return;
       }
+      if (!hayAlgunTipoSeleccionado()) {
+        toast('⚠️ Seleccioná al menos un tipo de reclamo', 'warn'); return;
+      }
+
+      const tipos = getTiposReclamo();
       const btn = document.getElementById('btnNuevo');
       btn.disabled = true; btn.textContent = '⏳ Guardando...';
+
       try {
-        await addReclamo({
+        const res = await addReclamo({
           apellido, nombre, dni, estudio, fechaEstudio,
-          diagnostico:   document.getElementById('f-diagnostico').value.trim()||'-',
-          tieneImagen:   document.getElementById('f-imagen').value,
-          turnoMedico:   document.getElementById('f-turno').value.trim(),
           observaciones: document.getElementById('f-obs').value.trim(),
+          ...tipos,
         });
         limpiarForm();
         await recargar();
-        toast('✅ Reclamo guardado en Google Sheets');
+        const msg = res.vinculado
+          ? `✅ Reclamo #${res.nroReclamo} vinculado al turno existente`
+          : `✅ Reclamo #${res.nroReclamo} guardado en Google Sheets`;
+        toast(msg);
       } catch(e) {
-        toast('❌ Error al guardar: '+e.message,'error');
+        toast('❌ Error al guardar: ' + e.message, 'error');
       } finally {
-        btn.disabled=false; btn.textContent='➕ Cargar Reclamo';
+        btn.disabled = false; btn.textContent = '➕ Cargar Reclamo';
       }
     }
 
     function limpiarForm() {
-      ['f-apellido','f-nombre','f-dni','f-estudio','f-fechaEstudio','f-diagnostico','f-turno','f-obs'].forEach(id=>{
-        document.getElementById(id).value='';
+      document.getElementById('f-dni-buscar').value  = '';
+      document.getElementById('f-apellido').value    = '';
+      document.getElementById('f-nombre').value      = '';
+      document.getElementById('f-estudio').value     = '';
+      document.getElementById('f-fechaEstudio').value = '';
+      document.getElementById('f-obs').value         = '';
+      document.getElementById('f-turno-fecha').value = '';
+      // Reset checkboxes
+      ['f-reclamo-informado','f-reclamo-diagnostico','f-reclamo-turno'].forEach(id => {
+        document.getElementById(id).checked = false;
       });
+      ['check-informado-wrap','check-diagnostico-wrap','check-turno-wrap'].forEach(id => {
+        document.getElementById(id).classList.remove('checked');
+      });
+      document.getElementById('turno-fecha-wrap').classList.remove('visible');
+      document.getElementById('vinculadoInfo').classList.remove('visible');
+      turnoVinculado = null;
     }
 
+    // ══════════════════════════════════════════════════════════
+    // ENTREGAR
+    // ══════════════════════════════════════════════════════════
     async function entregar(id) {
       try {
         await entregarReclamo(id);
         await recargar();
-        toast(`📦 Reclamo #${id} marcado como entregado`);
-      } catch(e) { toast('❌ Error: '+e.message,'error'); }
+        toast(`📦 Reclamo marcado como entregado`);
+        cerrarModal();
+      } catch(e) { toast('❌ Error: ' + e.message, 'error'); }
     }
 
+    // ══════════════════════════════════════════════════════════
+    // EDITAR
+    // ══════════════════════════════════════════════════════════
     function editarReclamo(id) {
       editId = id;
-      const r = todosLosReclamos.find(x=>x.id===id);
+      const r = todosLosReclamos.find(x => x.id === id);
       if (!r) return;
-      document.getElementById('modalTitle').textContent = `Editar #${id} — ${r.apellido}, ${r.nombre}`;
+
+      document.getElementById('modalTitle').textContent =
+        `Editar Reclamo #${r.nroReclamo || id}`;
+
       document.getElementById('modalBody').innerHTML = `
         <div class="modal-fields">
           <div class="field-row">
-            <div class="field"><label>Apellido</label><input id="e-apellido" value="${r.apellido}" /></div>
-            <div class="field"><label>Nombre</label><input id="e-nombre" value="${r.nombre}" /></div>
+            <div class="field"><label>Apellido</label>
+              <input id="e-apellido" value="${r.apellido}" /></div>
+            <div class="field"><label>Nombre</label>
+              <input id="e-nombre" value="${r.nombre}" /></div>
           </div>
           <div class="field-row">
-            <div class="field"><label>DNI</label><input id="e-dni" value="${r.dni}" /></div>
-            <div class="field"><label>Fecha Estudio</label><input type="date" id="e-fecha" value="${r.fechaEstudio}" /></div>
+            <div class="field"><label>DNI</label>
+              <input id="e-dni" value="${r.dni}" /></div>
+            <div class="field"><label>Fecha Estudio</label>
+              <input type="date" id="e-fecha" value="${r.fechaEstudio}" /></div>
           </div>
-          <div class="field"><label>Estudio</label><input id="e-estudio" value="${r.estudio}" /></div>
-          <div class="field"><label>Diagnóstico</label><input id="e-diag" value="${r.diagnostico||''}" /></div>
-          <div class="field-row">
-            <div class="field"><label>Imagen</label>
-              <select id="e-imagen">${['SUITESTENSA','Deja DVD','No tiene',''].map(v=>`<option ${v===r.tieneImagen?'selected':''}>${v}</option>`).join('')}</select>
-            </div>
-            <div class="field"><label>Turno médico</label><input id="e-turno" value="${r.turnoMedico||''}" /></div>
-          </div>
-          <div class="field"><label>Observaciones</label><textarea id="e-obs">${r.observaciones||''}</textarea></div>
-          <button class="btn btn-primary" id="btnGuardar" onclick="guardarEdicion()">💾 Guardar cambios</button>
+          <div class="field"><label>Estudio</label>
+            <input id="e-estudio" value="${r.estudio}" /></div>
+
+          <div class="section-divider"></div>
+          <div style="font-size:.78rem;color:var(--text2);font-weight:500;
+            letter-spacing:.03em;text-transform:uppercase">Tipos de reclamo</div>
+
+          <label style="display:flex;gap:10px;align-items:center;cursor:pointer">
+            <input type="checkbox" id="e-informado"
+              ${r.reclamoInformado ? 'checked' : ''} />
+            <span style="font-size:.85rem">📄 Sin informe / fuera de fecha</span>
+          </label>
+          <label style="display:flex;gap:10px;align-items:center;cursor:pointer">
+            <input type="checkbox" id="e-diagnostico"
+              ${r.reclamoDiagnostico ? 'checked' : ''} />
+            <span style="font-size:.85rem">🔬 Reclamo de diagnóstico</span>
+          </label>
+          <label style="display:flex;gap:10px;align-items:center;cursor:pointer">
+            <input type="checkbox" id="e-turno"
+              ${r.reclamoTurno ? 'checked' : ''}
+              onchange="document.getElementById('e-turno-fecha').style.display=this.checked?'block':'none'" />
+            <span style="font-size:.85rem">🚨 Tiene turno médico próximo</span>
+          </label>
+          <input type="date" id="e-turno-fecha"
+            value="${r.reclamoTurno && r.reclamoTurno !== 'Si' ? r.reclamoTurno : ''}"
+            style="display:${r.reclamoTurno ? 'block' : 'none'}" />
+
+          <div class="field"><label>Observaciones</label>
+            <textarea id="e-obs">${r.observaciones || ''}</textarea></div>
+
+          <button class="btn btn-primary" id="btnGuardar"
+            onclick="guardarEdicion()">💾 Guardar cambios</button>
         </div>`;
       abrirModal();
     }
 
     async function guardarEdicion() {
       const btn = document.getElementById('btnGuardar');
-      btn.disabled=true; btn.textContent='⏳ Guardando...';
+      btn.disabled = true; btn.textContent = '⏳ Guardando...';
       try {
+        const turnoChecked = document.getElementById('e-turno').checked;
+        const turnoFecha   = document.getElementById('e-turno-fecha').value;
         await updateReclamo(editId, {
-          apellido:     document.getElementById('e-apellido').value.trim(),
-          nombre:       document.getElementById('e-nombre').value.trim(),
-          dni:          document.getElementById('e-dni').value.trim(),
-          estudio:      document.getElementById('e-estudio').value.trim(),
-          fechaEstudio: document.getElementById('e-fecha').value,
-          diagnostico:  document.getElementById('e-diag').value.trim()||'-',
-          tieneImagen:  document.getElementById('e-imagen').value,
-          turnoMedico:  document.getElementById('e-turno').value.trim(),
-          observaciones:document.getElementById('e-obs').value.trim(),
+          apellido:          document.getElementById('e-apellido').value.trim(),
+          nombre:            document.getElementById('e-nombre').value.trim(),
+          dni:               document.getElementById('e-dni').value.trim(),
+          estudio:           document.getElementById('e-estudio').value.trim(),
+          fechaEstudio:      document.getElementById('e-fecha').value,
+          reclamoInformado:  document.getElementById('e-informado').checked  ? 'Si' : '',
+          reclamoDiagnostico:document.getElementById('e-diagnostico').checked ? 'Si' : '',
+          reclamoTurno:      turnoChecked ? (turnoFecha || 'Si') : '',
+          observaciones:     document.getElementById('e-obs').value.trim(),
         });
         cerrarModal();
         await recargar();
         toast('✅ Cambios guardados en Google Sheets');
       } catch(e) {
-        toast('❌ Error: '+e.message,'error');
-        btn.disabled=false; btn.textContent='💾 Guardar cambios';
+        toast('❌ Error: ' + e.message, 'error');
+        btn.disabled = false; btn.textContent = '💾 Guardar cambios';
       }
     }
 
+    // ══════════════════════════════════════════════════════════
+    // VER DETALLE
+    // ══════════════════════════════════════════════════════════
     function verDetalle(id) {
-      const r = todosLosReclamos.find(x=>x.id===id);
+      const r = todosLosReclamos.find(x => x.id === id);
       if (!r) return;
-      document.getElementById('modalTitle').textContent = `Reclamo #${r.id}`;
+
+      const tiposHtml = [
+        r.reclamoInformado   ? `<span class="badge badge-inform">📄 Sin informe/fuera de fecha</span>` : '',
+        r.reclamoDiagnostico ? `<span class="badge badge-diag">🔬 Reclamo de diagnóstico</span>` : '',
+        r.reclamoTurno       ? `<span class="badge badge-turno">🚨 Turno: ${r.reclamoTurno !== 'Si' ? r.reclamoTurno : 'próximo'}</span>` : '',
+      ].filter(Boolean).join(' ');
+
+      document.getElementById('modalTitle').textContent =
+        `Reclamo #${r.nroReclamo || r.id}`;
+
       document.getElementById('modalBody').innerHTML = `
         <div style="display:flex;flex-direction:column;gap:14px">
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <span class="badge badge-${r.estado}">${r.estado.toUpperCase()}</span>
-            ${r.retraso>200?'<span class="badge badge-urgente">🚨 URGENTE</span>':''}
+            ${tiposHtml}
           </div>
-          <div style="background:var(--surface2);border-radius:10px;padding:16px;display:grid;grid-template-columns:1fr 1fr;gap:10px">
-            <div><div style="font-size:.7rem;color:var(--text2);text-transform:uppercase">Paciente</div><div style="font-weight:600">${r.apellido}, ${r.nombre}</div></div>
-            <div><div style="font-size:.7rem;color:var(--text2);text-transform:uppercase">DNI</div><div>${r.dni}</div></div>
-            <div style="grid-column:1/-1"><div style="font-size:.7rem;color:var(--text2);text-transform:uppercase">Estudio</div><div>${r.estudio}</div></div>
-            <div style="grid-column:1/-1"><div style="font-size:.7rem;color:var(--text2);text-transform:uppercase">Diagnóstico</div><div>${r.diagnostico||'-'}</div></div>
-            <div><div style="font-size:.7rem;color:var(--text2);text-transform:uppercase">Fecha estudio</div><div>${r.fechaEstudio}</div></div>
-            <div><div style="font-size:.7rem;color:var(--text2);text-transform:uppercase">Retraso</div><div style="color:${r.retraso>200?'var(--danger)':'var(--warn)'}">${r.retraso||'-'} días</div></div>
-            <div><div style="font-size:.7rem;color:var(--text2);text-transform:uppercase">Imagen</div><div>${r.tieneImagen||'-'}</div></div>
-            <div><div style="font-size:.7rem;color:var(--text2);text-transform:uppercase">Turno</div><div>${r.turnoMedico||'Sin turno'}</div></div>
+
+          <div class="detail-grid">
+            <div class="detail-item">
+              <div class="detail-label">Paciente</div>
+              <div class="detail-val" style="font-weight:600">${r.apellido}, ${r.nombre}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">DNI</div>
+              <div class="detail-val">${r.dni}</div>
+            </div>
+            <div class="detail-item detail-full">
+              <div class="detail-label">Estudio</div>
+              <div class="detail-val">${r.estudio}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Fecha del turno</div>
+              <div class="detail-val">${r.fechaEstudio || '-'}</div>
+            </div>
+            <div class="detail-item">
+              <div class="detail-label">Retraso</div>
+              <div class="detail-val" style="color:${r.retraso > 30 ? 'var(--danger)' : 'var(--warn)'}">
+                ${r.retraso || '-'} días
+              </div>
+            </div>
+            ${r.origen ? `
+            <div class="detail-item">
+              <div class="detail-label">Origen</div>
+              <div class="detail-val">${r.origen}</div>
+            </div>` : ''}
+            ${r.tipoOrden ? `
+            <div class="detail-item">
+              <div class="detail-label">Tipo de orden</div>
+              <div class="detail-val">${r.tipoOrden}</div>
+            </div>` : ''}
+            <div class="detail-item">
+              <div class="detail-label">Fecha del reclamo</div>
+              <div class="detail-val">${r.fechaReclamo || '-'}</div>
+            </div>
           </div>
-          ${r.observaciones?`<div style="font-size:.82rem;color:var(--text2);background:var(--surface2);padding:12px;border-radius:8px">💬 ${r.observaciones}</div>`:''}
-          ${r.estado==='resuelto'&&r.comentarioMedico?`<div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:var(--r);padding:12px 16px;font-size:.82rem;color:var(--success)">✅ Médico informó: <em>${r.comentarioMedico}</em><br><small style="color:var(--text3)">${r.resolvedAt||''}</small></div>`:''}
+
+          ${r.observaciones ? `
+            <div style="font-size:.82rem;color:var(--text2);background:var(--surface2);
+              padding:12px;border-radius:8px">💬 ${r.observaciones}</div>` : ''}
+
+          ${r.estado === 'resuelto' && r.comentarioMedico ? `
+            <div style="background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);
+              border-radius:var(--r);padding:12px 16px;font-size:.82rem;color:var(--success)">
+              ✅ Médico informó: <em>${r.comentarioMedico}</em>
+            </div>` : ''}
+
           <div style="display:flex;gap:8px;flex-wrap:wrap">
-            ${r.estado==='resuelto'?`<button class="btn-sm btn-sm-green" onclick="entregar(${r.id});cerrarModal()">✔ Marcar entregado</button>`:''}
-            <button class="btn-sm btn-sm-gray" onclick="cerrarModal();editarReclamo(${r.id})">✏ Editar</button>
+            ${r.estado === 'resuelto'
+              ? `<button class="btn-sm btn-sm-green"
+                  onclick="entregar('${r.id}')">✔ Marcar entregado</button>`
+              : ''}
+            <button class="btn-sm btn-sm-gray"
+              onclick="cerrarModal();editarReclamo('${r.id}')">✏ Editar</button>
           </div>
         </div>`;
       abrirModal();
     }
 
-    function abrirModal(){ document.getElementById('modalOverlay').classList.add('open'); }
-    function cerrarModal(){ document.getElementById('modalOverlay').classList.remove('open'); }
+    // ══════════════════════════════════════════════════════════
+    // MODAL / TOAST
+    // ══════════════════════════════════════════════════════════
+    function abrirModal()  { document.getElementById('modalOverlay').classList.add('open'); }
+    function cerrarModal() { document.getElementById('modalOverlay').classList.remove('open'); }
 
     let toastTimer;
-    function toast(msg, tipo='success') {
+    function toast(msg, tipo = 'success') {
       const el = document.getElementById('toast');
-      el.textContent = msg; el.className = `toast show ${tipo}`;
+      el.textContent = msg;
+      el.className = `toast show ${tipo}`;
       clearTimeout(toastTimer);
-      toastTimer = setTimeout(()=>el.classList.remove('show'), 3500);
+      toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
     }
 
-    // Auto-refresh cada 30 segundos
+    // ══════════════════════════════════════════════════════════
+    // INIT — auto-refresh cada 30s
+    // ══════════════════════════════════════════════════════════
     verificarConfig(() => {
       recargar();
       setInterval(recargar, 30000);
