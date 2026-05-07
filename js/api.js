@@ -1,197 +1,341 @@
-// api.js — Conexión con Google Apps Script
-// La URL de la API se guarda en el localStorage de CADA navegador
-// El código fuente en GitHub no contiene ningún dato sensible
-// ─────────────────────────────────────────────────────────────
+// ============================================================
+// APPS SCRIPT BACKEND — BD CENTRAL
+// Migrado de hoja RECLAMOS → Base_de_datos (hoja BD)
+// ============================================================
 
-const API_KEY = 'reclamos_api_url';
+const SHEET_ID   = '1WwSvS1ymkl7RJ6MHOnNGE0mkvt5q5JJcvA9XUZ0ZvKg';
+const SHEET_NAME = 'BD';
 
-function getApiUrl() { return localStorage.getItem(API_KEY) || null; }
-function setApiUrl(url) { localStorage.setItem(API_KEY, url.trim()); }
-function resetApiUrl() { localStorage.removeItem(API_KEY); location.reload(); }
+// ── Columnas de la BD (índice 0 = col A) ─────────────────────
+const COL = {
+  // Datos del turno (ya existentes en BD)
+  FECHA:               0,   // A — fecha del turno
+  HORA:                1,   // B
+  NOMBRE:              2,   // C
+  APELLIDO:            3,   // D
+  DNI:                 4,   // E
+  ESTUDIO:             5,   // F
+  ORIGEN:              6,   // G
+  CONFIRMA:            7,   // H
+  OTORGADO:            8,   // I
+  MODIFICADO:          9,   // J
+  FECHA_MODIFICADO:    10,  // K
+  COD_MOD:             11,  // L
+  PRESENTE_ST:         12,  // M
+  FECHA_PRESENTE_ST:   13,  // N
+  PRESENTE_AMB:        14,  // O
+  FECHA_PRESENTE_AMB:  15,  // P
+  OBSERVACIONES_BD:    16,  // Q
+  TURNO_ID:            17,  // R ← ID único
+  PLANILLA_ORIGEN:     18,  // S
+  ENTREGA_INFORME:     19,  // T
+  FECHA_ENTREGA:       20,  // U
+  OBS_ENTREGA:         21,  // V
+  // Flags de tipo de reclamo
+  RECLAMO_DIAGNOSTICO: 22,  // W — flag: paciente en desacuerdo con diagnóstico
+  RECLAMO_INFORMADO:   23,  // X — flag: no tiene informe / fuera de fecha
+  RECLAMO_TURNO:       24,  // Y — flag: tiene turno médico próximo y necesita el estudio
+  TIPO_ORDEN:          25,  // Z
+  // Campos de gestión del reclamo (nuevos)
+  RECLAMO_ESTADO:      26,  // AA — pendiente / resuelto / entregado
+  RECLAMO_FECHA:       27,  // AB — cuándo se cargó el reclamo
+  RECLAMO_COMENTARIO:  28,  // AC — comentario del médico
+  RECLAMO_OBS:         29,  // AD — observaciones del reclamo
+  RECLAMO_NRO:         30,  // AE — número correlativo
+};
 
-// ── Pantalla de configuración ─────────────────────────────────
-function mostrarPantallaConfig(onSuccess) {
-  const overlay = document.createElement('div');
-  overlay.id = 'config-overlay';
-  overlay.innerHTML = `
-    <style>
-      #config-overlay {
-        position:fixed;inset:0;z-index:9999;background:#0d0f14;
-        display:flex;align-items:center;justify-content:center;
-        font-family:'DM Sans',sans-serif;
-      }
-      #config-box {
-        background:#13161e;border:1px solid #252a38;border-radius:20px;
-        padding:40px;width:520px;max-width:95vw;
-        display:flex;flex-direction:column;gap:20px;
-        animation:cfgUp .4s ease both;
-      }
-      @keyframes cfgUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
-      #config-box .cfg-icon{width:52px;height:52px;border-radius:14px;
-        background:linear-gradient(135deg,#4f7cff,#7c3aed);
-        display:flex;align-items:center;justify-content:center;font-size:26px;}
-      #config-box h2{font-family:'DM Serif Display',serif;font-size:1.4rem;font-weight:400;color:#e8ecf4;}
-      #config-box p{font-size:.875rem;color:#8892aa;line-height:1.6;}
-      #config-box .cfg-steps{background:#1a1e29;border-radius:12px;padding:16px 20px;
-        display:flex;flex-direction:column;gap:8px;}
-      #config-box .cfg-step{display:flex;gap:10px;align-items:flex-start;font-size:.82rem;color:#8892aa;}
-      #config-box .cfg-n{min-width:20px;height:20px;border-radius:50%;
-        background:rgba(79,124,255,.2);color:#4f7cff;
-        display:flex;align-items:center;justify-content:center;
-        font-size:.72rem;font-weight:700;flex-shrink:0;margin-top:1px;}
-      #config-box label{font-size:.78rem;color:#8892aa;font-weight:500;
-        text-transform:uppercase;letter-spacing:.03em;}
-      #config-url{width:100%;padding:12px 14px;background:#1a1e29;
-        border:1px solid #252a38;border-radius:10px;color:#e8ecf4;
-        font-family:monospace;font-size:.82rem;outline:none;transition:border-color .2s;}
-      #config-url:focus{border-color:#4f7cff;}
-      #config-url::placeholder{color:#4f5870;}
-      #config-error{font-size:.8rem;color:#ef4444;display:none;
-        background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);
-        border-radius:8px;padding:8px 12px;}
-      #btn-cfg-save{padding:12px 20px;border-radius:10px;background:#4f7cff;
-        border:none;color:#fff;font-family:'DM Sans',sans-serif;
-        font-size:.9rem;font-weight:500;cursor:pointer;transition:all .2s;width:100%;}
-      #btn-cfg-save:hover{background:#3a68f0;transform:translateY(-1px);}
-      #btn-cfg-save:disabled{background:#2a3a6a;color:#5a6a9a;cursor:not-allowed;transform:none;}
-      #config-box .cfg-nota{font-size:.75rem;color:#4f5870;text-align:center;
-        border-top:1px solid #252a38;padding-top:14px;}
-      #config-box strong{color:#e8ecf4;}
-      #config-box code{background:#252a38;padding:2px 6px;border-radius:4px;
-        color:#a78bfa;font-size:.78rem;}
-    </style>
-    <div id="config-box">
-      <div class="cfg-icon">⚙️</div>
-      <h2>Configuración inicial</h2>
-      <p>Para conectar la app con Google Sheets, ingresá la URL de tu Apps Script.<br>
-         Solo se hace <strong>una vez por dispositivo</strong> y se guarda localmente.</p>
-      <div class="cfg-steps">
-        <div class="cfg-step"><div class="cfg-n">1</div>
-          <span>Abrí tu Google Sheet → <strong>Extensiones → Apps Script</strong></span></div>
-        <div class="cfg-step"><div class="cfg-n">2</div>
-          <span>Click en <strong>Implementar → Administrar implementaciones</strong></span></div>
-        <div class="cfg-step"><div class="cfg-n">3</div>
-          <span>Copiá la <strong>URL de la aplicación web</strong><br>
-          <code>https://script.google.com/macros/s/.../exec</code></span></div>
-        <div class="cfg-step"><div class="cfg-n">4</div>
-          <span>Pegala abajo y hacé click en <strong>Guardar y conectar</strong></span></div>
-      </div>
-      <div style="display:flex;flex-direction:column;gap:8px">
-        <label>URL del Apps Script *</label>
-        <input id="config-url" type="url"
-          placeholder="https://script.google.com/macros/s/ABC.../exec" />
-        <div id="config-error"></div>
-      </div>
-      <button id="btn-cfg-save" onclick="guardarConfigUrl()">Guardar y conectar</button>
-      <p class="cfg-nota">🔒 Esta URL se guarda solo en este dispositivo. Nunca se sube a GitHub ni a ningún servidor.</p>
-    </div>
-  `;
-  document.body.appendChild(overlay);
-  document.getElementById('config-url').addEventListener('keydown', e => {
-    if (e.key === 'Enter') guardarConfigUrl();
-  });
-  window._configOnSuccess = onSuccess;
+const TZ = 'America/Argentina/Buenos_Aires';
+
+// ── Respuesta JSON ────────────────────────────────────────────
+function jsonResponse(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
 }
 
-function guardarConfigUrl() {
-  const input = document.getElementById('config-url');
-  const error = document.getElementById('config-error');
-  const btn   = document.getElementById('btn-cfg-save');
-  const url   = (input?.value || '').trim();
+// ── Router GET ────────────────────────────────────────────────
+function doGet(e) {
+  const action = (e.parameter && e.parameter.action) ? e.parameter.action : 'list';
+  try {
+    if      (action === 'list')  return jsonResponse(listReclamos(e.parameter));
+    else if (action === 'stats') return jsonResponse(getStats());
+    else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
+  } catch(err) {
+    return jsonResponse({ ok: false, error: err.message });
+  }
+}
 
-  if (!url.startsWith('https://script.google.com/macros/s/')) {
-    error.textContent = '⚠️ La URL debe empezar con https://script.google.com/macros/s/';
-    error.style.display = 'block';
-    input.style.borderColor = '#ef4444';
-    return;
+// ── Router POST ───────────────────────────────────────────────
+function doPost(e) {
+  var body = {};
+  try { body = JSON.parse(e.postData.contents); } catch(err) {}
+  const action = body.action || '';
+  try {
+    if      (action === 'add')      return jsonResponse(addReclamo(body.data));
+    else if (action === 'update')   return jsonResponse(updateReclamo(body.id, body.changes));
+    else if (action === 'resolver') return jsonResponse(resolverReclamo(body.id, body.comentario));
+    else if (action === 'entregar') return jsonResponse(entregarReclamo(body.id));
+    else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
+  } catch(err) {
+    return jsonResponse({ ok: false, error: err.message });
+  }
+}
+
+// ── Helpers ───────────────────────────────────────────────────
+function getSheet() {
+  return SpreadsheetApp.openById(SHEET_ID).getSheetByName(SHEET_NAME);
+}
+
+function getDataRows() {
+  const sheet = getSheet();
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return [];
+  // BD arranca en fila 2 (fila 1 = cabecera)
+  return sheet.getRange(2, 1, lastRow - 1, 31).getValues();
+}
+
+function fmtDate(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, TZ, 'yyyy-MM-dd');
+  }
+  if (typeof val === 'number' && val > 40000) {
+    const d = new Date((val - 25569) * 86400 * 1000);
+    return Utilities.formatDate(d, TZ, 'yyyy-MM-dd');
+  }
+  return String(val);
+}
+
+function fmtDateTime(val) {
+  if (!val) return '';
+  if (val instanceof Date) {
+    return Utilities.formatDate(val, TZ, 'yyyy-MM-dd HH:mm');
+  }
+  return String(val);
+}
+
+function rowToObj(row, rowIndex) {
+  const estado = String(row[COL.RECLAMO_ESTADO] || '').trim();
+  // Solo consideramos reclamos activos: tienen RECLAMO_ESTADO no vacío
+  const tieneReclamo = estado !== '';
+
+  // Calcular urgencia basada en los 3 tipos de reclamo
+  const reclDiag   = String(row[COL.RECLAMO_DIAGNOSTICO] || '').trim();
+  const reclInform = String(row[COL.RECLAMO_INFORMADO]   || '').trim();
+  const reclTurno  = String(row[COL.RECLAMO_TURNO]       || '').trim();
+
+  // Retraso: días desde fecha del turno
+  const fechaTurno = row[COL.FECHA];
+  const retraso = fechaTurno instanceof Date
+    ? Math.floor((new Date() - fechaTurno) / 86400000)
+    : 0;
+
+  return {
+    rowIndex,
+    // Usamos turnoId como ID único
+    id:               String(row[COL.TURNO_ID] || '').trim() || String(rowIndex),
+    nroReclamo:       Number(row[COL.RECLAMO_NRO]) || rowIndex,
+    // Datos del paciente
+    apellido:         String(row[COL.APELLIDO] || '').trim(),
+    nombre:           String(row[COL.NOMBRE]   || '').trim(),
+    dni:              String(row[COL.DNI]       || '').replace(/\.0$/, '').replace(/\D/,''),
+    estudio:          String(row[COL.ESTUDIO]   || '').trim(),
+    fechaEstudio:     fmtDate(row[COL.FECHA]),
+    hora:             String(row[COL.HORA]      || '').trim(),
+    origen:           String(row[COL.ORIGEN]    || '').trim(),
+    tipoOrden:        String(row[COL.TIPO_ORDEN]|| '').trim(),
+    // Flags de tipo de reclamo
+    reclamoDiagnostico: reclDiag,
+    reclamoInformado:   reclInform,
+    reclamoTurno:       reclTurno,
+    // Gestión del reclamo
+    estado:             estado || 'pendiente',
+    fechaReclamo:       fmtDate(row[COL.RECLAMO_FECHA]),
+    comentarioMedico:   String(row[COL.RECLAMO_COMENTARIO] || '').trim(),
+    observaciones:      String(row[COL.RECLAMO_OBS]        || '').trim(),
+    // Entrega
+    entregaInforme:     String(row[COL.ENTREGA_INFORME]    || '').trim(),
+    fechaEntrega:       fmtDateTime(row[COL.FECHA_ENTREGA]),
+    // Campos heredados para compatibilidad con frontend
+    retraso:            retraso,
+    informado:          reclInform ? 'Si' : 'No',
+    tieneImagen:        '',
+    turnoMedico:        reclTurno,
+    diagnostico:        String(row[COL.RECLAMO_OBS] || '-').trim(),
+    notificadoAt:       '',
+    resolvedAt:         '',
+    entregadoAt:        fmtDateTime(row[COL.FECHA_ENTREGA]),
+    tieneReclamo:       tieneReclamo,
+  };
+}
+
+// ── Buscar fila por turnoId ───────────────────────────────────
+function findRowByTurnoId(turnoId) {
+  const rows = getDataRows();
+  for (var i = 0; i < rows.length; i++) {
+    const id = String(rows[i][COL.TURNO_ID] || '').trim();
+    if (id === String(turnoId).trim()) return { rowIndex: i + 2, row: rows[i] };
+  }
+  return null;
+}
+
+// ── LISTAR RECLAMOS ───────────────────────────────────────────
+function listReclamos(params) {
+  const rows = getDataRows();
+  var data = rows
+    .map(function(row, i) { return rowToObj(row, i + 2); })
+    .filter(function(r) {
+      // Solo mostrar filas que tienen reclamo activo
+      return r.tieneReclamo && r.apellido !== '';
+    });
+
+  if (params && params.estado) {
+    data = data.filter(function(r) { return r.estado === params.estado; });
   }
 
-  btn.disabled = true;
-  btn.textContent = '⏳ Verificando conexión...';
-  error.style.display = 'none';
-  input.style.borderColor = '#252a38';
-
-  fetch(`${url}?action=stats`)
-    .then(r => r.json())
-    .then(data => {
-      if (data.ok || data.stats) {
-        setApiUrl(url);
-        document.getElementById('config-overlay').remove();
-        if (window._configOnSuccess) window._configOnSuccess();
-      } else {
-        throw new Error(JSON.stringify(data));
-      }
-    })
-    .catch(() => {
-      error.textContent = '❌ No se pudo conectar. Verificá que la URL sea correcta y que el script esté publicado con acceso "Cualquier persona".';
-      error.style.display = 'block';
-      input.style.borderColor = '#ef4444';
-      btn.disabled = false;
-      btn.textContent = 'Guardar y conectar';
-    });
-}
-
-// ── Verificar config al iniciar ───────────────────────────────
-function verificarConfig(callback) {
-  if (getApiUrl()) { callback(); }
-  else { mostrarPantallaConfig(callback); }
-}
-
-// ── Helpers fetch ─────────────────────────────────────────────
-async function apiGet(params = {}) {
-  const url = getApiUrl();
-  if (!url) throw new Error('API no configurada');
-  const qs = new URLSearchParams(params).toString();
-  const res = await fetch(`${url}?${qs}`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
-}
-
-async function apiPost(body) {
-  const url = getApiUrl();
-  if (!url) throw new Error('API no configurada');
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+  // Ordenar: urgentes primero (tienen turno médico), luego por fecha reclamo
+  data.sort(function(a, b) {
+    const aUrgente = a.reclamoTurno ? 1 : 0;
+    const bUrgente = b.reclamoTurno ? 1 : 0;
+    if (bUrgente !== aUrgente) return bUrgente - aUrgente;
+    return (a.fechaReclamo || '').localeCompare(b.fechaReclamo || '');
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+
+  return { ok: true, data: data };
 }
 
-// ── API pública ───────────────────────────────────────────────
-async function getReclamos(filtro = {}) {
-  const result = await apiGet({ action: 'list', ...filtro });
-  if (!result.ok) throw new Error(result.error);
-  return result.data;
+// ── ESTADÍSTICAS ──────────────────────────────────────────────
+function getStats() {
+  const rows = getDataRows();
+  const data = rows
+    .map(function(row, i) { return rowToObj(row, i + 2); })
+    .filter(function(r) { return r.tieneReclamo && r.apellido !== ''; });
+
+  return {
+    ok: true,
+    stats: {
+      total:      data.length,
+      pendientes: data.filter(function(r){ return r.estado === 'pendiente'; }).length,
+      resueltos:  data.filter(function(r){ return r.estado === 'resuelto';  }).length,
+      entregados: data.filter(function(r){ return r.estado === 'entregado'; }).length,
+      // Urgentes = tienen turno médico próximo y están pendientes
+      urgentes:   data.filter(function(r){
+        return r.estado === 'pendiente' && r.reclamoTurno;
+      }).length,
+    }
+  };
 }
 
-async function getStats() {
-  const result = await apiGet({ action: 'stats' });
-  if (!result.ok) throw new Error(result.error);
-  return result.stats;
+// ── AGREGAR RECLAMO ───────────────────────────────────────────
+// En la nueva arquitectura, addReclamo busca el turno por DNI+Estudio
+// o crea una fila nueva si no existe
+function addReclamo(data) {
+  const sheet = getSheet();
+  const hoy   = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
+
+  // Buscar fila existente por DNI + estudio para vincular el reclamo
+  const rows = getDataRows();
+  var targetRow = -1;
+  const dniStr = String(data.dni || '').replace(/\D/g,'');
+
+  for (var i = 0; i < rows.length; i++) {
+    const rowDni = String(rows[i][COL.DNI] || '').replace(/\.0$/,'').replace(/\D/g,'');
+    const rowEst = String(rows[i][COL.ESTUDIO] || '').trim().toLowerCase();
+    const datEst = String(data.estudio || '').trim().toLowerCase();
+    if (rowDni === dniStr && rowEst === datEst) {
+      targetRow = i + 2;
+      break;
+    }
+  }
+
+  // Calcular número de reclamo
+  const nroReclamo = rows.filter(function(r){
+    return String(r[COL.RECLAMO_ESTADO] || '').trim() !== '';
+  }).length + 1;
+
+  if (targetRow !== -1) {
+    // Vincular reclamo a fila existente del turno
+    sheet.getRange(targetRow, COL.RECLAMO_DIAGNOSTICO + 1).setValue(data.reclamoDiagnostico || '');
+    sheet.getRange(targetRow, COL.RECLAMO_INFORMADO   + 1).setValue(data.reclamoInformado   || '');
+    sheet.getRange(targetRow, COL.RECLAMO_TURNO       + 1).setValue(data.reclamoTurno       || '');
+    sheet.getRange(targetRow, COL.RECLAMO_ESTADO      + 1).setValue('pendiente');
+    sheet.getRange(targetRow, COL.RECLAMO_FECHA       + 1).setValue(hoy);
+    sheet.getRange(targetRow, COL.RECLAMO_OBS         + 1).setValue(data.observaciones || '');
+    sheet.getRange(targetRow, COL.RECLAMO_NRO         + 1).setValue(nroReclamo);
+    const turnoId = String(rows[targetRow - 2][COL.TURNO_ID] || '').trim() || String(targetRow);
+    return { ok: true, id: turnoId, nroReclamo: nroReclamo, vinculado: true };
+  }
+
+  // Si no existe el turno, crear fila nueva
+  const newRow = new Array(31).fill('');
+  newRow[COL.APELLIDO]           = data.apellido  || '';
+  newRow[COL.NOMBRE]             = data.nombre    || '';
+  newRow[COL.DNI]                = data.dni       || '';
+  newRow[COL.ESTUDIO]            = data.estudio   || '';
+  newRow[COL.FECHA]              = data.fechaEstudio ? new Date(data.fechaEstudio) : '';
+  newRow[COL.RECLAMO_DIAGNOSTICO]= data.reclamoDiagnostico || '';
+  newRow[COL.RECLAMO_INFORMADO]  = data.reclamoInformado   || '';
+  newRow[COL.RECLAMO_TURNO]      = data.reclamoTurno       || '';
+  newRow[COL.RECLAMO_ESTADO]     = 'pendiente';
+  newRow[COL.RECLAMO_FECHA]      = hoy;
+  newRow[COL.RECLAMO_OBS]        = data.observaciones || '';
+  newRow[COL.RECLAMO_NRO]        = nroReclamo;
+  newRow[COL.TURNO_ID]           = 'manual_' + new Date().getTime();
+
+  sheet.appendRow(newRow);
+  return { ok: true, id: newRow[COL.TURNO_ID], nroReclamo: nroReclamo, vinculado: false };
 }
 
-async function addReclamo(data) {
-  const result = await apiPost({ action: 'add', data });
-  if (!result.ok) throw new Error(result.error);
-  return result;
+// ── ACTUALIZAR RECLAMO ────────────────────────────────────────
+function updateReclamo(id, changes) {
+  const sheet = getSheet();
+  const found = findRowByTurnoId(id);
+  if (!found) return { ok: false, error: 'Reclamo no encontrado: ' + id };
+
+  const targetRow = found.rowIndex;
+
+  const colMap = {
+    reclamoDiagnostico: COL.RECLAMO_DIAGNOSTICO + 1,
+    reclamoInformado:   COL.RECLAMO_INFORMADO   + 1,
+    reclamoTurno:       COL.RECLAMO_TURNO       + 1,
+    estado:             COL.RECLAMO_ESTADO      + 1,
+    fechaReclamo:       COL.RECLAMO_FECHA       + 1,
+    comentarioMedico:   COL.RECLAMO_COMENTARIO  + 1,
+    observaciones:      COL.RECLAMO_OBS         + 1,
+    nroReclamo:         COL.RECLAMO_NRO         + 1,
+    entregaInforme:     COL.ENTREGA_INFORME     + 1,
+    fechaEntrega:       COL.FECHA_ENTREGA       + 1,
+    // compatibilidad con frontend anterior
+    informado:          COL.RECLAMO_INFORMADO   + 1,
+    turnoMedico:        COL.RECLAMO_TURNO       + 1,
+    entregadoAt:        COL.FECHA_ENTREGA       + 1,
+  };
+
+  for (var key in changes) {
+    if (colMap[key] !== undefined) {
+      sheet.getRange(targetRow, colMap[key]).setValue(changes[key]);
+    }
+  }
+  return { ok: true };
 }
 
-async function updateReclamo(id, changes) {
-  const result = await apiPost({ action: 'update', id, changes });
-  if (!result.ok) throw new Error(result.error);
-  return result;
+// ── RESOLVER RECLAMO (médico informa) ────────────────────────
+function resolverReclamo(id, comentario) {
+  const ahora = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
+  return updateReclamo(id, {
+    estado:           'resuelto',
+    comentarioMedico: comentario || 'Informe completado',
+    entregadoAt:      ahora,
+  });
 }
 
-async function resolverReclamo(id, comentario) {
-  const result = await apiPost({ action: 'resolver', id, comentario });
-  if (!result.ok) throw new Error(result.error);
-  return result;
-}
-
-async function entregarReclamo(id) {
-  const result = await apiPost({ action: 'entregar', id });
-  if (!result.ok) throw new Error(result.error);
-  return result;
+// ── ENTREGAR RECLAMO (administrativo entrega) ─────────────────
+function entregarReclamo(id) {
+  const ahora = Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm');
+  return updateReclamo(id, {
+    estado:       'entregado',
+    entregaInforme: 'INFORME',
+    fechaEntrega: ahora,
+    entregadoAt:  ahora,
+  });
 }
