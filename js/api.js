@@ -152,7 +152,8 @@ async function apiPost(body) {
   if (!url) throw new Error('API no configurada');
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    redirect: 'follow',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify(body),
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
