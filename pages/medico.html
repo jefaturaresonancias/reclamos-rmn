@@ -137,7 +137,16 @@
       .card-detail{grid-template-columns:1fr;}
       nav{padding:14px 16px;}
       .page{padding:20px 14px;}
-    }
+     }
+    /*Buscador PAcientes*/
+    .search-wrap{position:relative;max-width:400px;width:100%;}
+    .search-wrap input{width:100%;padding:9px 14px 9px 36px;background:var(--surface2);
+    border:1px solid var(--border);border-radius:100px;color:var(--text);
+    font-family:'DM Sans',sans-serif;font-size:.85rem;outline:none;transition:border-color .2s;}
+    .search-wrap input:focus{border-color:var(--success);}
+    .search-wrap input::placeholder{color:var(--text3);}
+    .search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);
+    font-size:13px;color:var(--text3);pointer-events:none;}
   </style>
 </head>
 <body>
@@ -165,7 +174,11 @@
         <div class="section-count" id="sectionCount"></div>
       </div>
     </div>
-
+      <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input id="buscar" placeholder="Buscar por apellido o DNI..."
+      oninput="renderLista()" />
+    </div>
     <div class="filters">
       <button class="filter-btn active" onclick="setFiltro('pendiente',this)">⏳ Pendientes</button>
       <button class="filter-btn" onclick="setFiltro('turno',this)">🚨 Con turno médico</button>
@@ -236,44 +249,41 @@
     // RENDER
     // ══════════════════════════════════════════════════════════
     function renderLista() {
-      let data = [...todosLosReclamos];
+  const busq = (document.getElementById('buscar')?.value || '').toLowerCase();
+  let data = [...todosLosReclamos];
 
-      if      (filtroActual === 'pendiente')   data = data.filter(r => r.estado === 'pendiente');
-      else if (filtroActual === 'turno')       data = data.filter(r => r.reclamoTurno && r.estado === 'pendiente');
-      else if (filtroActual === 'diagnostico') data = data.filter(r => r.reclamoDiagnostico && r.estado === 'pendiente');
-      else if (filtroActual === 'informado')   data = data.filter(r => r.reclamoInformado && r.estado === 'pendiente');
-      else if (filtroActual === 'resuelto')    data = data.filter(r => r.estado === 'resuelto');
+  // Filtro de búsqueda
+  if (busq) data = data.filter(r =>
+    (r.apellido + ' ' + r.nombre).toLowerCase().includes(busq) ||
+    String(r.dni).includes(busq)
+  );
 
-      // Ordenar: turno médico primero → diagnóstico → sin informe → por retraso
-      data.sort((a, b) => {
-        const prioA = prioridad(a);
-        const prioB = prioridad(b);
-        if (prioB !== prioA) return prioB - prioA;
-        return (b.retraso || 0) - (a.retraso || 0);
-      });
+  // Filtro de estado/tipo
+  if      (filtroActual === 'pendiente')   data = data.filter(r => r.estado === 'pendiente');
+  else if (filtroActual === 'turno')       data = data.filter(r => r.reclamoTurno && r.estado === 'pendiente');
+  else if (filtroActual === 'diagnostico') data = data.filter(r => r.reclamoDiagnostico && r.estado === 'pendiente');
+  else if (filtroActual === 'informado')   data = data.filter(r => r.reclamoInformado && r.estado === 'pendiente');
+  else if (filtroActual === 'resuelto')    data = data.filter(r => r.estado === 'resuelto');
 
-      document.getElementById('sectionCount').textContent =
-        `${data.length} reclamo${data.length !== 1 ? 's' : ''}`;
+  data.sort((a, b) => {
+    const prioA = prioridad(a), prioB = prioridad(b);
+    if (prioB !== prioA) return prioB - prioA;
+    return (b.retraso || 0) - (a.retraso || 0);
+  });
 
-      const lista = document.getElementById('lista');
-      if (!data.length) {
-        const msgs = {
-          pendiente:   '🎉 No hay reclamos pendientes',
-          turno:       '✅ No hay reclamos con turno médico próximo',
-          diagnostico: '✅ No hay reclamos de diagnóstico pendientes',
-          informado:   '✅ No hay reclamos sin informe pendientes',
-          resuelto:    '📭 No hay reclamos resueltos',
-          todos:       '📭 No hay reclamos cargados aún',
-        };
-        lista.innerHTML =
-          '<div class="empty"><span>' +
-          (filtroActual === 'pendiente' ? '🎉' : '📭') +
-          '</span>' + (msgs[filtroActual] || '📭 Sin resultados') + '</div>';
-        return;
-      }
+  document.getElementById('sectionCount').textContent =
+    `${data.length} reclamo${data.length !== 1 ? 's' : ''}`;
 
-      lista.innerHTML = data.map(r => renderCard(r)).join('');
-    }
+  const lista = document.getElementById('lista');
+  if (!data.length) {
+    lista.innerHTML = '<div class="empty"><span>' +
+      (busq ? '🔍' : '📭') + '</span>' +
+      (busq ? `Sin resultados para "<strong>${busq}</strong>"` : 'Sin reclamos') +
+      '</div>';
+    return;
+  }
+  lista.innerHTML = data.map(r => renderCard(r)).join('');
+}
 
     function prioridad(r) {
       if (r.reclamoTurno)       return 3; // urgente
