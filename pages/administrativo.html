@@ -271,7 +271,19 @@
 
       <div class="field"><label>Apellido *</label><input id="f-apellido" placeholder="García" /></div>
       <div class="field"><label>Nombre *</label><input id="f-nombre" placeholder="Juan Carlos" /></div>
-      <div class="field"><label>Estudio *</label><input id="f-estudio" placeholder="Cerebro con contraste" /></div>
+      <div class="field">
+        <label>Estudio *</label>
+          <div style="display:flex;gap:6px">
+            <input id="f-estudio-input" placeholder="Ej: Cerebro con contraste"
+            style="flex:1" onkeydown="if(event.key==='Enter'){event.preventDefault();agregarEstudio()}" />
+          <button onclick="agregarEstudio()" type="button"
+            style="padding:8px 12px;background:rgba(79,124,255,.15);border:1px solid var(--accent);
+            color:var(--accent);border-radius:var(--r);cursor:pointer;font-size:.8rem;
+            white-space:nowrap;font-family:'DM Sans',sans-serif">+ Agregar</button>
+          </div>
+        <div id="estudios-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
+        <input type="hidden" id="f-estudio" />
+      </div>
       <div class="field"><label>Fecha del Estudio *</label><input type="date" id="f-fechaEstudio" /></div>
 
       <div class="section-divider"></div>
