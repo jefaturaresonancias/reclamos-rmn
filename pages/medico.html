@@ -32,7 +32,6 @@
     .section-title{font-family:'DM Serif Display',serif;font-size:1.3rem;font-weight:400;}
     .section-count{font-size:.8rem;color:var(--text2);margin-top:4px;}
 
-    /* Búsqueda */
     .search-wrap{position:relative;max-width:420px;width:100%;}
     .search-wrap input{width:100%;padding:9px 14px 9px 36px;background:var(--surface2);
       border:1px solid var(--border);border-radius:100px;color:var(--text);
@@ -42,7 +41,6 @@
     .search-icon{position:absolute;left:13px;top:50%;transform:translateY(-50%);
       font-size:13px;color:var(--text3);pointer-events:none;}
 
-    /* Filtros */
     .filters-section{display:flex;flex-direction:column;gap:8px;}
     .filters-label{font-size:.7rem;color:var(--text3);text-transform:uppercase;
       letter-spacing:.04em;font-weight:500;}
@@ -59,7 +57,6 @@
     .region-btn:hover{background:var(--surface2);color:var(--text2);}
     .region-btn.active{background:rgba(79,124,255,.12);color:var(--accent);border-color:var(--accent);}
 
-    /* Cards */
     .cards-grid{display:flex;flex-direction:column;gap:14px;}
     .reclamo-card{background:var(--surface);border:1px solid var(--border);
       border-radius:16px;padding:20px 24px;
@@ -101,20 +98,17 @@
     .badge-dias{background:rgba(255,255,255,.06);color:var(--text2);}
     .badge-origen{background:rgba(255,255,255,.05);color:var(--text3);}
 
-    /* Estado por región */
     .region-status-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
     .region-status-badge{font-size:.72rem;padding:3px 10px;border-radius:100px;font-weight:500;}
     .region-status-badge.done{background:rgba(16,185,129,.12);color:var(--success);}
     .region-status-badge.pending{background:rgba(245,158,11,.1);color:var(--warn);}
 
-    /* Prioridad bars */
     .prioridad-bar{height:3px;border-radius:3px;margin-bottom:14px;}
     .prioridad-bar.alta{background:linear-gradient(90deg,var(--danger),rgba(239,68,68,.2));}
     .prioridad-bar.media{background:linear-gradient(90deg,#a78bfa,rgba(167,139,250,.2));}
     .prioridad-bar.normal{background:linear-gradient(90deg,var(--warn),rgba(245,158,11,.2));}
     .prioridad-bar.recitado-bar{background:linear-gradient(90deg,var(--recitar),rgba(6,182,212,.2));}
 
-    /* Resolve area */
     .resolve-area{display:flex;flex-direction:column;gap:8px;min-width:200px;}
     textarea.comentario{width:100%;padding:10px 12px;background:var(--surface2);
       border:1px solid var(--border);border-radius:var(--r);color:var(--text);
@@ -143,7 +137,6 @@
     .btn-resolver-region:hover{background:var(--success);color:#fff;}
     .btn-resolver-region:disabled{opacity:.4;cursor:not-allowed;}
 
-    /* Recitar */
     .recitar-divider{height:1px;background:var(--border);margin:6px 0;}
     .btn-recitar{padding:8px 14px;border-radius:var(--r);width:100%;
       background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.2);
@@ -166,12 +159,10 @@
       font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;transition:opacity .2s;}
     .btn-recitar-confirm:disabled{opacity:.5;cursor:not-allowed;}
 
-    /* Resuelto banner */
     .resuelto-banner{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);
       border-radius:var(--r);padding:10px 14px;font-size:.8rem;color:var(--success);
       display:flex;flex-direction:column;gap:4px;}
 
-    /* Recitados section */
     .recitados-section{display:none;flex-direction:column;gap:12px;
       padding-top:24px;border-top:1px solid rgba(6,182,212,.2);margin-top:8px;}
     .recitados-section-header{display:flex;align-items:center;justify-content:space-between;}
@@ -184,7 +175,6 @@
       background:rgba(6,182,212,.06);border:1px solid rgba(6,182,212,.12);
       border-radius:8px;padding:8px 12px;line-height:1.5;}
 
-    /* Loading / Empty */
     .loading{display:flex;align-items:center;justify-content:center;gap:10px;
       padding:60px;color:var(--text2);font-size:.9rem;}
     .spinner{width:20px;height:20px;border:2px solid var(--border);
@@ -263,7 +253,6 @@
       <div class="loading"><div class="spinner"></div>Cargando desde Google Sheets...</div>
     </div>
 
-    <!-- Sección recitados -->
     <div class="recitados-section" id="recitadosSection">
       <div class="recitados-section-header">
         <div class="recitados-section-title">🔄 Pendientes de recitación</div>
@@ -283,7 +272,6 @@
     let recitadosData    = [];
     const reclamoRegionesMap = {};
 
-    // ── Filtros estado ───────────────────────────────────────────
     function setFiltro(f, btn) {
       filtroActual = f;
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -291,7 +279,6 @@
       renderLista();
     }
 
-    // ── Filtros región ───────────────────────────────────────────
     function setRegion(region, btn) {
       regionActual = region;
       document.querySelectorAll('.region-btn').forEach(b => b.classList.remove('active'));
@@ -310,11 +297,16 @@
         ).join('');
     }
 
+    // ── FIX: divide estudios combinados por coma antes de comparar ──
     function getRegionesDeEstudio(estudio) {
-      const el = (estudio || '').toLowerCase();
+      const partes = (estudio || '').toLowerCase()
+        .split(',').map(p => p.trim()).filter(Boolean);
       const regiones = [];
       Object.entries(regionesConfig).forEach(([region, data]) => {
-        if (data.estudios.some(e => el.includes(e) || e.includes(el))) regiones.push(region);
+        const match = partes.some(parte =>
+          data.estudios.some(e => parte.includes(e) || e.includes(parte))
+        );
+        if (match) regiones.push(region);
       });
       return regiones.sort((a, b) =>
         (regionesConfig[a]?.numero || 0) - (regionesConfig[b]?.numero || 0));
@@ -325,7 +317,6 @@
       return getRegionesDeEstudio(r.estudio).includes(region);
     }
 
-    // ── Cargar ───────────────────────────────────────────────────
     async function recargar() {
       try {
         todosLosReclamos = await getReclamos();
@@ -387,7 +378,6 @@
       el.textContent = pend ? `${pend} pendientes` : '';
     }
 
-    // ── Render lista ─────────────────────────────────────────────
     function renderLista() {
       const busq = (document.getElementById('buscar')?.value || '').toLowerCase();
       let data = [...todosLosReclamos];
@@ -456,8 +446,8 @@
     }
 
     function renderResolveArea(r, regiones) {
-      const resuelto    = r.estado === 'resuelto';
-      const esRecitado  = r.estado === 'recitado';
+      const resuelto   = r.estado === 'resuelto';
+      const esRecitado = r.estado === 'recitado';
 
       if (resuelto) {
         return `<div style="display:flex;align-items:flex-start;padding-top:4px">
@@ -493,7 +483,6 @@
           }).join('') + `</div>`;
       }
 
-      // Recitar: solo para pendiente (no para recitado que ya volvió)
       const recitarHtml = !esRecitado ? `
         <div class="recitar-divider"></div>
         <button class="btn-recitar" onclick="toggleRecitar('${r.id}')">🔄 Recitar paciente</button>
@@ -589,7 +578,6 @@
         </div>`;
     }
 
-    // ── Marcar informado (sin regiones) ──────────────────────────
     async function marcarInformado(id) {
       const comentario = (document.getElementById(`coment-${id}`)?.value || '').trim();
       const btn = document.getElementById(`btn-res-${id}`);
@@ -604,7 +592,6 @@
       }
     }
 
-    // ── Marcar región informada ───────────────────────────────────
     async function marcarRegionInformada(id, idx) {
       const todasRegiones = reclamoRegionesMap[id] || [];
       const region = todasRegiones[idx];
@@ -625,7 +612,6 @@
       }
     }
 
-    // ── Recitar ───────────────────────────────────────────────────
     function toggleRecitar(id) {
       const form = document.getElementById(`recitar-form-${id}`);
       if (form) form.classList.toggle('visible');
@@ -647,7 +633,6 @@
       }
     }
 
-    // ── Toast ─────────────────────────────────────────────────────
     let toastTimer;
     function toast(msg, tipo = 'success') {
       const el = document.getElementById('toast');
@@ -657,14 +642,18 @@
       toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
     }
 
-    // ── Init ─────────────────────────────────────────────────────
+    // ── FIX: init separado para que regiones no bloquee reclamos ──
     verificarConfig(async () => {
+      await recargar();
       try {
-        const [regiones] = await Promise.all([getConfig(), recargar()]);
-        cargarFiltrosRegion(regiones);
+        const regiones = await getConfig();
+        if (regiones && Object.keys(regiones).length > 0) {
+          cargarFiltrosRegion(regiones);
+        } else {
+          console.warn('Config vacío o sin regiones');
+        }
       } catch(e) {
-        console.warn('Error init:', e.message);
-        recargar();
+        console.warn('Error al cargar regiones:', e.message);
       }
       setInterval(recargar, 30000);
     });
