@@ -459,10 +459,14 @@
           turnoVinculado = encontrado;
           document.getElementById('f-apellido').value    = encontrado.apellido  || '';
           document.getElementById('f-nombre').value      = encontrado.nombre    || '';
-          document.getElementById('f-estudio').value     = encontrado.estudio   || '';
-          if (encontrado.fechaEstudio)
-            document.getElementById('f-fechaEstudio').value = encontrado.fechaEstudio;
-          document.getElementById('vinculadoInfo').classList.add('visible');
+          // Cargar estudio como chips
+        if (encontrado.estudio) {
+          estudiosLista = encontrado.estudio.split(',').map(s => s.trim()).filter(Boolean);
+          renderEstudiosChips();
+  }
+        if (encontrado.fechaEstudio)
+        document.getElementById('f-fechaEstudio').value = encontrado.fechaEstudio;
+        document.getElementById('vinculadoInfo').classList.add('visible');
         } else {
           turnoVinculado = null;
           document.getElementById('vinculadoInfo').classList.remove('visible');
@@ -743,6 +747,10 @@
       document.getElementById('turno-fecha-wrap').classList.remove('visible');
       document.getElementById('vinculadoInfo').classList.remove('visible');
       turnoVinculado = null;
+      estudiosLista = [];
+      document.getElementById('f-estudio-input').value = '';
+      document.getElementById('estudios-chips').innerHTML = '';
+      document.getElementById('f-estudio').value = '';
     }
 
     // ── Entregar ──────────────────────────────────────────────────
@@ -964,6 +972,37 @@
       clearTimeout(toastNotifTimer);
       toastNotifTimer = setTimeout(() => el.classList.remove('show'), 8000);
     }
+
+    let estudiosLista = [];
+
+function agregarEstudio() {
+  const input = document.getElementById('f-estudio-input');
+  const val   = input.value.trim();
+  if (!val) return;
+  estudiosLista.push(val);
+  input.value = '';
+  renderEstudiosChips();
+  input.focus();
+}
+
+function quitarEstudio(idx) {
+  estudiosLista.splice(idx, 1);
+  renderEstudiosChips();
+}
+
+function renderEstudiosChips() {
+  const container = document.getElementById('estudios-chips');
+  document.getElementById('f-estudio').value = estudiosLista.join(', ');
+  container.innerHTML = estudiosLista.map((e, i) => `
+    <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 10px;
+      background:rgba(79,124,255,.12);border:1px solid rgba(79,124,255,.25);
+      color:var(--accent);border-radius:100px;font-size:.75rem;">
+      ${e}
+      <button onclick="quitarEstudio(${i})" type="button"
+        style="background:none;border:none;color:var(--accent);cursor:pointer;
+        font-size:.9rem;line-height:1;padding:0">×</button>
+    </span>`).join('');
+}
 
     // ── Init ──────────────────────────────────────────────────────
     verificarConfig(() => {
