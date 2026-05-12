@@ -1,31 +1,20 @@
 // api.js — Conexión con Google Apps Script
-// La URL de la API se guarda en el localStorage de CADA navegador
-// El código fuente en GitHub no contiene ningún dato sensible
-// ─────────────────────────────────────────────────────────────
-
 const API_KEY = 'reclamos_api_url';
 
 function getApiUrl() { return localStorage.getItem(API_KEY) || null; }
 function setApiUrl(url) { localStorage.setItem(API_KEY, url.trim()); }
 function resetApiUrl() { localStorage.removeItem(API_KEY); location.reload(); }
 
-// ── Pantalla de configuración ─────────────────────────────────
 function mostrarPantallaConfig(onSuccess) {
   const overlay = document.createElement('div');
   overlay.id = 'config-overlay';
   overlay.innerHTML = `
     <style>
-      #config-overlay {
-        position:fixed;inset:0;z-index:9999;background:#0d0f14;
-        display:flex;align-items:center;justify-content:center;
-        font-family:'DM Sans',sans-serif;
-      }
-      #config-box {
-        background:#13161e;border:1px solid #252a38;border-radius:20px;
-        padding:40px;width:520px;max-width:95vw;
-        display:flex;flex-direction:column;gap:20px;
-        animation:cfgUp .4s ease both;
-      }
+      #config-overlay{position:fixed;inset:0;z-index:9999;background:#0d0f14;
+        display:flex;align-items:center;justify-content:center;font-family:'DM Sans',sans-serif;}
+      #config-box{background:#13161e;border:1px solid #252a38;border-radius:20px;
+        padding:40px;width:520px;max-width:95vw;display:flex;flex-direction:column;gap:20px;
+        animation:cfgUp .4s ease both;}
       @keyframes cfgUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
       #config-box .cfg-icon{width:52px;height:52px;border-radius:14px;
         background:linear-gradient(135deg,#4f7cff,#7c3aed);
@@ -36,22 +25,21 @@ function mostrarPantallaConfig(onSuccess) {
         display:flex;flex-direction:column;gap:8px;}
       #config-box .cfg-step{display:flex;gap:10px;align-items:flex-start;font-size:.82rem;color:#8892aa;}
       #config-box .cfg-n{min-width:20px;height:20px;border-radius:50%;
-        background:rgba(79,124,255,.2);color:#4f7cff;
-        display:flex;align-items:center;justify-content:center;
-        font-size:.72rem;font-weight:700;flex-shrink:0;margin-top:1px;}
+        background:rgba(79,124,255,.2);color:#4f7cff;display:flex;align-items:center;
+        justify-content:center;font-size:.72rem;font-weight:700;flex-shrink:0;margin-top:1px;}
       #config-box label{font-size:.78rem;color:#8892aa;font-weight:500;
         text-transform:uppercase;letter-spacing:.03em;}
-      #config-url{width:100%;padding:12px 14px;background:#1a1e29;
-        border:1px solid #252a38;border-radius:10px;color:#e8ecf4;
-        font-family:monospace;font-size:.82rem;outline:none;transition:border-color .2s;}
+      #config-url{width:100%;padding:12px 14px;background:#1a1e29;border:1px solid #252a38;
+        border-radius:10px;color:#e8ecf4;font-family:monospace;font-size:.82rem;outline:none;
+        transition:border-color .2s;}
       #config-url:focus{border-color:#4f7cff;}
       #config-url::placeholder{color:#4f5870;}
       #config-error{font-size:.8rem;color:#ef4444;display:none;
         background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.2);
         border-radius:8px;padding:8px 12px;}
-      #btn-cfg-save{padding:12px 20px;border-radius:10px;background:#4f7cff;
-        border:none;color:#fff;font-family:'DM Sans',sans-serif;
-        font-size:.9rem;font-weight:500;cursor:pointer;transition:all .2s;width:100%;}
+      #btn-cfg-save{padding:12px 20px;border-radius:10px;background:#4f7cff;border:none;
+        color:#fff;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:500;
+        cursor:pointer;transition:all .2s;width:100%;}
       #btn-cfg-save:hover{background:#3a68f0;transform:translateY(-1px);}
       #btn-cfg-save:disabled{background:#2a3a6a;color:#5a6a9a;cursor:not-allowed;transform:none;}
       #config-box .cfg-nota{font-size:.75rem;color:#4f5870;text-align:center;
@@ -83,9 +71,8 @@ function mostrarPantallaConfig(onSuccess) {
         <div id="config-error"></div>
       </div>
       <button id="btn-cfg-save" onclick="guardarConfigUrl()">Guardar y conectar</button>
-      <p class="cfg-nota">🔒 Esta URL se guarda solo en este dispositivo. Nunca se sube a GitHub ni a ningún servidor.</p>
-    </div>
-  `;
+      <p class="cfg-nota">🔒 Esta URL se guarda solo en este dispositivo. Nunca se sube a GitHub.</p>
+    </div>`;
   document.body.appendChild(overlay);
   document.getElementById('config-url').addEventListener('keydown', e => {
     if (e.key === 'Enter') guardarConfigUrl();
@@ -98,19 +85,12 @@ function guardarConfigUrl() {
   const error = document.getElementById('config-error');
   const btn   = document.getElementById('btn-cfg-save');
   const url   = (input?.value || '').trim();
-
   if (!url.startsWith('https://script.google.com/macros/s/')) {
     error.textContent = '⚠️ La URL debe empezar con https://script.google.com/macros/s/';
-    error.style.display = 'block';
-    input.style.borderColor = '#ef4444';
-    return;
+    error.style.display = 'block'; input.style.borderColor = '#ef4444'; return;
   }
-
-  btn.disabled = true;
-  btn.textContent = '⏳ Verificando conexión...';
-  error.style.display = 'none';
-  input.style.borderColor = '#252a38';
-
+  btn.disabled = true; btn.textContent = '⏳ Verificando conexión...';
+  error.style.display = 'none'; input.style.borderColor = '#252a38';
   fetch(`${url}?action=stats`)
     .then(r => r.json())
     .then(data => {
@@ -118,26 +98,19 @@ function guardarConfigUrl() {
         setApiUrl(url);
         document.getElementById('config-overlay').remove();
         if (window._configOnSuccess) window._configOnSuccess();
-      } else {
-        throw new Error(JSON.stringify(data));
-      }
+      } else { throw new Error(JSON.stringify(data)); }
     })
     .catch(() => {
       error.textContent = '❌ No se pudo conectar. Verificá que la URL sea correcta y que el script esté publicado con acceso "Cualquier persona".';
-      error.style.display = 'block';
-      input.style.borderColor = '#ef4444';
-      btn.disabled = false;
-      btn.textContent = 'Guardar y conectar';
+      error.style.display = 'block'; input.style.borderColor = '#ef4444';
+      btn.disabled = false; btn.textContent = 'Guardar y conectar';
     });
 }
 
-// ── Verificar config al iniciar ───────────────────────────────
 function verificarConfig(callback) {
-  if (getApiUrl()) { callback(); }
-  else { mostrarPantallaConfig(callback); }
+  if (getApiUrl()) { callback(); } else { mostrarPantallaConfig(callback); }
 }
 
-// ── Helpers fetch ─────────────────────────────────────────────
 async function apiGet(params = {}) {
   const url = getApiUrl();
   if (!url) throw new Error('API no configurada');
@@ -160,37 +133,56 @@ async function apiPost(body) {
   return res.json();
 }
 
-// ── API pública ───────────────────────────────────────────────
 async function getReclamos(filtro = {}) {
   const result = await apiGet({ action: 'list', ...filtro });
   if (!result.ok) throw new Error(result.error);
   return result.data;
 }
-
 async function getStats() {
   const result = await apiGet({ action: 'stats' });
   if (!result.ok) throw new Error(result.error);
   return result.stats;
 }
-
+async function getConfig() {
+  const result = await apiGet({ action: 'config' });
+  if (!result.ok) throw new Error(result.error);
+  return result.regiones;
+}
+async function getRecitados() {
+  const result = await apiGet({ action: 'recitados' });
+  if (!result.ok) throw new Error(result.error);
+  return result.data;
+}
 async function addReclamo(data) {
   const result = await apiPost({ action: 'add', data });
   if (!result.ok) throw new Error(result.error);
   return result;
 }
-
 async function updateReclamo(id, changes) {
   const result = await apiPost({ action: 'update', id, changes });
   if (!result.ok) throw new Error(result.error);
   return result;
 }
-
 async function resolverReclamo(id, comentario) {
   const result = await apiPost({ action: 'resolver', id, comentario });
   if (!result.ok) throw new Error(result.error);
   return result;
 }
-
+async function resolverRegion(id, region, comentario, todasRegiones) {
+  const result = await apiPost({ action: 'resolverRegion', id, region, comentario, todasRegiones });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
+async function recitarReclamo(id, motivo) {
+  const result = await apiPost({ action: 'recitar', id, motivo });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
+async function asignarTurnoRecitado(id, fechaNuevo) {
+  const result = await apiPost({ action: 'asignarTurno', id, fechaNuevo });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
 async function entregarReclamo(id) {
   const result = await apiPost({ action: 'entregar', id });
   if (!result.ok) throw new Error(result.error);
