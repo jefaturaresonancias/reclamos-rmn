@@ -30,7 +30,6 @@
     .section-header{display:flex;align-items:center;justify-content:space-between;
       border-bottom:1px solid var(--border);padding-bottom:14px;}
     .section-title{font-family:'DM Serif Display',serif;font-size:1.3rem;font-weight:400;}
-    .section-count{font-size:.8rem;color:var(--text2);margin-top:4px;}
 
     .search-wrap{position:relative;max-width:420px;width:100%;}
     .search-wrap input{width:100%;padding:9px 14px 9px 36px;background:var(--surface2);
@@ -221,13 +220,13 @@
   </nav>
 
   <div class="page">
-   <div class="section-header">
-   <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
-    <div class="section-title">Reclamos para resolver</div>
-    <div id="sectionCount" style="font-size:2.2rem;font-weight:700;color:var(--accent);
-      line-height:1;transition:color .3s"></div>
-  </div>
-</div>
+    <div class="section-header">
+      <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+        <div class="section-title">Reclamos para resolver</div>
+        <div id="sectionCount" style="font-size:2.2rem;font-weight:700;color:var(--accent);
+          line-height:1;transition:color .3s"></div>
+      </div>
+    </div>
 
     <div class="search-wrap">
       <span class="search-icon">🔍</span>
@@ -272,6 +271,7 @@
     let todosLosReclamos = [];
     let recitadosData    = [];
     const reclamoRegionesMap = {};
+    const comentariosTemp    = {}; // ← guarda comentarios entre re-renders
 
     function setFiltro(f, btn) {
       filtroActual = f;
@@ -298,7 +298,6 @@
         ).join('');
     }
 
-    // ── FIX: divide estudios combinados por coma antes de comparar ──
     function getRegionesDeEstudio(estudio) {
       const partes = (estudio || '').toLowerCase()
         .split(',').map(p => p.trim()).filter(Boolean);
@@ -325,7 +324,9 @@
         if (todosLosReclamos.length === 0) {
           document.getElementById('lista').innerHTML =
             '<div class="empty"><span>📋</span>No hay reclamos activos en la BD.</div>';
-          document.getElementById('sectionCount').textContent = '0 reclamos';
+          const countEl = document.getElementById('sectionCount');
+          countEl.textContent = '0';
+          countEl.style.color = 'var(--accent)';
         } else {
           renderLista();
         }
@@ -380,6 +381,14 @@
     }
 
     function renderLista() {
+      // ── Guardar comentarios antes de re-renderizar ──
+      document.querySelectorAll('textarea.comentario').forEach(ta => {
+        if (ta.id && ta.value) comentariosTemp[ta.id] = ta.value;
+      });
+      document.querySelectorAll('textarea.recitar-motivo').forEach(ta => {
+        if (ta.id && ta.value) comentariosTemp[ta.id] = ta.value;
+      });
+
       const busq = (document.getElementById('buscar')?.value || '').toLowerCase();
       let data = [...todosLosReclamos];
 
@@ -399,10 +408,9 @@
         return (b.retraso || 0) - (a.retraso || 0);
       });
 
-      const sufijo = regionActual ? ` · ${regionActual}` : '';
       const countEl = document.getElementById('sectionCount');
-	countEl.textContent = data.length;
-	countEl.style.color = regionActual ? 'var(--success)' : 'var(--accent)';
+      countEl.textContent = data.length;
+      countEl.style.color = regionActual ? 'var(--success)' : 'var(--accent)';
 
       const lista = document.getElementById('lista');
       if (!data.length) {
@@ -417,6 +425,14 @@
         return;
       }
       lista.innerHTML = data.map(r => renderCard(r)).join('');
+
+      // ── Restaurar comentarios después de renderizar ──
+      setTimeout(() => {
+        Object.entries(comentariosTemp).forEach(([id, val]) => {
+          const el = document.getElementById(id);
+          if (el) el.value = val;
+        });
+      }, 0);
     }
 
     function prioridad(r) {
@@ -509,8 +525,10 @@
     }
 
     function renderCard(r) {
-      const regiones   = getRegionesDeEstudio(r.estudio);
-      reclamoRegionesMap[r.id] = regiones;
+      const regiones = getRegionesDeEstudio(r.estudio);
+      // Preservar regiones previas si config aún no cargó
+      reclamoRegionesMap[r.id] = regiones.length > 0 ? regiones : (reclamoRegionesMap[r.id] || []);
+      const regs     = reclamoRegionesMap[r.id];
       const resuelto   = r.estado === 'resuelto';
       const esRecitado = r.estado === 'recitado';
       const esUrgente  = !!r.reclamoTurno && !resuelto && !esRecitado;
@@ -541,7 +559,7 @@
               </div>
             </div>
             <div class="tipos-reclamo">${tiposHtml}</div>
-            ${renderRegionStatusBadges(r, regiones)}
+            ${renderRegionStatusBadges(r, regs)}
             <div class="card-detail">
               <div class="detail-full">
                 <div class="detail-label">Estudio</div>
@@ -576,7 +594,7 @@
                 <span>${r.comentarioMedico}</span>
               </div>` : ''}
           </div>
-          ${renderResolveArea(r, regiones)}
+          ${renderResolveArea(r, regs)}
         </div>`;
     }
 
@@ -584,6 +602,7 @@
       const comentario = (document.getElementById(`coment-${id}`)?.value || '').trim();
       const btn = document.getElementById(`btn-res-${id}`);
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
+      delete comentariosTemp[`coment-${id}`];
       try {
         await resolverReclamo(id, comentario);
         await recargar();
@@ -597,12 +616,16 @@
     async function marcarRegionInformada(id, idx) {
       const todasRegiones = reclamoRegionesMap[id] || [];
       const region = todasRegiones[idx];
-      if (!region) return;
+      if (!region) {
+        toast('❌ Error: región no identificada. Recargá la página.', 'error');
+        return;
+      }
       const comentario = (document.getElementById(`coment-${id}`)?.value || '').trim();
       const btn = document.getElementById(`btn-reg-${id}-${idx}`);
       if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
       try {
         await resolverRegion(id, region, comentario, todasRegiones);
+        delete comentariosTemp[`coment-${id}`];
         await recargar();
         const r = todosLosReclamos.find(x => x.id === id);
         toast(r && r.estado === 'resuelto'
@@ -625,6 +648,7 @@
       if (!motivo) { toast('⚠️ El motivo es obligatorio para recitar', 'warn'); return; }
       const btn = document.getElementById(`btn-rctr-${id}`);
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
+      delete comentariosTemp[`recitar-motivo-${id}`];
       try {
         await recitarReclamo(id, motivo);
         await recargar();
@@ -644,13 +668,13 @@
       toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
     }
 
-    // ── FIX: init separado para que regiones no bloquee reclamos ──
     verificarConfig(async () => {
       await recargar();
       try {
         const regiones = await getConfig();
         if (regiones && Object.keys(regiones).length > 0) {
           cargarFiltrosRegion(regiones);
+          renderLista();
         } else {
           console.warn('Config vacío o sin regiones');
         }
