@@ -514,20 +514,28 @@
       }
     }
 
-    async function cargarStats() {
-      try {
-        const s = await getStats();
-        document.getElementById('statsGrid').innerHTML = `
-          <div class="stat-box"><div class="stat-num accent">${s.total}</div>
-            <div class="stat-label">Total</div></div>
-          <div class="stat-box"><div class="stat-num warn">${s.pendientes}</div>
-            <div class="stat-label">Pendientes</div></div>
-          <div class="stat-box"><div class="stat-num danger">${s.urgentes}</div>
-            <div class="stat-label">Con turno</div></div>
-          <div class="stat-box"><div class="stat-num success">${s.resueltos + s.entregados}</div>
-            <div class="stat-label">Resueltos</div></div>`;
-      } catch(e) {}
-    }
+async function cargarStats() {
+  try {
+    const s = await getStats();
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat-box" onclick="filtrarPorStat('')" style="cursor:pointer" title="Ver todos">
+        <div class="stat-num accent">${s.total}</div>
+        <div class="stat-label">Total</div>
+      </div>
+      <div class="stat-box" onclick="filtrarPorStat('pendiente')" style="cursor:pointer" title="Ver pendientes">
+        <div class="stat-num warn">${s.pendientes}</div>
+        <div class="stat-label">Pendientes</div>
+      </div>
+      <div class="stat-box" onclick="filtrarPorStat('urgente')" style="cursor:pointer" title="Ver con turno">
+        <div class="stat-num danger">${s.urgentes}</div>
+        <div class="stat-label">Con turno</div>
+      </div>
+      <div class="stat-box" onclick="filtrarPorStat('resuelto')" style="cursor:pointer" title="Ver resueltos">
+        <div class="stat-num success">${s.resueltos + s.entregados}</div>
+        <div class="stat-label">Resueltos</div>
+      </div>`;
+  } catch(e) {}
+}
 
     // ── Recitados admin ───────────────────────────────────────────
     async function loadRecitadosAdmin() {
