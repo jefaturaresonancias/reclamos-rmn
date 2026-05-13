@@ -658,36 +658,7 @@ async function cargarStats() {
             : 'No hay reclamos cargados aún.') + '</div>';
         return;
       }
-
-      function renderListaData(data) {
-        renderLista(data); // usa la que ya tenés
-      }
-
-      function filtrarPorStat(tipo) {
-  // Asegurar que el panel reclamos esté visible
-  tabActual = 'reclamos';
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-btn')[0].classList.add('active');
-  document.getElementById('panelReclamos').style.display  = '';
-  document.getElementById('panelRecitados').style.display = 'none';
-
-  const select = document.getElementById('filtroEstado');
-
-  if (tipo === 'urgente') {
-    select.value = 'pendiente';
-    // Filtrar y mostrar solo los que tienen turno
-    const data = todosLosReclamos
-      .filter(r => r.estado === 'pendiente' && r.reclamoTurno)
-      .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
-    renderLista(data);
-  } else {
-    select.value = tipo;
-    filtrarLista();
-  }
-
-  document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
-}
-
+      
       lista.innerHTML = data.map(r => {
         const esUrgente  = r.estado === 'pendiente' && r.reclamoTurno;
         const esRecitado = r.estado === 'recitado';
@@ -740,6 +711,35 @@ async function cargarStats() {
           </div>`;
       }).join('');
     }
+
+    function renderListaData(data) {
+        renderLista(data); // usa la que ya tenés
+      }
+
+      function filtrarPorStat(tipo) {
+  // Asegurar que el panel reclamos esté visible
+  tabActual = 'reclamos';
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-btn')[0].classList.add('active');
+  document.getElementById('panelReclamos').style.display  = '';
+  document.getElementById('panelRecitados').style.display = 'none';
+
+  const select = document.getElementById('filtroEstado');
+
+  if (tipo === 'urgente') {
+    select.value = 'pendiente';
+    // Filtrar y mostrar solo los que tienen turno
+    const data = todosLosReclamos
+      .filter(r => r.estado === 'pendiente' && r.reclamoTurno)
+      .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
+    renderLista(data);
+  } else {
+    select.value = tipo;
+    filtrarLista();
+  }
+
+  document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
+}
 
     // ── Nuevo reclamo ─────────────────────────────────────────────
     async function nuevoReclamo() {
