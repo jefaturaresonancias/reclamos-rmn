@@ -688,35 +688,7 @@
         console.warn('Error al cargar regiones:', e.message);
       }
       setInterval(recargar, 30000);
-    });
-
-    async function marcarTodasRegiones(id) {
-  const todasRegiones = reclamoRegionesMap[id] || [];
-  if (!todasRegiones.length) {
-    toast('❌ Error: regiones no identificadas. Recargá la página.', 'error');
-    return;
-  }
-  const comentario = (document.getElementById(`coment-${id}`)?.value || '').trim();
-  const btn = document.getElementById(`btn-todo-${id}`);
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
-  try {
-    // Marcar cada región pendiente secuencialmente
-    const regionStatus = todosLosReclamos.find(x => x.id === id)?.regionStatus || {};
-    for (let i = 0; i < todasRegiones.length; i++) {
-      const reg = todasRegiones[i];
-      if (regionStatus[reg] !== 'Si') {
-        await resolverRegion(id, reg, comentario, todasRegiones);
-      }
-    }
-    delete comentariosTemp[`coment-${id}`];
-    await recargar();
-    toast('✅ Todas las regiones informadas — reclamo resuelto.');
-  } catch(e) {
-    toast('❌ Error: ' + e.message, 'error');
-    if (btn) { btn.disabled = false; btn.textContent = '✅ Marcar todo informado'; }
-  }
-}
-    
+    });  
   </script>
 </body>
 </html>
