@@ -188,3 +188,9 @@ async function entregarReclamo(id) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+
+async function resolverTodo(id, comentario, todasRegiones) {
+  const result = await apiPost({ action: 'resolverTodo', id, comentario, todasRegiones });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
