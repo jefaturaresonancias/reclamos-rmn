@@ -368,6 +368,12 @@
           <button class="btn-sm btn-sm-gray" onclick="recargar()"
             style="padding:8px 14px">🔄 Actualizar</button>
         </div>
+        <div id="subFiltroResueltos" style="display:none;gap:8px;margin-bottom:4px" class="filters">
+            <button class="filter-btn active" id="btnSubResuelto"
+            onclick="subFiltrar('resuelto')">✅ Resueltos por médico</button>
+            <button class="filter-btn" id="btnSubEntregado"
+            onclick="subFiltrar('entregado')">📦 Entregados</button>
+        </div>
         <div class="reclamos-list" id="lista">
           <div class="loading"><div class="spinner"></div>Cargando reclamos...</div>
         </div>
