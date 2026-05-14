@@ -630,8 +630,8 @@ async function cargarStats() {
       if (estado) {
         data = data.filter(r => r.estado === estado);
       } else {
-      // Por defecto ocultar resueltos — solo se ven al hacer click en el panel
-      data = data.filter(r => r.estado !== 'resuelto');
+      // Ocultar resueltos y entregados de la lista general
+        data = data.filter(r => r.estado !== 'resuelto' && r.estado !== 'entregado');
       }
 
       if (orden === 'urgente') {
