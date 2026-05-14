@@ -627,7 +627,12 @@ async function cargarStats() {
         (r.apellido + ' ' + r.nombre).toLowerCase().includes(busq) ||
         String(r.dni).includes(busq) ||
         (r.estudio || '').toLowerCase().includes(busq));
-      if (estado) data = data.filter(r => r.estado === estado);
+      if (estado) {
+        data = data.filter(r => r.estado === estado);
+      } else {
+      // Por defecto ocultar resueltos — solo se ven al hacer click en el panel
+      data = data.filter(r => r.estado !== 'resuelto');
+      }
 
       if (orden === 'urgente') {
         data.sort((a, b) => {
