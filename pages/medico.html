@@ -729,12 +729,25 @@
 }
 
 function esColumna(estudio) {
-  const partes = (estudio || '').toLowerCase()
-    .split(',').map(p => p.trim()).filter(Boolean);
-  // Todas las partes deben ser de columna, ninguna de otra región
-  return partes.length > 0 && partes.every(p =>
-    p.includes('cervical') || p.includes('dorsal') || p.includes('lumbar')
-  );
+  const e = (estudio || '').toLowerCase();
+  
+  // Debe tener al menos una parte de columna
+  const tieneColumna = e.includes('cervical') || e.includes('dorsal') || e.includes('lumbar');
+  if (!tieneColumna) return false;
+
+  // No debe tener palabras de otras regiones
+  const otrasRegiones = [
+    'cerebro', 'cerebral', 'craneo', 'cráneo',
+    'angio', 'vascular', 'carotida', 'carótida',
+    'oido', 'oído', 'seno', 'cuello', 'orbita', 'órbita',
+    'torax', 'tórax', 'mama', 'pulmon', 'pulmón',
+    'abdomen', 'abdominal', 'higado', 'hígado', 'renal', 'hepatico',
+    'pelvis', 'pelvico', 'pélvico', 'prostata', 'próstata', 'utero', 'útero',
+    'rodilla', 'hombro', 'codo', 'muñeca', 'mano', 'pie', 'tobillo',
+    'cadera', 'femur', 'fémur', 'tibia',
+  ];
+
+  return !otrasRegiones.some(palabra => e.includes(palabra));
 }
 
 function esColumnaCompleta(estudio) {
