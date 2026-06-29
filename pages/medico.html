@@ -729,13 +729,25 @@
 }
 
 function esColumna(estudio) {
-  const e = (estudio || '').toLowerCase();
-  return e.includes('cervical') || e.includes('dorsal') || e.includes('lumbar');
+  const partes = (estudio || '').toLowerCase()
+    .split(',').map(p => p.trim()).filter(Boolean);
+  // Todas las partes deben ser de columna, ninguna de otra región
+  return partes.length > 0 && partes.every(p =>
+    p.includes('cervical') || p.includes('dorsal') || p.includes('lumbar')
+  );
 }
 
 function esColumnaCompleta(estudio) {
-  const e = (estudio || '').toLowerCase();
-  return e.includes('cervical') && e.includes('dorsal') && e.includes('lumbar');
+  const partes = (estudio || '').toLowerCase()
+    .split(',').map(p => p.trim()).filter(Boolean);
+  // Debe tener las tres y ninguna parte de otra región
+  const tieneCervical = partes.some(p => p.includes('cervical'));
+  const tieneDorsal   = partes.some(p => p.includes('dorsal'));
+  const tieneLumbar   = partes.some(p => p.includes('lumbar'));
+  const soloColumna   = partes.every(p =>
+    p.includes('cervical') || p.includes('dorsal') || p.includes('lumbar')
+  );
+  return tieneCervical && tieneDorsal && tieneLumbar && soloColumna;
 }
   </script>
 </body>
