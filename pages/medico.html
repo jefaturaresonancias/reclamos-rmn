@@ -270,17 +270,20 @@
     let regionesConfig   = {};
     let todosLosReclamos = [];
     let recitadosData    = [];
+    let filtroColumnaActual = null;
     const reclamoRegionesMap = {};
     const comentariosTemp    = {}; // ← guarda comentarios entre re-renders
 
     function setFiltro(f, btn) {
       filtroActual = f;
+      filtroColumnaActual = null;
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       renderLista();
     }
 
     function setRegion(region, btn) {
+      filtroColumnaActual = null;
       regionActual = region;
       document.querySelectorAll('.region-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
@@ -292,10 +295,12 @@
       const contenedor = document.getElementById('regionFiltros');
       const ordenadas  = Object.entries(regiones).sort((a, b) => a[1].numero - b[1].numero);
       contenedor.innerHTML =
-        `<button class="region-btn active" onclick="setRegion(null,this)">Todas</button>` +
-        ordenadas.map(([nombre]) =>
-          `<button class="region-btn" onclick="setRegion('${nombre}',this)">${nombre}</button>`
-        ).join('');
+      `<button class="region-btn active" onclick="setRegion(null,this)">Todas</button>` +
+      ordenadas.map(([nombre]) =>
+      `<button class="region-btn" onclick="setRegion('${nombre}',this)">${nombre}</button>`
+      ).join('') +
+      `<button class="region-btn" onclick="setFiltroColumna('parcial',this)">🦴 Solo columna</button>
+       <button class="region-btn" onclick="setFiltroColumna('completa',this)">🦴🦴 Columna completa</button>`;
     }
 
     function getRegionesDeEstudio(estudio) {
@@ -396,6 +401,11 @@
         (r.apellido + ' ' + r.nombre).toLowerCase().includes(busq) ||
         String(r.dni).includes(busq));
       if (regionActual) data = data.filter(r => reclamoEnRegion(r, regionActual));
+      if (filtroColumnaActual === 'parcial') {
+      data = data.filter(r => esColumna(r.estudio) && (r.estado === 'pendiente' || r.estado === 'recitado'));
+    } else if (filtroColumnaActual === 'completa') {
+      data = data.filter(r => esColumnaCompleta(r.estudio) && (r.estado === 'pendiente' || r.estado === 'recitado'));
+    }
       if      (filtroActual === 'pendiente')   data = data.filter(r => r.estado === 'pendiente' || r.estado === 'recitado');
       else if (filtroActual === 'turno')       data = data.filter(r => r.reclamoTurno && r.estado === 'pendiente');
       else if (filtroActual === 'diagnostico') data = data.filter(r => r.reclamoDiagnostico && r.estado === 'pendiente');
@@ -707,6 +717,25 @@
     toast('❌ Error: ' + e.message, 'error');
     if (btn) { btn.disabled = false; btn.textContent = '✅ Marcar todo informado'; }
   }
+}
+
+  function setFiltroColumna(tipo, btn) {
+  filtroColumnaActual = tipo;
+  regionActual = null;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.region-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderLista();
+}
+
+function esColumna(estudio) {
+  const e = (estudio || '').toLowerCase();
+  return e.includes('cervical') || e.includes('dorsal') || e.includes('lumbar');
+}
+
+function esColumnaCompleta(estudio) {
+  const e = (estudio || '').toLowerCase();
+  return e.includes('cervical') && e.includes('dorsal') && e.includes('lumbar');
 }
   </script>
 </body>
