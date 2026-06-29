@@ -368,6 +368,16 @@
           <button class="btn-sm btn-sm-gray" onclick="recargar()"
             style="padding:8px 14px">🔄 Actualizar</button>
         </div>
+        <div id="btnEntregarTodoWrap" style="display:none">
+          <button onclick="entregarTodo()"
+            style="padding:10px 20px;background:rgba(16,185,129,.12);
+            border:1px solid rgba(16,185,129,.3);color:var(--success);
+            border-radius:var(--r);cursor:pointer;font-family:'DM Sans',sans-serif;
+            font-size:.875rem;font-weight:500;transition:all .2s;width:100%"
+            id="btnEntregarTodo">
+            ✔ Entregar todos los resueltos
+          </button>
+        </div>
         <div id="subFiltroResueltos" style="display:none;gap:8px;margin-bottom:4px" class="filters">
             <button class="filter-btn active" id="btnSubResuelto"
             onclick="subFiltrar('resuelto')">✅ Resueltos por médico</button>
@@ -727,19 +737,28 @@ async function cargarStats() {
         renderLista(data); // usa la que ya tenés
       }
 
-      function filtrarPorStat(tipo) {
-  // Asegurar que el panel reclamos esté visible
+function filtrarPorStat(tipo) {
   tabActual = 'reclamos';
   document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.tab-btn')[0].classList.add('active');
   document.getElementById('panelReclamos').style.display  = '';
   document.getElementById('panelRecitados').style.display = 'none';
 
-  const select = document.getElementById('filtroEstado');
+  const select    = document.getElementById('filtroEstado');
+  const subFiltro = document.getElementById('subFiltroResueltos');
+
+  if (tipo === 'resuelto' || tipo === 'entregado') {
+    subFiltro.style.display = 'flex';
+    document.getElementById('btnSubResuelto').classList.toggle('active', tipo === 'resuelto');
+    document.getElementById('btnSubEntregado').classList.toggle('active', tipo === 'entregado');
+    document.getElementById('btnEntregarTodoWrap').style.display = tipo === 'resuelto' ? '' : 'none';
+  } else {
+    subFiltro.style.display = 'none';
+    document.getElementById('btnEntregarTodoWrap').style.display = 'none';
+  }
 
   if (tipo === 'urgente') {
     select.value = 'pendiente';
-    // Filtrar y mostrar solo los que tienen turno
     const data = todosLosReclamos
       .filter(r => r.estado === 'pendiente' && r.reclamoTurno)
       .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
@@ -748,7 +767,6 @@ async function cargarStats() {
     select.value = tipo;
     filtrarLista();
   }
-
   document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
 }
 
@@ -1059,6 +1077,53 @@ function renderEstudiosChips() {
       recargar();
       setInterval(recargar, 30000);
     });
+
+    async function entregarTodo() {
+  const resueltos = todosLosReclamos.filter(r => r.estado === 'resuelto');
+  if (!resueltos.length) return;
+  const btn = document.getElementById('btnEntregarTodo');
+  btn.disabled = true;
+  btn.textContent = '⏳ Entregando...';
+  try {
+    for (const r of resueltos) {
+      await entregarReclamo(r.id);
+    }
+    await recargar();
+    toast(`📦 ${resueltos.length} reclamo${resueltos.length > 1 ? 's' : ''} entregado${resueltos.length > 1 ? 's' : ''}`);
+  } catch(e) {
+    toast('❌ Error: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '✔ Entregar todos los resueltos';
+  }
+}
+
+    function subFiltrar(estado) {
+  document.getElementById('btnSubResuelto').classList.toggle('active', estado === 'resuelto');
+  document.getElementById('btnSubEntregado').classList.toggle('active', estado === 'entregado');
+  document.getElementById('btnEntregarTodoWrap').style.display = estado === 'resuelto' ? '' : 'none';
+  document.getElementById('filtroEstado').value = estado;
+  filtrarLista();
+}
+
+async function entregarTodo() {
+  const resueltos = todosLosReclamos.filter(r => r.estado === 'resuelto');
+  if (!resueltos.length) return;
+  const btn = document.getElementById('btnEntregarTodo');
+  btn.disabled = true;
+  btn.textContent = '⏳ Entregando...';
+  try {
+    for (const r of resueltos) {
+      await entregarReclamo(r.id);
+    }
+    await recargar();
+    toast(`📦 ${resueltos.length} reclamo${resueltos.length > 1 ? 's' : ''} entregado${resueltos.length > 1 ? 's' : ''}`);
+  } catch(e) {
+    toast('❌ Error: ' + e.message, 'error');
+    btn.disabled = false;
+    btn.textContent = '✔ Entregar todos los resueltos';
+  }
+}
+    
   </script>
 </body>
 </html>
