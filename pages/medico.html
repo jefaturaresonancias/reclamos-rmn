@@ -198,6 +198,42 @@
       nav{padding:14px 16px;}
       .page{padding:20px 14px;}
     }
+
+    .anuncio-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);
+      display:flex;align-items:center;justify-content:center;
+      z-index:500;backdrop-filter:blur(4px);
+      opacity:0;pointer-events:none;transition:opacity .3s;}
+    .anuncio-overlay.open{opacity:1;pointer-events:all;}
+    .anuncio-box{background:var(--surface);border:1px solid rgba(79,124,255,.3);
+      border-radius:20px;padding:32px;width:480px;max-width:92vw;
+      display:flex;flex-direction:column;gap:16px;
+      box-shadow:0 20px 60px rgba(0,0,0,.5);
+      transform:scale(.95);transition:transform .3s;}
+    .anuncio-overlay.open .anuncio-box{transform:scale(1);}
+    .anuncio-icon{width:48px;height:48px;border-radius:14px;
+      background:linear-gradient(135deg,#4f7cff,#7c3aed);
+      display:flex;align-items:center;justify-content:center;
+      font-size:24px;}
+    .anuncio-badge{font-size:.68rem;background:rgba(79,124,255,.15);
+      color:var(--accent);padding:3px 10px;border-radius:100px;
+      font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+      width:fit-content;}
+    .anuncio-titulo{font-family:'DM Serif Display',serif;font-size:1.3rem;
+      font-weight:400;color:var(--text);}
+    .anuncio-desc{font-size:.9rem;color:var(--text2);line-height:1.6;}
+    .anuncio-lista{display:flex;flex-direction:column;gap:8px;
+      background:var(--surface2);border-radius:12px;padding:14px 16px;}
+    .anuncio-item{display:flex;gap:10px;align-items:flex-start;
+      font-size:.85rem;color:var(--text2);line-height:1.5;}
+    .anuncio-item-icon{flex-shrink:0;font-size:.9rem;margin-top:1px;}
+    .anuncio-footer{display:flex;align-items:center;justify-content:space-between;
+      padding-top:8px;border-top:1px solid var(--border);}
+    .anuncio-dias{font-size:.72rem;color:var(--text3);}
+    .anuncio-close{padding:9px 20px;border-radius:10px;
+      background:var(--accent);color:#fff;border:none;cursor:pointer;
+      font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;
+      transition:all .2s;}
+    .anuncio-close:hover{background:#3a68f0;}
   </style>
 </head>
 <body>
@@ -722,8 +758,61 @@
       toastTimer = setTimeout(() => el.classList.remove('show'), 4000);
     }
 
+    // ── Sistema de anuncios de novedades ──────────────────────
+    // Agregá una entrada nueva cada vez que hagas un cambio
+    // importante. Se muestra durante 3 días desde 'fecha'.
+    const ANUNCIOS = [
+      {
+        id: 'archivado-2026-07',
+        fecha: '2026-07-26', // fecha de publicación (no tocar tras publicar)
+        badge: 'Novedad',
+        titulo: 'Archivado automático de reclamos',
+        desc: 'Los reclamos con más de 3 meses de antigüedad ahora se archivan automáticamente para mantener la lista principal más limpia.',
+        items: [
+          { icono: '📦', texto: 'Nueva categoría "Archivados" en las estadísticas' },
+          { icono: '🔍', texto: 'La búsqueda por DNI ahora también encuentra reclamos archivados' },
+          { icono: '⏱️', texto: 'El archivado es automático, no requiere ninguna acción' },
+        ],
+      },
+    ];
+
+    function mostrarAnuncioSiCorresponde(){
+      const hoy = new Date();
+      const activo = ANUNCIOS.find(a => {
+        const fechaPub = new Date(a.fecha);
+        const diasDesde = Math.floor((hoy - fechaPub) / 86400000);
+        return diasDesde >= 0 && diasDesde < 3;
+      });
+      if (!activo) return;
+
+      const fechaPub = new Date(activo.fecha);
+      const diasRestantes = 3 - Math.floor((hoy - fechaPub) / 86400000);
+
+      document.getElementById('anuncioBadge').textContent = activo.badge;
+      document.getElementById('anuncioTitulo').textContent = activo.titulo;
+      document.getElementById('anuncioDesc').textContent = activo.desc;
+      document.getElementById('anuncioLista').innerHTML = activo.items.map(function(it){
+        return '<div class="anuncio-item">' +
+          '<span class="anuncio-item-icon">' + it.icono + '</span>' +
+          '<span>' + it.texto + '</span></div>';
+      }).join('');
+      document.getElementById('anuncioDias').textContent =
+        diasRestantes <= 1
+          ? 'Último día que se muestra este aviso'
+          : 'Se muestra durante ' + diasRestantes + ' días más';
+
+      document.getElementById('anuncioOverlay').classList.add('open');
+    }
+
+    function cerrarAnuncio(){
+      document.getElementById('anuncioOverlay').classList.remove('open');
+      // No se guarda nada en localStorage a propósito:
+      // debe reaparecer en cada carga hasta que pasen los 3 días
+    }
+
     verificarConfig(async () => {
       await recargar();
+      mostrarAnuncioSiCorresponde();
       try {
         const regiones = await getConfig();
         if (regiones && Object.keys(regiones).length > 0) {
@@ -801,5 +890,19 @@ function esColumnaCompleta(estudio) {
   return tieneCervical && tieneDorsal && tieneLumbar && soloColumna;
 }
   </script>
+
+  <div class="anuncio-overlay" id="anuncioOverlay">
+    <div class="anuncio-box">
+      <div class="anuncio-icon">📢</div>
+      <div class="anuncio-badge" id="anuncioBadge">Novedad</div>
+      <div class="anuncio-titulo" id="anuncioTitulo"></div>
+      <div class="anuncio-desc" id="anuncioDesc"></div>
+      <div class="anuncio-lista" id="anuncioLista"></div>
+      <div class="anuncio-footer">
+        <span class="anuncio-dias" id="anuncioDias"></span>
+        <button class="anuncio-close" onclick="cerrarAnuncio()">Entendido</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
