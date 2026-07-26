@@ -358,6 +358,7 @@
             <option value="resuelto">Resueltos (médico)</option>
             <option value="revisado-admin">Revisados por admin</option>
             <option value="entregado">Entregados</option>
+            <option value="archivado">📦 Archivados</option>
           </select>
           <select class="filter-select" id="filtroOrden" onchange="filtrarLista()">
             <option value="urgente">Urgentes primero</option>
@@ -470,25 +471,36 @@
         document.getElementById('vinculadoInfo').classList.remove('visible');
         return;
       }
-      buscarTimer = setTimeout(() => {
-        const encontrado = todosLosReclamos.find(r =>
-          String(r.dni).replace(/\D/g,'') === String(dni).replace(/\D/g,''));
-        if (encontrado) {
-          turnoVinculado = encontrado;
-          document.getElementById('f-apellido').value    = encontrado.apellido  || '';
-          document.getElementById('f-nombre').value      = encontrado.nombre    || '';
-          // Cargar estudio como chips
-        if (encontrado.estudio) {
-          estudiosLista = encontrado.estudio.split(',').map(s => s.trim()).filter(Boolean);
-          renderEstudiosChips();
-  }
-        if (encontrado.fechaEstudio)
-        document.getElementById('f-fechaEstudio').value = encontrado.fechaEstudio;
-        document.getElementById('vinculadoInfo').classList.add('visible');
-        } else {
-          turnoVinculado = null;
-          document.getElementById('vinculadoInfo').classList.remove('visible');
-        }
+      buscarTimer = setTimeout(async () => {
+        try {
+          let encontrado = todosLosReclamos.find(r =>
+            String(r.dni).replace(/\D/g,'') === String(dni).replace(/\D/g,'')
+          );
+          if (!encontrado) {
+            const todos = await getReclamos({ dni: dni });
+            encontrado = todos && todos.length ? todos[0] : null;
+          }
+          if (encontrado) {
+            turnoVinculado = encontrado;
+            document.getElementById('f-apellido').value    = encontrado.apellido  || '';
+            document.getElementById('f-nombre').value      = encontrado.nombre    || '';
+            // Cargar estudio como chips
+            if (encontrado.estudio) {
+              estudiosLista = encontrado.estudio.split(',').map(s => s.trim()).filter(Boolean);
+              renderEstudiosChips();
+            }
+            if (encontrado.fechaEstudio)
+              document.getElementById('f-fechaEstudio').value = encontrado.fechaEstudio;
+            const info = document.getElementById('vinculadoInfo');
+            info.classList.add('visible');
+            info.textContent = encontrado.archivado
+              ? '📦 Turno encontrado (archivado) — el reclamo se vinculará automáticamente'
+              : '✅ Turno encontrado — el reclamo se vinculará automáticamente';
+          } else {
+            turnoVinculado = null;
+            document.getElementById('vinculadoInfo').classList.remove('visible');
+          }
+        } catch(e) {}
       }, 500);
     }
 
@@ -551,6 +563,14 @@ async function cargarStats() {
       <div class="stat-box" onclick="filtrarPorStat('resuelto')" style="cursor:pointer" title="Ver resueltos">
         <div class="stat-num success">${s.resueltos + s.entregados}</div>
         <div class="stat-label">Resueltos</div>
+      </div>
+      <div class="stat-box" onclick="filtrarPorStat('archivado')"
+        style="cursor:pointer;grid-column:1/-1;
+        border-color:rgba(255,255,255,.08)" title="Ver archivados">
+        <div class="stat-num" style="color:var(--text3)">
+          ${s.archivados}
+        </div>
+        <div class="stat-label">📦 Archivados (+3 meses)</div>
       </div>`;
   } catch(e) {}
 }
@@ -637,7 +657,19 @@ async function cargarStats() {
       const busq  = (document.getElementById('buscar').value || '').toLowerCase();
       const estado = document.getElementById('filtroEstado').value;
       const orden  = document.getElementById('filtroOrden').value;
-      let data = [...todosLosReclamos];
+
+      if (estado === 'archivado') {
+        document.getElementById('lista').innerHTML =
+          '<div class="loading"><div class="spinner"></div>Cargando archivados...</div>';
+        getReclamos({ estado: 'archivado' }).then(function(archivados){
+          renderLista(archivados || []);
+        }).catch(function(e){
+          toast('❌ Error al cargar archivados: ' + e.message, 'error');
+        });
+        return;
+      }
+
+      let data = [...todosLosReclamos].filter(r => !r.archivado);
 
       if (busq) data = data.filter(r =>
         (r.apellido + ' ' + r.nombre).toLowerCase().includes(busq) ||
