@@ -360,7 +360,8 @@
           <select class="filter-select" id="filtroEstado" onchange="filtrarLista()">
             <option value="">Todos</option>
             <option value="pendiente">Pendientes</option>
-            <option value="recitado">🔄 Recitados</option>
+            <option value="recitar">🔄 Por recitar (sin turno asignado)</option>
+            <option value="recitado">📅 Recitados (turno ya asignado)</option>
             <option value="resuelto">Resueltos (médico)</option>
             <option value="revisado-admin">Revisados por admin</option>
             <option value="entregado">Entregados</option>
@@ -570,12 +571,12 @@ async function cargarStats() {
         <div class="stat-num success">${s.resueltos + s.entregados}</div>
         <div class="stat-label">Resueltos</div>
       </div>
-      <div class="stat-box" onclick="filtrarPorStat('recitado')"
-        style="cursor:pointer" title="Ver recitados">
+      <div class="stat-box" onclick="filtrarPorStat('recitar')"
+        style="cursor:pointer" title="Ver pacientes por recitar">
         <div class="stat-num" style="color:var(--recitar)">
-          ${typeof s.recitados !== 'undefined' ? s.recitados : recitadosData.length}
+          ${recitadosData.length}
         </div>
-        <div class="stat-label">🔄 Recitados</div>
+        <div class="stat-label">🔄 Por recitar</div>
       </div>
       <div class="stat-box" onclick="filtrarPorStat('archivado')"
         style="cursor:pointer;grid-column:1/-1;
@@ -675,7 +676,8 @@ async function cargarStats() {
         'revisado-admin':   'Revisados por administrativo',
         'entregado':        'Entregados',
         'archivado':        'Archivados (+3 meses)',
-        'recitado':         'Recitados',
+        'recitar':          'Por recitar (sin turno asignado)',
+        'recitado':         'Recitados (turno ya asignado)',
       };
       document.getElementById('listaTitulo').textContent =
         titulos[estado] !== undefined ? titulos[estado] : 'Reclamos';
@@ -701,15 +703,15 @@ async function cargarStats() {
         return;
       }
 
-      if (estado === 'recitado') {
+      if (estado === 'recitar') {
         document.getElementById('lista').innerHTML =
           '<div class="loading"><div class="spinner"></div>' +
-          'Cargando recitados...</div>';
+          'Cargando pacientes por recitar...</div>';
         getRecitados().then(function(recitados){
-          actualizarListaHeader('recitado', (recitados || []).length);
+          actualizarListaHeader('recitar', (recitados || []).length);
           renderLista(recitados || []);
         }).catch(function(e){
-          toast('❌ Error al cargar recitados: ' + e.message, 'error');
+          toast('❌ Error al cargar: ' + e.message, 'error');
         });
         return;
       }
@@ -842,8 +844,8 @@ function filtrarPorStat(tipo) {
       .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
     actualizarListaHeader('urgente', data.length);
     renderLista(data);
-  } else if (tipo === 'recitado') {
-    select.value = 'recitado';
+  } else if (tipo === 'recitar') {
+    select.value = 'recitar';
     filtrarLista();
   } else {
     select.value = tipo;
