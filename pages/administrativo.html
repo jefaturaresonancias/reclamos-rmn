@@ -345,6 +345,12 @@
 
       <!-- Panel Reclamos -->
       <div id="panelReclamos">
+        <div id="listaHeader" style="display:flex;align-items:baseline;
+          gap:10px;margin-bottom:4px">
+          <h2 id="listaTitulo" style="font-family:'DM Serif Display',serif;
+            font-size:1.15rem;font-weight:400">Todos los reclamos</h2>
+          <span id="listaContador" style="font-size:.8rem;color:var(--text2)"></span>
+        </div>
         <div class="top-bar">
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
@@ -354,7 +360,7 @@
           <select class="filter-select" id="filtroEstado" onchange="filtrarLista()">
             <option value="">Todos</option>
             <option value="pendiente">Pendientes</option>
-            <option value="recitado">Recitados</option>
+            <option value="recitado">🔄 Recitados</option>
             <option value="resuelto">Resueltos (médico)</option>
             <option value="revisado-admin">Revisados por admin</option>
             <option value="entregado">Entregados</option>
@@ -564,6 +570,13 @@ async function cargarStats() {
         <div class="stat-num success">${s.resueltos + s.entregados}</div>
         <div class="stat-label">Resueltos</div>
       </div>
+      <div class="stat-box" onclick="filtrarPorStat('recitado')"
+        style="cursor:pointer" title="Ver recitados">
+        <div class="stat-num" style="color:var(--recitar)">
+          ${typeof s.recitados !== 'undefined' ? s.recitados : recitadosData.length}
+        </div>
+        <div class="stat-label">🔄 Recitados</div>
+      </div>
       <div class="stat-box" onclick="filtrarPorStat('archivado')"
         style="cursor:pointer;grid-column:1/-1;
         border-color:rgba(255,255,255,.08)" title="Ver archivados">
@@ -652,6 +665,24 @@ async function cargarStats() {
       }
     }
 
+    // ── Título dinámico de la lista ─────────────────────────────────
+    function actualizarListaHeader(estado, cantidad){
+      const titulos = {
+        '':                'Todos los reclamos',
+        'pendiente':        'Pendientes',
+        'urgente':          'Urgentes (con turno)',
+        'resuelto':         'Resueltos por médico',
+        'revisado-admin':   'Revisados por administrativo',
+        'entregado':        'Entregados',
+        'archivado':        'Archivados (+3 meses)',
+        'recitado':         'Recitados',
+      };
+      document.getElementById('listaTitulo').textContent =
+        titulos[estado] !== undefined ? titulos[estado] : 'Reclamos';
+      document.getElementById('listaContador').textContent =
+        cantidad + ' resultado' + (cantidad !== 1 ? 's' : '');
+    }
+
     // ── Filtrar y renderizar lista ────────────────────────────────
     function filtrarLista() {
       const busq  = (document.getElementById('buscar').value || '').toLowerCase();
@@ -662,9 +693,23 @@ async function cargarStats() {
         document.getElementById('lista').innerHTML =
           '<div class="loading"><div class="spinner"></div>Cargando archivados...</div>';
         getReclamos({ estado: 'archivado' }).then(function(archivados){
+          actualizarListaHeader('archivado', (archivados || []).length);
           renderLista(archivados || []);
         }).catch(function(e){
           toast('❌ Error al cargar archivados: ' + e.message, 'error');
+        });
+        return;
+      }
+
+      if (estado === 'recitado') {
+        document.getElementById('lista').innerHTML =
+          '<div class="loading"><div class="spinner"></div>' +
+          'Cargando recitados...</div>';
+        getRecitados().then(function(recitados){
+          actualizarListaHeader('recitado', (recitados || []).length);
+          renderLista(recitados || []);
+        }).catch(function(e){
+          toast('❌ Error al cargar recitados: ' + e.message, 'error');
         });
         return;
       }
@@ -698,6 +743,7 @@ async function cargarStats() {
       } else {
         data.sort((a, b) => (b.nroReclamo || 0) - (a.nroReclamo || 0));
       }
+      actualizarListaHeader(estado, data.length);
       renderLista(data);
     }
 
@@ -794,7 +840,11 @@ function filtrarPorStat(tipo) {
     const data = todosLosReclamos
       .filter(r => r.estado === 'pendiente' && r.reclamoTurno)
       .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
+    actualizarListaHeader('urgente', data.length);
     renderLista(data);
+  } else if (tipo === 'recitado') {
+    select.value = 'recitado';
+    filtrarLista();
   } else {
     select.value = tipo;
     filtrarLista();
