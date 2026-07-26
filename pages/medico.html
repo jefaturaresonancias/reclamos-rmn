@@ -163,7 +163,9 @@
       display:flex;flex-direction:column;gap:4px;}
 
     .recitados-section{display:none;flex-direction:column;gap:12px;
-      padding-top:24px;border-top:1px solid rgba(6,182,212,.2);margin-top:8px;}
+      padding:20px;border:1px solid rgba(6,182,212,.25);
+      border-radius:16px;margin-top:8px;
+      background:linear-gradient(135deg,rgba(6,182,212,.05),transparent);}
     .recitados-section-header{display:flex;align-items:center;justify-content:space-between;}
     .recitados-section-title{font-family:'DM Serif Display',serif;font-size:1.1rem;
       font-weight:400;color:var(--recitar);}
@@ -205,6 +207,13 @@
       <span class="nav-title">Panel Médico</span>
       <span class="nav-badge">Informes RMN</span>
       <span class="pending-pill" id="pendingCount"></span>
+      <span id="recitadosPill" onclick="scrollToRecitados()"
+        style="display:none;font-size:.72rem;
+        background:rgba(6,182,212,.15);color:var(--recitar);
+        padding:3px 10px;border-radius:100px;font-weight:600;
+        cursor:pointer;transition:opacity .2s"
+        onmouseover="this.style.opacity='0.75'"
+        onmouseout="this.style.opacity='1'"></span>
     </div>
     <div class="nav-right">
       <button onclick="localStorage.clear();location.reload();"
@@ -222,7 +231,7 @@
   <div class="page">
     <div class="section-header">
       <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
-        <div class="section-title">Reclamos para resolver</div>
+        <div class="section-title" id="seccionTitulo">Pendientes</div>
         <div id="sectionCount" style="font-size:2.2rem;font-weight:700;color:var(--accent);
           line-height:1;transition:color .3s"></div>
       </div>
@@ -274,7 +283,21 @@
     const reclamoRegionesMap = {};
     const comentariosTemp    = {}; // ← guarda comentarios entre re-renders
 
+    function actualizarTituloSeccion(filtro){
+      const titulos = {
+        'pendiente':   'Pendientes',
+        'turno':       'Con turno médico próximo',
+        'diagnostico': 'Reclamos de diagnóstico',
+        'informado':   'Sin informe',
+        'resuelto':    'Resueltos',
+        'todos':       'Todos los reclamos',
+      };
+      document.getElementById('seccionTitulo').textContent =
+        titulos[filtro] || 'Reclamos';
+    }
+
     function setFiltro(f, btn) {
+      actualizarTituloSeccion(f);
       filtroActual = f;
       filtroColumnaActual = null;
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -353,10 +376,25 @@
       }
     }
 
+    function scrollToRecitados(){
+      const section = document.getElementById('recitadosSection');
+      if (section) section.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+
     function renderRecitadosMedico() {
       const section = document.getElementById('recitadosSection');
       const lista   = document.getElementById('listaRecitados');
       const count   = document.getElementById('recitadosSectionCount');
+
+      const pill = document.getElementById('recitadosPill');
+      if (recitadosData.length > 0) {
+        pill.textContent = '🔄 ' + recitadosData.length + ' recitado' +
+          (recitadosData.length !== 1 ? 's' : '') + ' esperando turno';
+        pill.style.display = 'inline';
+      } else {
+        pill.style.display = 'none';
+      }
+
       if (!recitadosData.length) { section.style.display = 'none'; return; }
       section.style.display = 'flex';
       count.textContent = `${recitadosData.length} paciente${recitadosData.length !== 1 ? 's' : ''} esperando turno`;
