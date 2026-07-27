@@ -1237,6 +1237,10 @@ function renderEstudiosChips() {
       });
       if (!activo) return;
 
+      const yaVistoKey = 'anuncio_visto_' + activo.id;
+      if (sessionStorage.getItem(yaVistoKey)) return;
+      sessionStorage.setItem(yaVistoKey, '1');
+
       const fechaPub = new Date(activo.fecha);
       const diasRestantes = 3 - Math.floor((hoy - fechaPub) / 86400000);
 
