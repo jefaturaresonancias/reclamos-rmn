@@ -68,6 +68,17 @@ function doPost(e) {
   var body = {};
   try { body = JSON.parse(e.postData.contents); } catch(err) {}
   const action = body.action || '';
+
+  // Todas las acciones de escritura hacen lectura + modificacion + guardado
+  // (ej: leer regionStatus, sumarle una region, volver a guardar el JSON
+  // entero). Sin lock, dos requests simultaneos pueden pisarse el cambio.
+  const lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(10000);
+  } catch (err) {
+    return jsonResponse({ ok: false, error: 'El sistema está procesando otro cambio, probá de nuevo en unos segundos.' });
+  }
+
   try {
     if      (action === 'add')            return jsonResponse(addReclamo(body.data));
     else if (action === 'update')         return jsonResponse(updateReclamo(body.id, body.changes));
@@ -81,6 +92,8 @@ function doPost(e) {
     else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
   } catch(err) {
     return jsonResponse({ ok: false, error: err.message });
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -104,10 +117,45 @@ function ensureExtraColumns() {
   });
 }
 
+// Si alguien inserta/borra una columna a mano en la hoja BD, los indices
+// fijos de COL quedan apuntando a datos equivocados sin que nada avise.
+// Este chequeo no valida los ~34 encabezados originales (no se puede
+// confirmar su texto exacto desde aca), pero si detecta si la hoja se
+// quedo corta de columnas o si alguno de los headers que el propio
+// backend crea/gestiona (RECLAMO_ARCHIVADO, REGION_STATUS, RECITAR_*)
+// aparece con un texto distinto al esperado.
+function validarEstructuraSheet(sheet) {
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < 40) {
+    throw new Error(
+      'La hoja BD tiene ' + lastCol + ' columnas y se esperan al menos 40. ' +
+      'Puede que se haya borrado una columna por error — revisar antes de seguir usando el sistema.'
+    );
+  }
+  const headers = sheet.getRange(1, 1, 1, 40).getValues()[0];
+  const esperados = {};
+  esperados[COL.RECLAMO_ARCHIVADO]   = 'RECLAMO_ARCHIVADO';
+  esperados[COL.REGION_STATUS]       = 'REGION_STATUS';
+  esperados[COL.RECITAR_CODIGO]      = 'RECITAR_CODIGO';
+  esperados[COL.RECITAR_MOTIVO]      = 'RECITAR_MOTIVO';
+  esperados[COL.RECITAR_FECHA_NUEVO] = 'RECITAR_FECHA_NUEVO';
+
+  for (var idx in esperados) {
+    const real = String(headers[idx] || '').trim().toUpperCase();
+    if (real && real !== esperados[idx]) {
+      throw new Error(
+        'La columna ' + (Number(idx) + 1) + ' deberia tener el header "' + esperados[idx] +
+        '" pero tiene "' + headers[idx] + '" — revisar si se movio o borro una columna en la hoja BD.'
+      );
+    }
+  }
+}
+
 function getDataRows() {
   const sheet = getSheet();
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
+  validarEstructuraSheet(sheet);
   return sheet.getRange(2, 1, lastRow - 1, 40).getValues();
 }
 
@@ -314,6 +362,13 @@ function getDashboard() {
 }
 
 function getConfigData() {
+  const CACHE_KEY = 'config_regiones_v1';
+  const cache = CacheService.getScriptCache();
+  const cacheado = cache.get(CACHE_KEY);
+  if (cacheado) {
+    try { return { ok: true, regiones: JSON.parse(cacheado) }; } catch(e) {}
+  }
+
   const CONFIG_SHEET_ID = '1aMQWhajoQMJgACvV5lc7sON73sgsqLMXbTFWc4b3GtE';
   const sheet = SpreadsheetApp.openById(CONFIG_SHEET_ID).getSheetByName('Config');
   if (!sheet) return { ok: false, error: 'Hoja Config no encontrada' };
@@ -332,6 +387,10 @@ function getConfigData() {
     if (!regiones[region]) regiones[region] = { numero, estudios: [] };
     regiones[region].estudios.push(estudio);
   });
+
+  // Las regiones casi no cambian (se editan a mano en la hoja Config muy
+  // de vez en cuando) — 10 minutos de cache evitan releerla en cada carga.
+  cache.put(CACHE_KEY, JSON.stringify(regiones), 600);
   return { ok: true, regiones };
 }
 
