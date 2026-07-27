@@ -1215,15 +1215,18 @@ function renderEstudiosChips() {
     // importante. Se muestra durante 3 días desde 'fecha'.
     const ANUNCIOS = [
       {
-        id: 'archivado-2026-07',
+        id: 'admin-update-2026-07-26',
         fecha: '2026-07-26', // fecha de publicación (no tocar tras publicar)
-        badge: 'Novedad',
-        titulo: 'Archivado automático de reclamos',
-        desc: 'Los reclamos con más de 3 meses de antigüedad ahora se archivan automáticamente para mantener la lista principal más limpia.',
+        badge: 'Novedades',
+        titulo: 'Rediseño del panel administrativo',
+        desc: 'Reorganizamos la navegación y sumamos varias mejoras para hacer más simple el seguimiento de reclamos.',
         items: [
-          { icono: '📦', texto: 'Nueva categoría "Archivados" en las estadísticas' },
-          { icono: '🔍', texto: 'La búsqueda por DNI ahora también encuentra reclamos archivados' },
-          { icono: '⏱️', texto: 'El archivado es automático, no requiere ninguna acción' },
+          { icono: '📦', texto: 'Archivado automático de reclamos con +3 meses de antigüedad; la búsqueda por DNI ahora también los encuentra' },
+          { icono: '🧭', texto: 'Navegación nueva: ya no hay tabs arriba — cada caja del costado izquierdo lleva directo a su categoría (Pendientes, Resueltos, Por recitar, Revisados admin, Archivados, etc.)' },
+          { icono: '✅', texto: 'La caja "Resueltos" ahora muestra solo los que faltan entregar, no el total histórico' },
+          { icono: '👁️', texto: 'Nueva caja "Revisados admin" para no perder de vista los reclamos ya chequeados' },
+          { icono: '🎨', texto: 'Los días de retraso se colorean según gravedad: naranja desde 30 días, rojo desde 90' },
+          { icono: '🔔', texto: 'Nuevo aviso cuando el médico informa un reclamo: se agrupan todos en un solo popup y hay que confirmarlo con "OK, entendido" — no se cierra solo' },
         ],
       },
     ];
