@@ -212,15 +212,6 @@
     .toast.success{border-color:rgba(16,185,129,.3);}
     .toast.warn{border-color:rgba(245,158,11,.3);}
     .toast.error{border-color:rgba(239,68,68,.3);}
-    .toast-notif{position:fixed;top:72px;right:24px;z-index:300;
-      background:var(--surface);border:1px solid rgba(16,185,129,.4);
-      border-radius:var(--r);padding:16px 20px;font-size:.875rem;
-      min-width:300px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.4);
-      transform:translateX(120%);transition:transform .4s cubic-bezier(.175,.885,.32,1.275);
-      pointer-events:none;line-height:1.5;}
-    .toast-notif.show{transform:translateX(0);pointer-events:all;}
-    .toast-notif-title{font-weight:600;color:var(--success);margin-bottom:4px;}
-    .toast-notif-body{font-size:.78rem;color:var(--text2);}
 
     @media(max-width:768px){
       .layout{grid-template-columns:1fr;}
@@ -424,14 +415,20 @@
   </div>
 
   <div class="toast" id="toast"></div>
-  <div class="toast-notif" id="toastNotif">
-    <div class="toast-notif-title" id="toastNotifTitle"></div>
-    <div class="toast-notif-body"  id="toastNotifBody"></div>
+
+  <!-- Popup de reclamos resueltos por el médico, sin reconocer -->
+  <div class="modal-overlay" id="resueltosOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">✅ El médico informó reclamos</div>
+      </div>
+      <div id="resueltosOverlayLista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px"></div>
+      <button class="btn btn-primary" style="width:100%" onclick="confirmarResueltosVistos()">OK, entendido</button>
+    </div>
   </div>
 
   <script src="../js/api.js"></script>
   <script>
-    let reclamosResueltosAnteriores = new Set();
     let todosLosReclamos = [];
     let recitadosData    = [];
     let editId           = null;
@@ -518,16 +515,11 @@
       try {
         const nuevos = await getReclamos();
 
-        const nuevosResueltos = nuevos.filter(r =>
-          r.estado === 'resuelto' && !reclamosResueltosAnteriores.has(r.id));
-        if (nuevosResueltos.length > 0 && reclamosResueltosAnteriores.size > 0) {
-          const nombres = nuevosResueltos.map(r => r.apellido + ', ' + r.nombre).join(' · ');
-          toastNotif(
-            '✅ Médico informó ' + nuevosResueltos.length + ' reclamo' +
-            (nuevosResueltos.length > 1 ? 's' : '') + ' — listos para entregar\n' + nombres);
+        const ack = getResueltosAck();
+        const sinReconocer = nuevos.filter(r => r.estado === 'resuelto' && !ack.has(r.id));
+        if (sinReconocer.length > 0) {
+          mostrarPopupResueltos(sinReconocer);
         }
-        reclamosResueltosAnteriores = new Set(
-          nuevos.filter(r => r.estado === 'resuelto').map(r => r.id));
 
         todosLosReclamos = nuevos;
         filtrarLista();
@@ -1159,15 +1151,31 @@ function filtrarPorStat(tipo) {
       }
     }
 
-    let toastNotifTimer;
-    function toastNotif(msg) {
-      const partes = msg.split('\n');
-      document.getElementById('toastNotifTitle').textContent = partes[0] || '';
-      document.getElementById('toastNotifBody').textContent  = partes[1] || '';
-      const el = document.getElementById('toastNotif');
-      el.classList.add('show');
-      clearTimeout(toastNotifTimer);
-      toastNotifTimer = setTimeout(() => el.classList.remove('show'), 8000);
+    // ── Popup de resueltos sin reconocer ──────────────────────────
+    const RESUELTOS_ACK_KEY = 'reclamos_resueltos_ack';
+    let resueltosSinReconocer = [];
+
+    function getResueltosAck() {
+      try { return new Set(JSON.parse(localStorage.getItem(RESUELTOS_ACK_KEY) || '[]')); }
+      catch(e) { return new Set(); }
+    }
+
+    function mostrarPopupResueltos(reclamos) {
+      resueltosSinReconocer = reclamos;
+      document.getElementById('resueltosOverlayLista').innerHTML = reclamos.map(r => `
+        <div style="background:var(--surface2);border-radius:10px;padding:10px 14px;font-size:.85rem">
+          <strong>#${r.nroReclamo || r.id} — ${r.apellido}, ${r.nombre}</strong><br>
+          <span style="color:var(--text3)">${r.estudio}</span>
+        </div>`).join('');
+      document.getElementById('resueltosOverlay').classList.add('open');
+    }
+
+    function confirmarResueltosVistos() {
+      const ack = getResueltosAck();
+      resueltosSinReconocer.forEach(r => ack.add(r.id));
+      localStorage.setItem(RESUELTOS_ACK_KEY, JSON.stringify([...ack]));
+      resueltosSinReconocer = [];
+      document.getElementById('resueltosOverlay').classList.remove('open');
     }
 
     let estudiosLista = [];
