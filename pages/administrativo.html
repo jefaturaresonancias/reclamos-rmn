@@ -98,6 +98,13 @@
     .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);
       color:var(--text3);font-size:14px;}
     .filter-select{width:160px;}
+    .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;}
+    .filter-btn{padding:8px 14px;border-radius:100px;border:1px solid var(--border);
+      background:var(--surface2);color:var(--text2);cursor:pointer;
+      font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;
+      transition:all .2s;white-space:nowrap;}
+    .filter-btn:hover{border-color:var(--accent);color:var(--text);}
+    .filter-btn.active{background:rgba(79,124,255,.15);border-color:var(--accent);color:var(--accent);}
     .reclamos-list{display:flex;flex-direction:column;gap:10px;}
 
     /* Cards reclamos */
@@ -393,14 +400,6 @@
             <input id="buscar" placeholder="Buscar por paciente, estudio o DNI..."
               oninput="filtrarLista()" />
           </div>
-          <select class="filter-select" id="filtroEstado" onchange="filtrarLista()">
-            <option value="">Todos</option>
-            <option value="pendiente">Pendientes</option>
-            <option value="resuelto">Resueltos (médico)</option>
-            <option value="revisado-admin">Revisados por admin</option>
-            <option value="entregado">Entregados</option>
-            <option value="archivado">📦 Archivados</option>
-          </select>
           <select class="filter-select" id="filtroOrden" onchange="filtrarLista()">
             <option value="urgente">Urgentes primero</option>
             <option value="reciente">Más reciente</option>
@@ -409,6 +408,14 @@
           </select>
           <button class="btn-sm btn-sm-gray" onclick="recargar()"
             style="padding:8px 14px">🔄 Actualizar</button>
+        </div>
+        <div class="filters" id="filtroEstadoTabs">
+          <button class="filter-btn active" data-estado="" onclick="setFiltroEstado('')">Todos</button>
+          <button class="filter-btn" data-estado="pendiente" onclick="setFiltroEstado('pendiente')">Pendientes</button>
+          <button class="filter-btn" data-estado="resuelto" onclick="setFiltroEstado('resuelto')">✅ Resueltos</button>
+          <button class="filter-btn" data-estado="revisado-admin" onclick="setFiltroEstado('revisado-admin')">👁 Revisados admin</button>
+          <button class="filter-btn" data-estado="entregado" onclick="setFiltroEstado('entregado')">📦 Entregados</button>
+          <button class="filter-btn" data-estado="archivado" onclick="setFiltroEstado('archivado')">📦 Archivados</button>
         </div>
         <div id="btnEntregarTodoWrap" style="display:none">
           <button onclick="entregarTodo()"
@@ -419,12 +426,6 @@
             id="btnEntregarTodo">
             ✔ Entregar todos los resueltos
           </button>
-        </div>
-        <div id="subFiltroResueltos" style="display:none;gap:8px;margin-bottom:4px" class="filters">
-            <button class="filter-btn active" id="btnSubResuelto"
-            onclick="subFiltrar('resuelto')">✅ Resueltos por médico</button>
-            <button class="filter-btn" id="btnSubEntregado"
-            onclick="subFiltrar('entregado')">📦 Entregados</button>
         </div>
         <div class="reclamos-list" id="lista">
           <div class="loading"><div class="spinner"></div>Cargando reclamos...</div>
@@ -472,6 +473,7 @@
     let turnoVinculado   = null;
     let tabActual        = 'reclamos';
     let subTabRecitados  = 'recitar';
+    let filtroEstadoActual = '';
 
     // ── Tabs ─────────────────────────────────────────────────────
     function setTab(tab, btn) {
@@ -758,10 +760,20 @@ async function cargarStats() {
         cantidad + ' resultado' + (cantidad !== 1 ? 's' : '');
     }
 
+    // ── Filtro de estado (pestañas planas) ──────────────────────────
+    function setFiltroEstado(estado){
+      filtroEstadoActual = estado;
+      document.querySelectorAll('#filtroEstadoTabs .filter-btn').forEach(function(b){
+        b.classList.toggle('active', b.dataset.estado === estado);
+      });
+      document.getElementById('btnEntregarTodoWrap').style.display = estado === 'resuelto' ? '' : 'none';
+      filtrarLista();
+    }
+
     // ── Filtrar y renderizar lista ────────────────────────────────
     function filtrarLista() {
       const busq  = (document.getElementById('buscar').value || '').toLowerCase();
-      const estado = document.getElementById('filtroEstado').value;
+      const estado = filtroEstadoActual;
       const orden  = document.getElementById('filtroOrden').value;
 
       if (estado === 'archivado') {
@@ -817,7 +829,7 @@ async function cargarStats() {
     function renderLista(data) {
       const lista = document.getElementById('lista');
       if (!data.length) {
-        const filtroActivo = document.getElementById('filtroEstado').value;
+        const filtroActivo = filtroEstadoActual;
         lista.innerHTML = '<div class="empty"><span>📭</span>' +
           (filtroActivo
             ? `No hay reclamos con estado "${filtroActivo}"`
@@ -889,29 +901,19 @@ function filtrarPorStat(tipo) {
   document.getElementById('panelReclamos').style.display  = '';
   document.getElementById('panelRecitados').style.display = 'none';
 
-  const select    = document.getElementById('filtroEstado');
-  const subFiltro = document.getElementById('subFiltroResueltos');
-
-  if (tipo === 'resuelto' || tipo === 'entregado') {
-    subFiltro.style.display = 'flex';
-    document.getElementById('btnSubResuelto').classList.toggle('active', tipo === 'resuelto');
-    document.getElementById('btnSubEntregado').classList.toggle('active', tipo === 'entregado');
-    document.getElementById('btnEntregarTodoWrap').style.display = tipo === 'resuelto' ? '' : 'none';
-  } else {
-    subFiltro.style.display = 'none';
-    document.getElementById('btnEntregarTodoWrap').style.display = 'none';
-  }
-
   if (tipo === 'urgente') {
-    select.value = 'pendiente';
+    document.querySelectorAll('#filtroEstadoTabs .filter-btn').forEach(function(b){
+      b.classList.toggle('active', b.dataset.estado === 'pendiente');
+    });
+    filtroEstadoActual = 'pendiente';
+    document.getElementById('btnEntregarTodoWrap').style.display = 'none';
     const data = todosLosReclamos
       .filter(r => r.estado === 'pendiente' && r.reclamoTurno)
       .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
     actualizarListaHeader('urgente', data.length);
     renderLista(data);
   } else {
-    select.value = tipo;
-    filtrarLista();
+    setFiltroEstado(tipo);
   }
   document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
 }
@@ -1294,14 +1296,6 @@ function renderEstudiosChips() {
     btn.disabled = false;
     btn.textContent = '✔ Entregar todos los resueltos';
   }
-}
-
-    function subFiltrar(estado) {
-  document.getElementById('btnSubResuelto').classList.toggle('active', estado === 'resuelto');
-  document.getElementById('btnSubEntregado').classList.toggle('active', estado === 'entregado');
-  document.getElementById('btnEntregarTodoWrap').style.display = estado === 'resuelto' ? '' : 'none';
-  document.getElementById('filtroEstado').value = estado;
-  filtrarLista();
 }
 
 async function entregarTodo() {
