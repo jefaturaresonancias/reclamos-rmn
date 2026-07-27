@@ -396,8 +396,6 @@
           <select class="filter-select" id="filtroEstado" onchange="filtrarLista()">
             <option value="">Todos</option>
             <option value="pendiente">Pendientes</option>
-            <option value="recitar">🔄 Por recitar (sin turno asignado)</option>
-            <option value="recitado">📅 Recitados (turno ya asignado)</option>
             <option value="resuelto">Resueltos (médico)</option>
             <option value="revisado-admin">Revisados por admin</option>
             <option value="entregado">Entregados</option>
@@ -435,6 +433,12 @@
 
       <!-- Panel Recitados -->
       <div id="panelRecitados" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px" class="filters">
+          <button class="filter-btn active" id="btnSubPorRecitar"
+            onclick="subFiltrarRecitados('recitar')">🔄 Por recitar</button>
+          <button class="filter-btn" id="btnSubRecitados"
+            onclick="subFiltrarRecitados('recitado')">📅 Recitados (turno asignado)</button>
+        </div>
         <div class="reclamos-list" id="listaRecitados">
           <div class="loading"><div class="spinner"></div>Cargando...</div>
         </div>
@@ -467,6 +471,7 @@
     let editId           = null;
     let turnoVinculado   = null;
     let tabActual        = 'reclamos';
+    let subTabRecitados  = 'recitar';
 
     // ── Tabs ─────────────────────────────────────────────────────
     function setTab(tab, btn) {
@@ -607,7 +612,7 @@ async function cargarStats() {
         <div class="stat-num success">${s.resueltos + s.entregados}</div>
         <div class="stat-label">Resueltos</div>
       </div>
-      <div class="stat-box" onclick="filtrarPorStat('recitar')"
+      <div class="stat-box" onclick="setTab('recitados', document.querySelectorAll('.tab-btn')[1])"
         style="cursor:pointer" title="Ver pacientes por recitar">
         <div class="stat-num" style="color:var(--recitar)">
           ${recitadosData.length}
@@ -638,6 +643,13 @@ async function cargarStats() {
       }
     }
 
+    function subFiltrarRecitados(tipo){
+      subTabRecitados = tipo;
+      document.getElementById('btnSubPorRecitar').classList.toggle('active', tipo === 'recitar');
+      document.getElementById('btnSubRecitados').classList.toggle('active', tipo === 'recitado');
+      renderRecitadosAdmin();
+    }
+
     function actualizarRecitadosBadge() {
       const badge = document.getElementById('recitadosTabBadge');
       if (recitadosData.length > 0) {
@@ -650,40 +662,67 @@ async function cargarStats() {
 
     function renderRecitadosAdmin() {
       const lista = document.getElementById('listaRecitados');
-      if (!recitadosData.length) {
-        lista.innerHTML =
-          '<div class="empty"><span>✅</span>No hay pacientes pendientes de recitación.</div>';
-        return;
-      }
-      const hoy = new Date().toISOString().split('T')[0];
-      lista.innerHTML = recitadosData.map(r => `
-        <div class="recitado-admin-card">
-          <div class="recitado-admin-header">
-            <div class="card-num" style="min-width:auto">#${r.nroReclamo || r.id}</div>
-            <div style="flex:1">
-              <div style="font-weight:600;font-size:.95rem">${r.apellido}, ${r.nombre}</div>
-              <div style="font-size:.78rem;color:var(--text3);margin-top:2px">
-                DNI ${r.dni} · ${r.estudio}
+
+      if (subTabRecitados === 'recitar') {
+        // Lista de pacientes esperando que se les asigne turno
+        if (!recitadosData.length) {
+          lista.innerHTML =
+            '<div class="empty"><span>✅</span>No hay pacientes pendientes de recitación.</div>';
+          return;
+        }
+        const hoy = new Date().toISOString().split('T')[0];
+        lista.innerHTML = recitadosData.map(r => `
+          <div class="recitado-admin-card">
+            <div class="recitado-admin-header">
+              <div class="card-num" style="min-width:auto">#${r.nroReclamo || r.id}</div>
+              <div style="flex:1">
+                <div style="font-weight:600;font-size:.95rem">${r.apellido}, ${r.nombre}</div>
+                <div style="font-size:.78rem;color:var(--text3);margin-top:2px">
+                  DNI ${r.dni} · ${r.estudio}
+                </div>
+                <div style="font-size:.72rem;color:var(--text3);margin-top:2px">
+                  Turno original: ${r.fechaEstudio || '—'} · Retraso: ${r.retraso || 0}d
+                </div>
               </div>
-              <div style="font-size:.72rem;color:var(--text3);margin-top:2px">
-                Turno original: ${r.fechaEstudio || '—'}
-                · Retraso: ${r.retraso || 0}d
-              </div>
+              <span class="recitado-code-badge">${r.recitarCodigo}</span>
             </div>
-            <span class="recitado-code-badge">${r.recitarCodigo}</span>
-          </div>
-          <div class="recitado-motivo-box">
-            💬 <strong>Motivo médico:</strong> ${r.recitarMotivo}
-          </div>
-          <div class="recitado-actions">
-            <a class="btn-agenda"
-              href="https://jefaturaresonancias.github.io/resonancia-pwa/"
-              target="_blank">📅 Abrir Agenda</a>
-            <input type="date" class="fecha-rctr" id="fecha-rctr-${r.id}" value="${hoy}" />
-            <button class="btn-confirmar-turno" id="btn-conf-${r.id}"
-              onclick="confirmarTurnoRecitado('${r.id}')">✔ Confirmar turno</button>
-          </div>
-        </div>`).join('');
+            <div class="recitado-motivo-box">
+              💬 <strong>Motivo médico:</strong> ${r.recitarMotivo}
+            </div>
+            <div class="recitado-actions">
+              <a class="btn-agenda"
+                href="https://jefaturaresonancias.github.io/resonancia-pwa/"
+                target="_blank">📅 Abrir Agenda</a>
+              <input type="date" class="fecha-rctr" id="fecha-rctr-${r.id}" value="${hoy}" />
+              <button class="btn-confirmar-turno" id="btn-conf-${r.id}"
+                onclick="confirmarTurnoRecitado('${r.id}')">✔ Confirmar turno</button>
+            </div>
+          </div>`).join('');
+
+      } else {
+        // Lista de pacientes con turno YA asignado (estado === 'recitado')
+        const recitadosConTurno = todosLosReclamos.filter(r => r.estado === 'recitado');
+        if (!recitadosConTurno.length) {
+          lista.innerHTML =
+            '<div class="empty"><span>📭</span>No hay pacientes con turno reasignado todavía.</div>';
+          return;
+        }
+        lista.innerHTML = recitadosConTurno.map(r => `
+          <div class="recitado-admin-card">
+            <div class="recitado-admin-header">
+              <div class="card-num" style="min-width:auto">#${r.nroReclamo || r.id}</div>
+              <div style="flex:1">
+                <div style="font-weight:600;font-size:.95rem">${r.apellido}, ${r.nombre}</div>
+                <div style="font-size:.78rem;color:var(--text3);margin-top:2px">
+                  DNI ${r.dni} · ${r.estudio}
+                </div>
+              </div>
+              <span class="recitado-code-badge">📅 ${r.recitarFechaNuevo || 'turno asignado'}</span>
+            </div>
+            ${r.recitarMotivo ? `<div class="recitado-motivo-box">
+              💬 <strong>Motivo:</strong> ${r.recitarMotivo}</div>` : ''}
+          </div>`).join('');
+      }
     }
 
     async function confirmarTurnoRecitado(id) {
@@ -712,8 +751,6 @@ async function cargarStats() {
         'revisado-admin':   'Revisados por administrativo',
         'entregado':        'Entregados',
         'archivado':        'Archivados (+3 meses)',
-        'recitar':          'Por recitar (sin turno asignado)',
-        'recitado':         'Recitados (turno ya asignado)',
       };
       document.getElementById('listaTitulo').textContent =
         titulos[estado] !== undefined ? titulos[estado] : 'Reclamos';
@@ -739,19 +776,6 @@ async function cargarStats() {
         return;
       }
 
-      if (estado === 'recitar') {
-        document.getElementById('lista').innerHTML =
-          '<div class="loading"><div class="spinner"></div>' +
-          'Cargando pacientes por recitar...</div>';
-        getRecitados().then(function(recitados){
-          actualizarListaHeader('recitar', (recitados || []).length);
-          renderLista(recitados || []);
-        }).catch(function(e){
-          toast('❌ Error al cargar: ' + e.message, 'error');
-        });
-        return;
-      }
-
       let data = [...todosLosReclamos].filter(r => !r.archivado);
 
       if (busq) data = data.filter(r =>
@@ -762,7 +786,12 @@ async function cargarStats() {
         data = data.filter(r => r.estado === estado);
       } else {
       // Ocultar resueltos y entregados de la lista general
-        data = data.filter(r => r.estado !== 'resuelto' && r.estado !== 'entregado');
+        data = data.filter(r =>
+          r.estado !== 'resuelto' &&
+          r.estado !== 'entregado' &&
+          r.estado !== 'recitado' &&
+          r.estado !== 'recitar'
+        );
       }
 
       if (orden === 'urgente') {
@@ -880,9 +909,6 @@ function filtrarPorStat(tipo) {
       .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
     actualizarListaHeader('urgente', data.length);
     renderLista(data);
-  } else if (tipo === 'recitar') {
-    select.value = 'recitar';
-    filtrarLista();
   } else {
     select.value = tipo;
     filtrarLista();
