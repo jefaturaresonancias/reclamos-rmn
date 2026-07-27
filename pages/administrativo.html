@@ -112,6 +112,8 @@
     .reclamo-card.revisado-admin{opacity:.6;border-left:3px solid var(--accent);}
     .reclamo-card.recitado-borde{border-left:3px solid var(--recitar);}
     .card-num{font-size:.75rem;color:var(--text3);font-weight:600;min-width:40px;}
+    .card-num-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
+    .chk-revisar{width:16px;height:16px;cursor:pointer;accent-color:var(--accent);}
     .card-paciente{font-weight:600;font-size:.95rem;}
     .card-estudio{font-size:.8rem;color:var(--text2);margin-top:2px;}
     .card-meta{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center;}
@@ -171,6 +173,21 @@
       border-radius:var(--r);padding:10px 14px;font-size:.78rem;color:var(--success);
       display:none;}
     .vinculado-info.visible{display:block;}
+
+    /* Historial por DNI */
+    .historial-dni{display:none;flex-direction:column;gap:6px;
+      max-height:220px;overflow-y:auto;
+      background:var(--surface2);border:1px solid var(--border);
+      border-radius:var(--r);padding:10px 12px;}
+    .historial-dni.visible{display:flex;}
+    .historial-dni-label{font-size:.68rem;font-weight:600;letter-spacing:.03em;
+      text-transform:uppercase;color:var(--text3);}
+    .historial-dni-item{display:flex;flex-direction:column;gap:2px;
+      padding:6px 0;border-bottom:1px solid var(--border);font-size:.76rem;}
+    .historial-dni-item:last-child{border-bottom:none;padding-bottom:0;}
+    .historial-dni-item .hdi-top{display:flex;justify-content:space-between;gap:8px;
+      color:var(--text2);}
+    .historial-dni-item .hdi-estudio{color:var(--text3);}
 
     /* Empty / Loading */
     .empty{text-align:center;color:var(--text2);padding:60px 20px;}
@@ -299,6 +316,7 @@
       <div id="vinculadoInfo" class="vinculado-info">
         ✅ Turno encontrado — el reclamo se vinculará automáticamente
       </div>
+      <div id="historialDni" class="historial-dni"></div>
 
       <div class="field"><label>Apellido *</label><input id="f-apellido" placeholder="García" /></div>
       <div class="field"><label>Nombre *</label><input id="f-nombre" placeholder="Juan Carlos" /></div>
@@ -385,6 +403,8 @@
           </select>
           <button class="btn-sm btn-sm-gray" onclick="recargar()"
             style="padding:8px 14px">🔄 Actualizar</button>
+          <button class="btn-sm btn-sm-gray" onclick="exportarCSV()"
+            style="padding:8px 14px" title="Exportar la lista que se ve ahora">⬇️ Exportar CSV</button>
         </div>
         <div class="filters" id="filtroEstadoTabs"></div>
         <div id="btnEntregarTodoWrap" style="display:none">
@@ -396,6 +416,18 @@
             id="btnEntregarTodo">
             ✔ Entregar todos los resueltos
           </button>
+        </div>
+        <div id="barraSeleccionWrap" style="display:none">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;
+            padding:10px 16px;background:rgba(79,124,255,.1);
+            border:1px solid rgba(79,124,255,.25);border-radius:var(--r)">
+            <span id="barraSeleccionTexto" style="font-size:.85rem;color:var(--accent)"></span>
+            <div style="display:flex;gap:8px">
+              <button class="btn-sm btn-sm-gray" onclick="cancelarSeleccionRevisar()">Cancelar</button>
+              <button class="btn-sm btn-sm-blue" id="btnMarcarSeleccionados"
+                onclick="marcarSeleccionadosRevisado()">👁 Marcar como revisado</button>
+            </div>
+          </div>
         </div>
         <div class="reclamos-list" id="lista">
           <div class="loading"><div class="spinner"></div>Cargando reclamos...</div>
@@ -440,6 +472,8 @@
     let categoriaActual  = '';
     let subTabRecitados  = 'recitar';
     let filtroEstadoActual = '';
+    let ultimaListaRenderizada = [];
+    let seleccionadosRevisar = new Set();
 
     // ── Checkboxes ───────────────────────────────────────────────
     function toggleCheck(tipo, labelEl) {
@@ -475,17 +509,14 @@
       if (!dni || dni.length < 7) {
         turnoVinculado = null;
         document.getElementById('vinculadoInfo').classList.remove('visible');
+        renderHistorialDni([]);
         return;
       }
       buscarTimer = setTimeout(async () => {
         try {
-          let encontrado = todosLosReclamos.find(r =>
-            String(r.dni).replace(/\D/g,'') === String(dni).replace(/\D/g,'')
-          );
-          if (!encontrado) {
-            const todos = await getReclamos({ dni: dni });
-            encontrado = todos && todos.length ? todos[0] : null;
-          }
+          const todos = await getReclamos({ dni: dni });
+          const encontrado = todos && todos.length ? todos[0] : null;
+
           if (encontrado) {
             turnoVinculado = encontrado;
             document.getElementById('f-apellido').value    = encontrado.apellido  || '';
@@ -506,8 +537,38 @@
             turnoVinculado = null;
             document.getElementById('vinculadoInfo').classList.remove('visible');
           }
+
+          renderHistorialDni(todos || []);
         } catch(e) {}
       }, 500);
+    }
+
+    function renderHistorialDni(lista) {
+      const cont = document.getElementById('historialDni');
+      if (!lista.length) {
+        cont.classList.remove('visible');
+        cont.innerHTML = '';
+        return;
+      }
+      const estadoLabel = {
+        pendiente:        'Pendiente',
+        resuelto:         'Informado',
+        entregado:        'Entregado',
+        'revisado-admin':  'Revisado admin',
+        recitar:          'Por recitar',
+        recitado:         'Recitado',
+      };
+      cont.innerHTML =
+        '<div class="historial-dni-label">Reclamos previos de este DNI (' + lista.length + ')</div>' +
+        lista.map(r => `
+          <div class="historial-dni-item">
+            <div class="hdi-top">
+              <span>#${r.nroReclamo || r.id} · ${r.fechaReclamo || r.fechaEstudio || '—'}</span>
+              <span>${estadoLabel[r.estado] || r.estado || 'Sin reclamo'}</span>
+            </div>
+            <div class="hdi-estudio">${r.estudio || ''}</div>
+          </div>`).join('');
+      cont.classList.add('visible');
     }
 
     // ── Cargar / recargar ─────────────────────────────────────────
@@ -606,6 +667,7 @@ function cargarStats(s) {
       const lista = document.getElementById('listaRecitados');
 
       if (subTabRecitados === 'recitar') {
+        ultimaListaRenderizada = recitadosData;
         actualizarListaHeader('recitar', recitadosData.length);
         // Lista de pacientes esperando que se les asigne turno
         if (!recitadosData.length) {
@@ -645,6 +707,7 @@ function cargarStats(s) {
       } else {
         // Lista de pacientes con turno YA asignado (estado === 'recitado')
         const recitadosConTurno = todosLosReclamos.filter(r => r.estado === 'recitado');
+        ultimaListaRenderizada = recitadosConTurno;
         actualizarListaHeader('recitado', recitadosConTurno.length);
         if (!recitadosConTurno.length) {
           lista.innerHTML =
@@ -770,7 +833,43 @@ function cargarStats(s) {
       renderLista(data);
     }
 
+    // ── Exportar CSV ────────────────────────────────────────────────
+    function exportarCSV() {
+      const data = ultimaListaRenderizada;
+      if (!data.length) { toast('⚠️ No hay datos para exportar', 'warn'); return; }
+
+      const columnas = [
+        ['nroReclamo', 'N°'], ['apellido', 'Apellido'], ['nombre', 'Nombre'],
+        ['dni', 'DNI'], ['estudio', 'Estudio'], ['estado', 'Estado'],
+        ['fechaEstudio', 'Fecha turno'], ['fechaReclamo', 'Fecha reclamo'],
+        ['reclamoTurno', 'Turno médico'], ['retraso', 'Días retraso'],
+        ['comentarioMedico', 'Comentario médico'], ['observaciones', 'Observaciones'],
+        ['entregaInforme', 'Entrega informe'], ['fechaEntrega', 'Fecha entrega'],
+      ];
+      const escapar = v => {
+        const s = String(v == null ? '' : v);
+        return /[",;\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+      };
+      const encabezado = columnas.map(c => c[1]).join(';');
+      const filas = data.map(r => columnas.map(c => escapar(r[c[0]])).join(';'));
+      // Punto y coma como separador y BOM al inicio: así Excel en es-AR
+      // (donde la coma es el separador decimal) lo abre bien de una.
+      const BOM = String.fromCharCode(0xFEFF);
+      const csv = BOM + [encabezado, ...filas].join('\r\n');
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'reclamos_' + new Date().toISOString().split('T')[0] + '.csv';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
     function renderLista(data) {
+      ultimaListaRenderizada = data;
       const lista = document.getElementById('lista');
       if (!data.length) {
         const filtroActivo = filtroEstadoActual;
@@ -808,7 +907,13 @@ function cargarStats(s) {
             ${esRecitado ? 'recitado-borde' : ''}"
             onclick="verDetalle('${r.id}')">
             ${getPrioridadCard(r)}
-            <div class="card-num">#${r.nroReclamo || r.id}</div>
+            <div class="card-num-wrap">
+              ${r.estado === 'pendiente' ? `<input type="checkbox" class="chk-revisar" data-id="${r.id}"
+                onclick="event.stopPropagation()"
+                onchange="toggleSeleccionRevisar('${r.id}', this.checked)"
+                ${seleccionadosRevisar.has(r.id) ? 'checked' : ''} />` : ''}
+              <div class="card-num">#${r.nroReclamo || r.id}</div>
+            </div>
             <div>
               <div class="card-paciente">${r.apellido}, ${r.nombre}</div>
               <div class="card-estudio">${r.estudio}
@@ -934,6 +1039,7 @@ function filtrarPorStat(tipo) {
         .forEach(id => { document.getElementById(id).classList.remove('checked'); });
       document.getElementById('turno-fecha-wrap').classList.remove('visible');
       document.getElementById('vinculadoInfo').classList.remove('visible');
+      renderHistorialDni([]);
       turnoVinculado = null;
       estudiosLista = [];
       document.getElementById('f-estudio-input').value = '';
@@ -1137,6 +1243,62 @@ function filtrarPorStat(tipo) {
         toast('👁 Reclamo marcado como revisado');
         cerrarModal();
       } catch(e) { toast('❌ Error: ' + e.message, 'error'); }
+    }
+
+    // ── Selección múltiple: marcar varios pendientes como revisado ──
+    function toggleSeleccionRevisar(id, checked) {
+      if (checked) seleccionadosRevisar.add(id);
+      else seleccionadosRevisar.delete(id);
+      actualizarBarraSeleccion();
+    }
+
+    function actualizarBarraSeleccion() {
+      const wrap = document.getElementById('barraSeleccionWrap');
+      const n = seleccionadosRevisar.size;
+      if (n > 0) {
+        wrap.style.display = '';
+        document.getElementById('barraSeleccionTexto').textContent =
+          n + ' seleccionado' + (n !== 1 ? 's' : '');
+      } else {
+        wrap.style.display = 'none';
+      }
+    }
+
+    function cancelarSeleccionRevisar() {
+      seleccionadosRevisar.clear();
+      document.querySelectorAll('.chk-revisar').forEach(c => { c.checked = false; });
+      actualizarBarraSeleccion();
+    }
+
+    async function marcarSeleccionadosRevisado() {
+      // Re-chequeamos contra el estado actual: si alguno dejo de estar
+      // pendiente mientras estaba seleccionado (otro usuario lo cambio),
+      // no lo tocamos.
+      const ids = [...seleccionadosRevisar].filter(id => {
+        const r = todosLosReclamos.find(x => x.id === id);
+        return r && r.estado === 'pendiente';
+      });
+      if (!ids.length) {
+        toast('⚠️ Los reclamos seleccionados ya no están pendientes', 'warn');
+        seleccionadosRevisar.clear();
+        actualizarBarraSeleccion();
+        return;
+      }
+      const btn = document.getElementById('btnMarcarSeleccionados');
+      btn.disabled = true; btn.textContent = '⏳ Marcando...';
+      try {
+        for (const id of ids) {
+          await revisadoAdmin(id);
+        }
+        seleccionadosRevisar.clear();
+        await recargar();
+        toast(`👁 ${ids.length} reclamo${ids.length > 1 ? 's' : ''} marcado${ids.length > 1 ? 's' : ''} como revisado`);
+      } catch(e) {
+        toast('❌ Error: ' + e.message, 'error');
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = '👁 Marcar como revisado'; }
+        actualizarBarraSeleccion();
+      }
     }
 
     function actualizarBadgeEntregar() {

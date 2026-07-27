@@ -80,20 +80,52 @@ function doPost(e) {
   }
 
   try {
-    if      (action === 'add')            return jsonResponse(addReclamo(body.data));
-    else if (action === 'update')         return jsonResponse(updateReclamo(body.id, body.changes));
-    else if (action === 'resolver')       return jsonResponse(resolverReclamo(body.id, body.comentario, body.nuevoTurno));
-    else if (action === 'resolverRegion') return jsonResponse(resolverRegion(body.id, body.region, body.comentario, body.todasRegiones));
-    else if (action === 'entregar')       return jsonResponse(entregarReclamo(body.id));
-    else if (action === 'revisado')       return jsonResponse(revisadoAdmin(body.id));
-    else if (action === 'recitar')        return jsonResponse(recitarReclamo(body.id, body.motivo));
-    else if (action === 'asignarTurno')   return jsonResponse(asignarTurnoRecitado(body.id, body.fechaNuevo));
-    else if (action === 'resolverTodo') return jsonResponse(resolverTodo(body.id, body.comentario, body.todasRegiones));
+    var result;
+    if      (action === 'add')            result = addReclamo(body.data);
+    else if (action === 'update')         result = updateReclamo(body.id, body.changes);
+    else if (action === 'resolver')       result = resolverReclamo(body.id, body.comentario, body.nuevoTurno);
+    else if (action === 'resolverRegion') result = resolverRegion(body.id, body.region, body.comentario, body.todasRegiones);
+    else if (action === 'entregar')       result = entregarReclamo(body.id);
+    else if (action === 'revisado')       result = revisadoAdmin(body.id);
+    else if (action === 'recitar')        result = recitarReclamo(body.id, body.motivo);
+    else if (action === 'asignarTurno')   result = asignarTurnoRecitado(body.id, body.fechaNuevo);
+    else if (action === 'resolverTodo')   result = resolverTodo(body.id, body.comentario, body.todasRegiones);
     else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
+
+    if (result && result.ok) {
+      logCambio(action, body.id || (result.id || ''), body);
+    }
+    return jsonResponse(result);
   } catch(err) {
     return jsonResponse({ ok: false, error: err.message });
   } finally {
     lock.releaseLock();
+  }
+}
+
+// Registro de auditoria: una fila por cada escritura exitosa, con que
+// accion fue, sobre que reclamo, y el payload que la disparo. No sabemos
+// "quien" la hizo porque el sistema no tiene login todavia — eso queda
+// para cuando se sume autenticacion real.
+function getLogSheet() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  let sheet = ss.getSheetByName('Log_Reclamos');
+  if (!sheet) {
+    sheet = ss.insertSheet('Log_Reclamos');
+    sheet.appendRow(['Fecha', 'Accion', 'ReclamoId', 'Detalle']);
+  }
+  return sheet;
+}
+
+function logCambio(accion, id, body) {
+  try {
+    const detalle = {};
+    Object.keys(body).forEach(function(k) {
+      if (k !== 'action') detalle[k] = body[k];
+    });
+    getLogSheet().appendRow([fmtDateTime(), accion, String(id || ''), JSON.stringify(detalle)]);
+  } catch (e) {
+    // Un fallo al loguear no debe interrumpir la operacion principal.
   }
 }
 
@@ -682,4 +714,48 @@ function subFiltrar(estado) {
   document.getElementById('btnSubEntregado').classList.toggle('active', estado === 'entregado');
   document.getElementById('filtroEstado').value = estado;
   filtrarLista();
+}
+
+// ── Backup semanal ────────────────────────────────────────────────
+// Copia todo el archivo (todas las hojas: BD, Log_Reclamos, etc.) a la
+// misma carpeta de Drive, con fecha en el nombre. Se ejecuta sola via
+// trigger — instalarTriggerBackupSemanal() se corre UNA VEZ a mano desde
+// el editor de Apps Script (Ejecutar > instalarTriggerBackupSemanal).
+function backupSemanalBD() {
+  const archivoOriginal = DriveApp.getFileById(SHEET_ID);
+  const carpeta = archivoOriginal.getParents().hasNext()
+    ? archivoOriginal.getParents().next()
+    : DriveApp.getRootFolder();
+
+  const PREFIJO = 'Backup BD reclamos - ';
+  const nombre = PREFIJO + Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd');
+  archivoOriginal.makeCopy(nombre, carpeta);
+
+  // No acumular backups para siempre: nos quedamos con los ultimos ~60 dias,
+  // el resto va a la papelera de Drive (recuperable ahi por 30 dias mas).
+  const limite = new Date();
+  limite.setDate(limite.getDate() - 60);
+  const archivos = carpeta.getFiles();
+  while (archivos.hasNext()) {
+    const f = archivos.next();
+    if (f.getName().indexOf(PREFIJO) === 0 && f.getDateCreated() < limite) {
+      f.setTrashed(true);
+    }
+  }
+}
+
+function instalarTriggerBackupSemanal() {
+  const yaExiste = ScriptApp.getProjectTriggers().some(function(t) {
+    return t.getHandlerFunction() === 'backupSemanalBD';
+  });
+  if (yaExiste) {
+    Logger.log('Ya existe un trigger de backup semanal, no se crea otro.');
+    return;
+  }
+  ScriptApp.newTrigger('backupSemanalBD')
+    .timeBased()
+    .onWeekDay(ScriptApp.WeekDay.SUNDAY)
+    .atHour(3)
+    .create();
+  Logger.log('Trigger de backup semanal instalado: domingos a las 3am.');
 }
