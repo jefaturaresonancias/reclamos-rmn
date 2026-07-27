@@ -58,6 +58,7 @@ function doGet(e) {
     else if (action === 'config')    return jsonResponse(getConfigData());
     else if (action === 'recitados') return jsonResponse(listRecitados());
     else if (action === 'dashboard') return jsonResponse(getDashboard());
+    else if (action === 'analitica') return jsonResponse(getAnalitica());
     else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
   } catch(err) {
     return jsonResponse({ ok: false, error: err.message });
@@ -393,6 +394,17 @@ function getDashboard() {
   };
 }
 
+// Todos los reclamos alguna vez cargados (incluye archivados), para el
+// dashboard de analitica. A diferencia de listReclamos(), no excluye nada
+// por estado — la analitica quiere la historia completa, no solo lo activo.
+function getAnalitica() {
+  const rows = getDataRows();
+  const data = rows
+    .map(function(row, i) { return rowToObj(row, i + 2); })
+    .filter(function(r) { return r.tieneReclamo && r.apellido !== ''; });
+  return { ok: true, data: data };
+}
+
 function getConfigData() {
   const CACHE_KEY = 'config_regiones_v1';
   const cache = CacheService.getScriptCache();
@@ -597,33 +609,6 @@ function revisadoAdmin(id) {
   });
 }
 
-async function marcarTodasRegiones(id) {
-  const todasRegiones = reclamoRegionesMap[id] || [];
-  if (!todasRegiones.length) {
-    toast('❌ Error: regiones no identificadas. Recargá la página.', 'error');
-    return;
-  }
-  const comentario = (document.getElementById(`coment-${id}`)?.value || '').trim();
-  const btn = document.getElementById(`btn-todo-${id}`);
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
-  try {
-    // Marcar cada región pendiente secuencialmente
-    const regionStatus = todosLosReclamos.find(x => x.id === id)?.regionStatus || {};
-    for (let i = 0; i < todasRegiones.length; i++) {
-      const reg = todasRegiones[i];
-      if (regionStatus[reg] !== 'Si') {
-        await resolverRegion(id, reg, comentario, todasRegiones);
-      }
-    }
-    delete comentariosTemp[`coment-${id}`];
-    await recargar();
-    toast('✅ Todas las regiones informadas — reclamo resuelto.');
-  } catch(e) {
-    toast('❌ Error: ' + e.message, 'error');
-    if (btn) { btn.disabled = false; btn.textContent = '✅ Marcar todo informado'; }
-  }
-}
-
 function resolverTodo(id, comentario, todasRegiones) {
   ensureExtraColumns();
   const found = findRowByTurnoId(id);
@@ -674,46 +659,6 @@ function renumerarReclamos() {
   });
 
   Logger.log('Renumerados: ' + conReclamo.length + ' reclamos');
-}
-
-function filtrarPorStat(tipo) {
-  tabActual = 'reclamos';
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-btn')[0].classList.add('active');
-  document.getElementById('panelReclamos').style.display  = '';
-  document.getElementById('panelRecitados').style.display = 'none';
-
-  const select = document.getElementById('filtroEstado');
-  const subFiltro = document.getElementById('subFiltroResueltos');
-
-  // Mostrar sub-filtro solo para resueltos/entregados
-  if (tipo === 'resuelto' || tipo === 'entregado') {
-    subFiltro.style.display = 'flex';
-    document.getElementById('btnSubResuelto').classList.toggle('active', tipo === 'resuelto');
-    document.getElementById('btnSubEntregado').classList.toggle('active', tipo === 'entregado');
-  } else {
-    subFiltro.style.display = 'none';
-  }
-
-  if (tipo === 'urgente') {
-    select.value = 'pendiente';
-    const data = todosLosReclamos
-      .filter(r => r.estado === 'pendiente' && r.reclamoTurno)
-      .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
-    renderLista(data);
-  } else {
-    select.value = tipo;
-    filtrarLista();
-  }
-
-  document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
-}
-
-function subFiltrar(estado) {
-  document.getElementById('btnSubResuelto').classList.toggle('active', estado === 'resuelto');
-  document.getElementById('btnSubEntregado').classList.toggle('active', estado === 'entregado');
-  document.getElementById('filtroEstado').value = estado;
-  filtrarLista();
 }
 
 // ── Backup semanal ────────────────────────────────────────────────

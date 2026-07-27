@@ -143,6 +143,11 @@ async function getDashboard() {
   if (!result.ok) throw new Error(result.error);
   return result; // { list, recitados, stats }
 }
+async function getAnalitica() {
+  const result = await apiGet({ action: 'analitica' });
+  if (!result.ok) throw new Error(result.error);
+  return result.data;
+}
 async function getStats() {
   const result = await apiGet({ action: 'stats' });
   if (!result.ok) throw new Error(result.error);
