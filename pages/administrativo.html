@@ -562,9 +562,9 @@ async function cargarStats() {
         <div class="stat-num danger">${s.urgentes}</div>
         <div class="stat-label">Con turno</div>
       </div>
-      <div class="stat-box" onclick="filtrarPorStat('resuelto')" style="cursor:pointer" title="Ver resueltos">
-        <div class="stat-num success">${s.resueltos + s.entregados}</div>
-        <div class="stat-label">Resueltos</div>
+      <div class="stat-box" onclick="filtrarPorStat('resuelto')" style="cursor:pointer" title="Ver resueltos sin entregar">
+        <div class="stat-num success">${s.resueltos}</div>
+        <div class="stat-label">Resueltos sin entregar</div>
       </div>
       <div class="stat-box" onclick="filtrarPorStat('recitados')"
         style="cursor:pointer" title="Ver pacientes por recitar">
