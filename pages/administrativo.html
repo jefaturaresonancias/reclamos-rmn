@@ -117,6 +117,8 @@
     .badge-entregado{background:rgba(79,124,255,.12);color:var(--accent);}
     .badge-turno{background:rgba(239,68,68,.1);color:var(--danger);}
     .badge-dias{background:rgba(255,255,255,.06);color:var(--text2);}
+    .badge-dias-alerta{background:rgba(245,158,11,.12);color:var(--warn);}
+    .badge-dias-critico{background:rgba(239,68,68,.15);color:var(--danger);font-weight:600;}
     .badge-origen{background:rgba(255,255,255,.05);color:var(--text3);}
     .badge-revisado{background:rgba(79,124,255,.12);color:var(--accent);}
     .badge-recitado{background:rgba(6,182,212,.12);color:var(--recitar);}
@@ -573,6 +575,11 @@ async function cargarStats() {
         </div>
         <div class="stat-label">🔄 Por recitar</div>
       </div>
+      <div class="stat-box" onclick="filtrarPorStat('revisado-admin')"
+        style="cursor:pointer" title="Ver revisados por administrativo">
+        <div class="stat-num accent">${s.revisados}</div>
+        <div class="stat-label">👁 Revisados admin</div>
+      </div>
       <div class="stat-box" onclick="filtrarPorStat('archivado')"
         style="cursor:pointer;grid-column:1/-1;
         border-color:rgba(255,255,255,.08)" title="Ver archivados">
@@ -818,7 +825,9 @@ async function cargarStats() {
               </div>
               <div class="card-meta">
                 ${estadoBadge}${tiposBadges}
-                ${r.retraso ? `<span class="badge badge-dias">${r.retraso}d retraso</span>` : ''}
+                ${r.retraso ? `<span class="badge ${
+                  r.retraso >= 90 ? 'badge-dias-critico' : r.retraso >= 30 ? 'badge-dias-alerta' : 'badge-dias'
+                }">${r.retraso}d retraso</span>` : ''}
               </div>
             </div>
             <div class="card-actions" onclick="event.stopPropagation()">
