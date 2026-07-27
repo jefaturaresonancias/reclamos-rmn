@@ -517,24 +517,20 @@
           '<div class="loading"><div class="spinner"></div>Cargando...</div>';
       }
       try {
-        const nuevos = await getReclamos();
+        const dash = await getDashboard();
 
         const ack = getResueltosAck();
-        const sinReconocer = nuevos.filter(r => r.estado === 'resuelto' && !ack.has(r.id));
+        const sinReconocer = dash.list.filter(r => r.estado === 'resuelto' && !ack.has(r.id));
         if (sinReconocer.length > 0) {
           mostrarPopupResueltos(sinReconocer);
         }
 
-        todosLosReclamos = nuevos;
+        todosLosReclamos = dash.list;
+        recitadosData    = dash.recitados;
         filtrarLista();
-        cargarStats();
+        cargarStats(dash.stats);
         actualizarBadgeEntregar();
-
-        // Actualizar recitados
-        try {
-          recitadosData = await getRecitados();
-          if (categoriaActual === 'recitados') renderRecitadosAdmin();
-        } catch(e) {}
+        if (categoriaActual === 'recitados') renderRecitadosAdmin();
 
       } catch(e) {
         document.getElementById('lista').innerHTML =
@@ -544,9 +540,8 @@
       }
     }
 
-async function cargarStats() {
+function cargarStats(s) {
   try {
-    const s = await getStats();
     document.getElementById('statsGrid').innerHTML = `
       <div class="stat-box" onclick="filtrarPorStat('')" style="cursor:pointer" title="Ver todos">
         <div class="stat-num accent">${s.total}</div>

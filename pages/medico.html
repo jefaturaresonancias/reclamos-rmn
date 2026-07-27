@@ -389,7 +389,9 @@
 
     async function recargar() {
       try {
-        todosLosReclamos = await getReclamos();
+        const dash = await getDashboard();
+        todosLosReclamos = dash.list;
+        recitadosData    = dash.recitados;
         actualizarPendingBadge();
         if (todosLosReclamos.length === 0) {
           document.getElementById('lista').innerHTML =
@@ -400,21 +402,12 @@
         } else {
           renderLista();
         }
+        renderRecitadosMedico();
       } catch(e) {
         document.getElementById('lista').innerHTML =
           `<div class="empty"><span>⚠️</span>Error al conectar.<br>
           <small style="color:var(--text3)">${e.message}</small></div>`;
         toast('❌ Error de conexión: ' + e.message, 'error');
-      }
-      loadRecitadosMedico();
-    }
-
-    async function loadRecitadosMedico() {
-      try {
-        recitadosData = await getRecitados();
-        renderRecitadosMedico();
-      } catch(e) {
-        console.warn('No se pudieron cargar recitados:', e.message);
       }
     }
 
@@ -830,18 +823,18 @@
     }
 
     verificarConfig(async () => {
-      await recargar();
+      // recargar() y getConfig() son independientes (planillas distintas):
+      // se disparan en paralelo en vez de esperar una para arrancar la otra.
+      const [, regiones] = await Promise.all([
+        recargar(),
+        getConfig().catch(e => { console.warn('Error al cargar regiones:', e.message); return null; }),
+      ]);
       mostrarAnuncioSiCorresponde();
-      try {
-        const regiones = await getConfig();
-        if (regiones && Object.keys(regiones).length > 0) {
-          cargarFiltrosRegion(regiones);
-          renderLista();
-        } else {
-          console.warn('Config vacío o sin regiones');
-        }
-      } catch(e) {
-        console.warn('Error al cargar regiones:', e.message);
+      if (regiones && Object.keys(regiones).length > 0) {
+        cargarFiltrosRegion(regiones);
+        renderLista();
+      } else if (regiones !== null) {
+        console.warn('Config vacío o sin regiones');
       }
       setInterval(recargar, 30000);
     });

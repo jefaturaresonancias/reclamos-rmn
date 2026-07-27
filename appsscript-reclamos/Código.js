@@ -57,6 +57,7 @@ function doGet(e) {
     else if (action === 'stats')     return jsonResponse(getStats());
     else if (action === 'config')    return jsonResponse(getConfigData());
     else if (action === 'recitados') return jsonResponse(listRecitados());
+    else if (action === 'dashboard') return jsonResponse(getDashboard());
     else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
   } catch(err) {
     return jsonResponse({ ok: false, error: err.message });
@@ -197,8 +198,8 @@ function findRowByTurnoId(turnoId) {
   return null;
 }
 
-function listReclamos(params) {
-  const rows = getDataRows();
+function listReclamos(params, rows) {
+  rows = rows || getDataRows();
 
   const buscarDni = params && params.dni
     ? String(params.dni).replace(/\D/g,'') : '';
@@ -245,16 +246,16 @@ function listReclamos(params) {
   return { ok: true, data: data };
 }
 
-function listRecitados() {
-  const rows = getDataRows();
+function listRecitados(rows) {
+  rows = rows || getDataRows();
   const data = rows
     .map(function(row, i) { return rowToObj(row, i + 2); })
     .filter(function(r) { return r.estado === 'recitar' && r.apellido !== ''; });
   return { ok: true, data: data };
 }
 
-function getStats() {
-  const rows  = getDataRows();
+function getStats(rows) {
+  rows = rows || getDataRows();
   const sheet = getSheet();
   const tresMesesAtras = new Date();
   tresMesesAtras.setMonth(tresMesesAtras.getMonth() - 3);
@@ -293,6 +294,22 @@ function getStats() {
       recitados:    data.filter(function(r){ return r.estado === 'recitar' && !r.archivado; }).length,
       archivados:   data.filter(function(r){ return r.archivado; }).length,
     }
+  };
+}
+
+// Combina list + recitados + stats en una sola lectura de la planilla,
+// para que el polling del frontend (cada 30s) dispare 1 ejecucion de
+// Apps Script en vez de 3.
+function getDashboard() {
+  const rows = getDataRows();
+  const listResult      = listReclamos(null, rows);
+  const recitadosResult = listRecitados(rows);
+  const statsResult     = getStats(rows);
+  return {
+    ok: true,
+    list: listResult.data,
+    recitados: recitadosResult.data,
+    stats: statsResult.stats,
   };
 }
 

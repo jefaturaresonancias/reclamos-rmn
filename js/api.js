@@ -138,6 +138,11 @@ async function getReclamos(filtro = {}) {
   if (!result.ok) throw new Error(result.error);
   return result.data;
 }
+async function getDashboard() {
+  const result = await apiGet({ action: 'dashboard' });
+  if (!result.ok) throw new Error(result.error);
+  return result; // { list, recitados, stats }
+}
 async function getStats() {
   const result = await apiGet({ action: 'stats' });
   if (!result.ok) throw new Error(result.error);
