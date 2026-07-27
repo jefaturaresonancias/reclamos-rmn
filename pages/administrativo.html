@@ -80,17 +80,6 @@
     /* Main */
     .main{padding:24px;display:flex;flex-direction:column;gap:20px;}
 
-    /* Tabs */
-    .tabs-bar{display:flex;gap:0;border-bottom:1px solid var(--border);}
-    .tab-btn{padding:12px 20px;background:transparent;border:none;
-      border-bottom:2px solid transparent;color:var(--text2);cursor:pointer;
-      font-family:'DM Sans',sans-serif;font-size:.875rem;font-weight:500;
-      transition:all .2s;margin-bottom:-1px;display:flex;align-items:center;gap:8px;}
-    .tab-btn:hover{color:var(--text);}
-    .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
-    .tab-badge{font-size:.65rem;background:rgba(6,182,212,.15);color:var(--recitar);
-      padding:2px 7px;border-radius:100px;font-weight:600;}
-
     /* Top bar */
     .top-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
     .search-wrap{flex:1;position:relative;min-width:220px;}
@@ -377,15 +366,6 @@
 
     <!-- ══ MAIN ══ -->
     <main class="main">
-      <!-- Tabs -->
-      <div class="tabs-bar">
-        <button class="tab-btn active" onclick="setTab('reclamos',this)">📋 Reclamos</button>
-        <button class="tab-btn" onclick="setTab('recitados',this)">
-          🔄 Recitados
-          <span class="tab-badge" id="recitadosTabBadge" style="display:none"></span>
-        </button>
-      </div>
-
       <!-- Panel Reclamos -->
       <div id="panelReclamos">
         <div id="listaHeader" style="display:flex;align-items:baseline;
@@ -409,14 +389,7 @@
           <button class="btn-sm btn-sm-gray" onclick="recargar()"
             style="padding:8px 14px">🔄 Actualizar</button>
         </div>
-        <div class="filters" id="filtroEstadoTabs">
-          <button class="filter-btn active" data-estado="" onclick="setFiltroEstado('')">Todos</button>
-          <button class="filter-btn" data-estado="pendiente" onclick="setFiltroEstado('pendiente')">Pendientes</button>
-          <button class="filter-btn" data-estado="resuelto" onclick="setFiltroEstado('resuelto')">✅ Resueltos</button>
-          <button class="filter-btn" data-estado="revisado-admin" onclick="setFiltroEstado('revisado-admin')">👁 Revisados admin</button>
-          <button class="filter-btn" data-estado="entregado" onclick="setFiltroEstado('entregado')">📦 Entregados</button>
-          <button class="filter-btn" data-estado="archivado" onclick="setFiltroEstado('archivado')">📦 Archivados</button>
-        </div>
+        <div class="filters" id="filtroEstadoTabs"></div>
         <div id="btnEntregarTodoWrap" style="display:none">
           <button onclick="entregarTodo()"
             style="padding:10px 20px;background:rgba(16,185,129,.12);
@@ -430,17 +403,7 @@
         <div class="reclamos-list" id="lista">
           <div class="loading"><div class="spinner"></div>Cargando reclamos...</div>
         </div>
-      </div>
-
-      <!-- Panel Recitados -->
-      <div id="panelRecitados" style="display:none">
-        <div style="display:flex;gap:8px;margin-bottom:12px" class="filters">
-          <button class="filter-btn active" id="btnSubPorRecitar"
-            onclick="subFiltrarRecitados('recitar')">🔄 Por recitar</button>
-          <button class="filter-btn" id="btnSubRecitados"
-            onclick="subFiltrarRecitados('recitado')">📅 Recitados (turno asignado)</button>
-        </div>
-        <div class="reclamos-list" id="listaRecitados">
+        <div class="reclamos-list" id="listaRecitados" style="display:none">
           <div class="loading"><div class="spinner"></div>Cargando...</div>
         </div>
       </div>
@@ -471,19 +434,9 @@
     let recitadosData    = [];
     let editId           = null;
     let turnoVinculado   = null;
-    let tabActual        = 'reclamos';
+    let categoriaActual  = '';
     let subTabRecitados  = 'recitar';
     let filtroEstadoActual = '';
-
-    // ── Tabs ─────────────────────────────────────────────────────
-    function setTab(tab, btn) {
-      tabActual = tab;
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      document.getElementById('panelReclamos').style.display  = tab === 'reclamos'  ? '' : 'none';
-      document.getElementById('panelRecitados').style.display = tab === 'recitados' ? '' : 'none';
-      if (tab === 'recitados') loadRecitadosAdmin();
-    }
 
     // ── Checkboxes ───────────────────────────────────────────────
     function toggleCheck(tipo, labelEl) {
@@ -582,8 +535,7 @@
         // Actualizar recitados
         try {
           recitadosData = await getRecitados();
-          actualizarRecitadosBadge();
-          if (tabActual === 'recitados') renderRecitadosAdmin();
+          if (categoriaActual === 'recitados') renderRecitadosAdmin();
         } catch(e) {}
 
       } catch(e) {
@@ -614,7 +566,7 @@ async function cargarStats() {
         <div class="stat-num success">${s.resueltos + s.entregados}</div>
         <div class="stat-label">Resueltos</div>
       </div>
-      <div class="stat-box" onclick="setTab('recitados', document.querySelectorAll('.tab-btn')[1])"
+      <div class="stat-box" onclick="filtrarPorStat('recitados')"
         style="cursor:pointer" title="Ver pacientes por recitar">
         <div class="stat-num" style="color:var(--recitar)">
           ${recitadosData.length}
@@ -638,7 +590,6 @@ async function cargarStats() {
       lista.innerHTML = '<div class="loading"><div class="spinner"></div>Cargando...</div>';
       try {
         recitadosData = await getRecitados();
-        actualizarRecitadosBadge();
         renderRecitadosAdmin();
       } catch(e) {
         lista.innerHTML = `<div class="empty"><span>⚠️</span>Error: ${e.message}</div>`;
@@ -647,25 +598,17 @@ async function cargarStats() {
 
     function subFiltrarRecitados(tipo){
       subTabRecitados = tipo;
-      document.getElementById('btnSubPorRecitar').classList.toggle('active', tipo === 'recitar');
-      document.getElementById('btnSubRecitados').classList.toggle('active', tipo === 'recitado');
+      document.querySelectorAll('#filtroEstadoTabs [data-subtab]').forEach(function(b){
+        b.classList.toggle('active', b.dataset.subtab === tipo);
+      });
       renderRecitadosAdmin();
-    }
-
-    function actualizarRecitadosBadge() {
-      const badge = document.getElementById('recitadosTabBadge');
-      if (recitadosData.length > 0) {
-        badge.textContent = recitadosData.length;
-        badge.style.display = 'inline';
-      } else {
-        badge.style.display = 'none';
-      }
     }
 
     function renderRecitadosAdmin() {
       const lista = document.getElementById('listaRecitados');
 
       if (subTabRecitados === 'recitar') {
+        actualizarListaHeader('recitar', recitadosData.length);
         // Lista de pacientes esperando que se les asigne turno
         if (!recitadosData.length) {
           lista.innerHTML =
@@ -704,6 +647,7 @@ async function cargarStats() {
       } else {
         // Lista de pacientes con turno YA asignado (estado === 'recitado')
         const recitadosConTurno = todosLosReclamos.filter(r => r.estado === 'recitado');
+        actualizarListaHeader('recitado', recitadosConTurno.length);
         if (!recitadosConTurno.length) {
           lista.innerHTML =
             '<div class="empty"><span>📭</span>No hay pacientes con turno reasignado todavía.</div>';
@@ -753,6 +697,8 @@ async function cargarStats() {
         'revisado-admin':   'Revisados por administrativo',
         'entregado':        'Entregados',
         'archivado':        'Archivados (+3 meses)',
+        'recitar':          'Por recitar (sin turno asignado)',
+        'recitado':         'Recitados (turno ya asignado)',
       };
       document.getElementById('listaTitulo').textContent =
         titulos[estado] !== undefined ? titulos[estado] : 'Reclamos';
@@ -895,18 +841,44 @@ async function cargarStats() {
       }
 
 function filtrarPorStat(tipo) {
-  tabActual = 'reclamos';
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.tab-btn')[0].classList.add('active');
-  document.getElementById('panelReclamos').style.display  = '';
-  document.getElementById('panelRecitados').style.display = 'none';
+  categoriaActual = tipo;
+  const tabsWrap = document.getElementById('filtroEstadoTabs');
+  document.getElementById('btnEntregarTodoWrap').style.display = 'none';
+
+  // ── Familia "Recitados": Por recitar / Recitados (turno asignado) ──
+  if (tipo === 'recitados') {
+    document.getElementById('lista').style.display = 'none';
+    document.getElementById('listaRecitados').style.display = '';
+    tabsWrap.innerHTML =
+      '<button class="filter-btn ' + (subTabRecitados === 'recitar' ? 'active' : '') + '" ' +
+        'data-subtab="recitar" onclick="subFiltrarRecitados(\'recitar\')">🔄 Por recitar</button>' +
+      '<button class="filter-btn ' + (subTabRecitados === 'recitado' ? 'active' : '') + '" ' +
+        'data-subtab="recitado" onclick="subFiltrarRecitados(\'recitado\')">📅 Recitados (turno asignado)</button>';
+    loadRecitadosAdmin();
+    document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  document.getElementById('lista').style.display = '';
+  document.getElementById('listaRecitados').style.display = 'none';
+
+  // ── Familia "Resueltos": Resueltos sin entregar / Entregados ──
+  if (tipo === 'resuelto') {
+    tabsWrap.innerHTML =
+      '<button class="filter-btn active" data-estado="resuelto" ' +
+        'onclick="setFiltroEstado(\'resuelto\')">✅ Resueltos sin entregar</button>' +
+      '<button class="filter-btn" data-estado="entregado" ' +
+        'onclick="setFiltroEstado(\'entregado\')">📦 Entregados</button>';
+    setFiltroEstado('resuelto');
+    document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  // ── Categorías simples, sin sub-pestañas ──
+  tabsWrap.innerHTML = '';
 
   if (tipo === 'urgente') {
-    document.querySelectorAll('#filtroEstadoTabs .filter-btn').forEach(function(b){
-      b.classList.toggle('active', b.dataset.estado === 'pendiente');
-    });
     filtroEstadoActual = 'pendiente';
-    document.getElementById('btnEntregarTodoWrap').style.display = 'none';
     const data = todosLosReclamos
       .filter(r => r.estado === 'pendiente' && r.reclamoTurno)
       .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
