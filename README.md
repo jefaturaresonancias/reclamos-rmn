@@ -14,6 +14,7 @@ publicado como Web App.
 | [`index.html`](index.html) | Todos | Landing, elegís el rol (Administrativo / Médico) |
 | [`pages/administrativo.html`](pages/administrativo.html) | Administrativo | Carga reclamos, hace seguimiento, entrega informes, gestiona recitados |
 | [`pages/medico.html`](pages/medico.html) | Médico | Ve los reclamos pendientes de informar, los resuelve, pide recitación de turno |
+| [`pages/analitica.html`](pages/analitica.html) | Administrativo | Dashboard: reclamos por mes, por estudio, por región, tiempo de resolución |
 
 ## Arquitectura
 
@@ -49,7 +50,8 @@ Navegador (PWA)  ──fetch──►  Google Apps Script (Web App)  ──►  
 │   └── api.js               Conexión con Apps Script + pantalla de config inicial
 ├── pages/
 │   ├── administrativo.html  Panel administrativo (todo el CSS/JS inline)
-│   └── medico.html          Panel médico (todo el CSS/JS inline)
+│   ├── medico.html          Panel médico (todo el CSS/JS inline)
+│   └── analitica.html       Dashboard de analítica (solo administrativo)
 └── appsscript-reclamos/
     ├── Código.js             Backend: doGet/doPost, lectura y escritura en Sheets
     └── appsscript.json       Config del proyecto de Apps Script
@@ -97,6 +99,48 @@ pensados para servirse tal cual (ej. GitHub Pages).
   en `administrativo.html` y `medico.html` por separado** — el contenido
   puede (y debe) ser distinto según a quién le importa cada cambio.
 
+**Herramientas de administrativo**
+- Exportar la lista que se está viendo a CSV (`;` como separador, para
+  que Excel en es-AR lo abra bien).
+- Buscar por DNI muestra el historial completo de reclamos previos de
+  ese paciente, no solo el turno que se vincula.
+- Selección múltiple para marcar varios pendientes como "revisado" de
+  una sola vez (con re-chequeo de estado por si alguien cambió uno de
+  los seleccionados mientras tanto).
+- Dashboard de **Analítica** ([`pages/analitica.html`](pages/analitica.html)):
+  reclamos por mes, por tipo de estudio, por región del cuerpo y tiempo
+  promedio de resolución, con filtro de período. Usa la acción
+  `analitica` del backend, que trae el histórico completo (incluidos
+  archivados).
+
+**Confiabilidad del backend**
+- `doPost` toma un `LockService.getScriptLock()` antes de escribir, para
+  que dos cambios simultáneos (ej. dos regiones de un mismo reclamo) no
+  se pisen.
+- `getConfigData()` (regiones del cuerpo) cachea 10 minutos con
+  `CacheService` — esa planilla casi no cambia.
+- `getDataRows()` valida que la hoja `BD` tenga al menos 40 columnas y
+  que los headers que el propio backend gestiona no hayan cambiado de
+  texto, para avisar con un error claro en vez de romperse en silencio
+  si alguien edita la planilla a mano.
+- Cada escritura exitosa queda registrada en una hoja `Log_Reclamos`
+  (fecha, acción, id, payload) — auditoría básica, sin "quién" todavía
+  porque el sistema no tiene login (ver Notas).
+- Backup semanal automático de todo el archivo a Drive (`backupSemanalBD`),
+  con limpieza de copias de más de 60 días. **Requiere correr
+  `instalarTriggerBackupSemanal()` una vez a mano** desde el editor de
+  Apps Script para activar el trigger — ver sección Desarrollo.
+
+**Performance**
+- Una sola acción de backend (`dashboard`) devuelve lista + stats +
+  recitados juntos, con una única lectura de la planilla, en vez de 3
+  ejecuciones de Apps Script separadas por cada refresh (cada 30s).
+  `listReclamos`/`listRecitados`/`getStats` aceptan filas ya leídas para
+  no duplicar el trabajo.
+- En médico, `getConfig()` (regiones) se pide en paralelo con
+  `recargar()` en vez de esperar a que termine todo el ciclo antes de
+  arrancar.
+
 ## Desarrollo
 
 ### Frontend
@@ -120,6 +164,13 @@ personal que ya tiene la URL vieja guardada no vería los cambios. Para que
 el cambio quede visible para todos sin que nadie reconfigure nada, hay que
 actualizar el deployment existente con `-i`.
 
+**Backup semanal — activación manual (una sola vez):** desde
+[script.google.com](https://script.google.com), abrir el proyecto,
+elegir la función `instalarTriggerBackupSemanal` en el desplegable de
+"Ejecutar" y correrla. Puede pedir reautorizar permisos de Drive la
+primera vez (es normal, hay que aceptarlo). Después queda corriendo solo
+los domingos a las 3am — no hace falta repetirlo.
+
 ### Google Sheets
 La hoja `BD` tiene ~40 columnas mapeadas en el objeto `COL` de
 `Código.js` (fecha, paciente, estudio, estado del reclamo, campos de
@@ -133,3 +184,28 @@ nueva a la planilla, hay que sumarla ahí también.
   ajustan los umbrales, hay que tocar ambos archivos.
 - `.clasp.json` y `.clasprc.json` de `appsscript-reclamos/` están en
   `.gitignore`: son credenciales/config local de `clasp`, no se suben.
+
+### Decisiones descartadas (a propósito, no por olvido)
+
+- **Autenticación (PIN/login):** evaluada y descartada. Es una
+  herramienta interna del hospital, sin datos expuestos a terceros más
+  allá de lo que ya es accesible en la planilla de Sheets, y no hace
+  falta trazabilidad de "quién resolvió qué". Si el contexto cambia
+  (se comparte más ampliamente, se necesita accountability real), vale
+  la pena reconsiderarlo.
+- **Avisos por email/WhatsApp:** descartado — los médicos ya entran
+  todos los días a revisar la lista, así que no resuelve un problema
+  real hoy.
+- **Soporte offline real (service worker):** descartado. La base de
+  datos es Google Sheets, así que no hay forma de tener la app
+  realmente offline (no se pueden cargar reclamos ni ver datos frescos
+  sin conexión) — a lo sumo amortiguaría cortes de conexión de unos
+  segundos, y el toast de error + reintento manual que ya existe cubre
+  ese caso razonablemente.
+- **Migrar de Sheets a una base de datos real:** descartado por ahora.
+  Con el volumen actual (~150-200 reclamos activos) la lentitud que
+  había era ineficiencia evitable (ver Performance más arriba), no un
+  techo real de Sheets. Reconsiderar solo si el volumen crece mucho —
+  y en ese caso, un servidor alojado es mejor opción que una máquina
+  local del hospital, porque la PWA se sirve desde internet público
+  (GitHub Pages).
