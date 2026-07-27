@@ -95,6 +95,8 @@
     .badge-resuelto{background:rgba(16,185,129,.12);color:var(--success);}
     .badge-recitado{background:rgba(6,182,212,.12);color:var(--recitar);}
     .badge-dias{background:rgba(255,255,255,.06);color:var(--text2);}
+    .badge-dias-alerta{background:rgba(245,158,11,.12);color:var(--warn);}
+    .badge-dias-critico{background:rgba(239,68,68,.15);color:var(--danger);font-weight:600;}
     .badge-origen{background:rgba(255,255,255,.05);color:var(--text3);}
 
     .region-status-row{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px;}
@@ -459,6 +461,12 @@
       el.textContent = pend ? `${pend} pendientes` : '';
     }
 
+    function formatObservacion(text){
+      if (!text) return '';
+      const lower = text.toLowerCase();
+      return lower.replace(/(^\s*\S)|([.!?]\s+\S)/g, m => m.toUpperCase());
+    }
+
     function renderLista() {
       // ── Guardar comentarios antes de re-renderizar ──
       document.querySelectorAll('textarea.comentario').forEach(ta => {
@@ -669,14 +677,16 @@
                 <div class="detail-value">${r.fechaReclamo}</div></div>` : ''}
               ${r.observaciones ? `<div class="detail-full">
                 <div class="detail-label">Observaciones</div>
-                <div class="detail-value" style="color:var(--text2)">${r.observaciones}</div>
+                <div class="detail-value" style="color:var(--text2)">${formatObservacion(r.observaciones)}</div>
                 </div>` : ''}
             </div>
             <div class="badges">
               ${resuelto   ? '<span class="badge badge-resuelto">✅ Resuelto</span>'  : ''}
               ${esRecitado ? `<span class="badge badge-recitado">🔄 Recitado · Turno: ${r.recitarFechaNuevo || 'pendiente'}</span>` : ''}
               ${!resuelto && !esRecitado ? '<span class="badge badge-pendiente">⏳ Pendiente</span>' : ''}
-              ${r.retraso ? `<span class="badge badge-dias">${r.retraso}d</span>` : ''}
+              ${r.retraso ? `<span class="badge ${
+                r.retraso >= 90 ? 'badge-dias-critico' : r.retraso >= 30 ? 'badge-dias-alerta' : 'badge-dias'
+              }">${r.retraso}d</span>` : ''}
             </div>
             ${resuelto && r.comentarioMedico ? `
               <div class="resuelto-banner">
