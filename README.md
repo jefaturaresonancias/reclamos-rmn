@@ -209,3 +209,10 @@ nueva a la planilla, hay que sumarla ahí también.
   y en ese caso, un servidor alojado es mejor opción que una máquina
   local del hospital, porque la PWA se sirve desde internet público
   (GitHub Pages).
+  - Ya existe una app/API corriendo en Railway (para otro proyecto), así
+    que la infraestructura de hosting no sería el obstáculo. Aun así se
+    descartó: implicaría reescribir todo el backend (`Código.js`, ~15
+    acciones) contra Postgres — GitHub Pages es estático y nunca puede
+    hablar directo con una base de datos, necesitaría igual una API en
+    el medio — y ni el valor de los datos ni el tamaño de esta app
+    justifican ese esfuerzo hoy.
