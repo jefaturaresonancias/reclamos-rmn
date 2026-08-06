@@ -719,6 +719,8 @@ function confirmarEnvioInforme(id) {
 
   MailApp.sendEmail({
     to:          obj.email,
+    from:        'resonancia.santojanni@gmail.com', // alias verificado de jefatura.resonanciasanto2025@gmail.com
+    name:        'Administrativos Resonancia — Hospital Santojanni',
     subject:     'Informe de estudio — ' + obj.estudio,
     body:        'Hola ' + obj.nombre + ',\n\nAdjuntamos el informe de tu estudio "' + obj.estudio +
                  '" realizado el ' + obj.fechaEstudio + '.\n\nSaludos.',
