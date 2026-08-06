@@ -67,6 +67,7 @@ function doGet(e) {
     else if (action === 'dashboard') return jsonResponse(getDashboard());
     else if (action === 'analitica') return jsonResponse(getAnalitica());
     else if (action === 'pendientesInforme') return jsonResponse(listarPendientesInforme());
+    else if (action === 'listarInformesListos') return jsonResponse(listarInformesListos());
     else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
   } catch(err) {
     return jsonResponse({ ok: false, error: err.message });
@@ -498,11 +499,14 @@ function addReclamo(data) {
     sheet.getRange(targetRow, COL.RECITAR_CODIGO      + 1).setValue('');
     sheet.getRange(targetRow, COL.RECITAR_MOTIVO      + 1).setValue('');
     sheet.getRange(targetRow, COL.RECITAR_FECHA_NUEVO + 1).setValue('');
+    // Solo si viene un email nuevo — no queremos que un reclamo posterior
+    // sin email pise el que ya se había cargado a mano.
+    if (data.email) sheet.getRange(targetRow, COL.EMAIL + 1).setValue(data.email);
     const turnoId = String(rows[targetRow - 2][COL.TURNO_ID] || '').trim() || String(targetRow);
     return { ok: true, id: turnoId, nroReclamo, vinculado: true };
   }
 
-  const newRow = new Array(38).fill('');
+  const newRow = new Array(45).fill('');
   newRow[COL.APELLIDO]            = data.apellido           || '';
   newRow[COL.NOMBRE]              = data.nombre             || '';
   newRow[COL.DNI]                 = data.dni                || '';
@@ -516,6 +520,7 @@ function addReclamo(data) {
   newRow[COL.RECLAMO_OBS]         = data.observaciones      || '';
   newRow[COL.RECLAMO_NRO]         = nroReclamo;
   newRow[COL.TURNO_ID]            = 'manual_' + new Date().getTime();
+  newRow[COL.EMAIL]               = data.email              || '';
   sheet.appendRow(newRow);
   return { ok: true, id: newRow[COL.TURNO_ID], nroReclamo, vinculado: false };
 }
@@ -668,6 +673,19 @@ function listarPendientesInforme() {
   return { ok: true, pendientes };
 }
 
+// GET ?action=listarInformesListos — informes que el bot ya bajó y subió
+// a Drive, esperando que alguien los revise y confirme el envío (o los
+// rechace). Para el apartado de "Envíos" de la PWA.
+function listarInformesListos() {
+  const rows = getDataRows();
+  const listos = [];
+  for (var i = 0; i < rows.length; i++) {
+    const obj = rowToObj(rows[i], i + 2);
+    if (obj.informeEstado === 'listo_para_revisar' && !obj.archivado) listos.push(obj);
+  }
+  return { ok: true, listos };
+}
+
 // POST { action:"subirInforme", id, archivoBase64, mimeType, nombreArchivo, credencial }
 // El bot manda el PDF ya descargado de HIS. Lo sube a Drive (carpeta
 // temporal) y deja el reclamo "listo_para_revisar" — nunca se manda nada
@@ -684,6 +702,11 @@ function subirInforme(id, archivoBase64, mimeType, nombreArchivo, credencial) {
     nombreArchivo || ('informe_' + id + '.pdf')
   );
   const archivo = _getCarpetaInformesTemp().createFile(blob);
+  // La PWA no tiene login (decisión ya tomada del proyecto) — sin esto el
+  // preview de envios.html pediría iniciar sesión en Drive. Es temporal:
+  // se borra en confirmarEnvioInforme/rechazarInforme, nunca queda expuesto
+  // por mucho tiempo.
+  archivo.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
 
   return updateReclamo(id, {
     informeEstado:     'listo_para_revisar',

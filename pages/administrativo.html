@@ -298,6 +298,7 @@
         animation:pulse 2s infinite"></span>
     </div>
     <div style="display:flex;align-items:center;gap:14px">
+      <a href="envios.html" class="nav-analitica-btn">📤 Envíos</a>
       <a href="analitica.html" class="nav-analitica-btn">📊 Analítica</a>
       <button onclick="localStorage.clear();location.reload();"
         style="background:none;border:1px solid #252a38;color:#4f5870;padding:5px 10px;
@@ -345,6 +346,8 @@
         <input type="hidden" id="f-estudio" />
       </div>
       <div class="field"><label>Fecha del Estudio *</label><input type="date" id="f-fechaEstudio" /></div>
+      <div class="field"><label>Email de contacto (para enviarle el informe)</label>
+        <input type="email" id="f-email" placeholder="paciente@ejemplo.com" /></div>
 
       <div class="section-divider"></div>
 
@@ -1025,6 +1028,7 @@ function filtrarPorStat(tipo) {
       try {
         const res = await addReclamo({
           apellido, nombre, dni, estudio, fechaEstudio,
+          email: document.getElementById('f-email').value.trim(),
           observaciones: document.getElementById('f-obs').value.trim(),
           ...tipos,
         });
@@ -1041,7 +1045,7 @@ function filtrarPorStat(tipo) {
     }
 
     function limpiarForm() {
-      ['f-dni-buscar','f-apellido','f-nombre','f-estudio','f-obs','f-turno-fecha']
+      ['f-dni-buscar','f-apellido','f-nombre','f-estudio','f-obs','f-turno-fecha','f-email']
         .forEach(id => { document.getElementById(id).value = ''; });
       document.getElementById('f-fechaEstudio').value = '';
       ['f-reclamo-informado','f-reclamo-diagnostico','f-reclamo-turno']
@@ -1090,9 +1094,17 @@ function filtrarPorStat(tipo) {
           </div>
           <div class="field"><label>Estudio</label>
             <input id="e-estudio" value="${r.estudio}" /></div>
+          <div class="field"><label>Email de contacto (para enviarle el informe)</label>
+            <input type="email" id="e-email" value="${r.email || ''}" placeholder="paciente@ejemplo.com" /></div>
           <div class="section-divider"></div>
           <div style="font-size:.78rem;color:var(--text2);font-weight:500;
             letter-spacing:.03em;text-transform:uppercase">Tipos de reclamo</div>
+          ${r.reclamoInformado === 'OK' ? `
+            <div style="font-size:.78rem;color:var(--warn);background:rgba(245,158,11,.1);
+              border:1px solid rgba(245,158,11,.3);border-radius:8px;padding:8px 10px">
+              ⚠️ Este reclamo tiene un informe esperando revisión en
+              <a href="envios.html" style="color:inherit">Envíos</a> — este checkbox no lo toca.
+            </div>` : ''}
           <label style="display:flex;gap:10px;align-items:center;cursor:pointer">
             <input type="checkbox" id="e-informado" ${r.reclamoInformado ? 'checked' : ''} />
             <span style="font-size:.85rem">📄 Sin informe / fuera de fecha</span>
@@ -1123,17 +1135,28 @@ function filtrarPorStat(tipo) {
       try {
         const turnoChecked = document.getElementById('e-turno').checked;
         const turnoFecha   = document.getElementById('e-turno-fecha').value;
-        await updateReclamo(editId, {
+        const cambios = {
           apellido:           document.getElementById('e-apellido').value.trim(),
           nombre:             document.getElementById('e-nombre').value.trim(),
           dni:                document.getElementById('e-dni').value.trim(),
           estudio:            document.getElementById('e-estudio').value.trim(),
           fechaEstudio:       document.getElementById('e-fecha').value,
-          reclamoInformado:   document.getElementById('e-informado').checked  ? 'Si' : '',
           reclamoDiagnostico: document.getElementById('e-diagnostico').checked ? 'Si' : '',
           reclamoTurno:       turnoChecked ? (turnoFecha || 'Si') : '',
           observaciones:      document.getElementById('e-obs').value.trim(),
-        });
+          email:              document.getElementById('e-email').value.trim(),
+        };
+        // RECLAMO_INFORMADO hace doble uso: acá es el checkbox "tipo de
+        // reclamo: sin informe", pero bot-informes.js le pone "OK" para
+        // avisarle al sistema de alertas de administrativos que un informe
+        // está listo para revisar. Si ya está en "OK", no la tocamos desde
+        // este modal — si no, se perdería la alerta con cualquier edición
+        // de otro campo que no tenga nada que ver.
+        const actual = todosLosReclamos.find(x => x.id === editId);
+        if (!actual || actual.reclamoInformado !== 'OK') {
+          cambios.reclamoInformado = document.getElementById('e-informado').checked ? 'Si' : '';
+        }
+        await updateReclamo(editId, cambios);
         cerrarModal();
         await recargar();
         toast('✅ Cambios guardados');

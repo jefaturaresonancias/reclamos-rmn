@@ -204,3 +204,20 @@ async function resolverTodo(id, comentario, todasRegiones) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+
+// ── Envíos (bot-informes.js → reclamos-rmn) ─────────────────────────
+async function getInformesListos() {
+  const result = await apiGet({ action: 'listarInformesListos' });
+  if (!result.ok) throw new Error(result.error);
+  return result.listos;
+}
+async function confirmarEnvioInforme(id) {
+  const result = await apiPost({ action: 'confirmarEnvioInforme', id });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
+async function rechazarInforme(id, motivo) {
+  const result = await apiPost({ action: 'rechazarInforme', id, motivo });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
