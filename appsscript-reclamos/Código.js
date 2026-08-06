@@ -690,6 +690,11 @@ function subirInforme(id, archivoBase64, mimeType, nombreArchivo, credencial) {
     informeDriveId:    archivo.getId(),
     informeCredencial: credencial || '',
     informeFecha:      fmtDateTime(),
+    // Dispara el sistema de alertas propio de administrativos (no forma
+    // parte de este proyecto) — según lo acordado, "OK" en esta columna
+    // alcanza para que lo levanten. Reusa RECLAMO_INFORMADO en vez de una
+    // notificación nueva porque ese sistema ya existe y ya lo miran.
+    reclamoInformado:  'OK',
   });
 }
 
