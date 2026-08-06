@@ -1479,11 +1479,11 @@ function renderEstudiosChips() {
       // debe reaparecer en cada carga hasta que pasen los 3 días
     }
 
-    verificarConfig(() => {
+    verificarConfig(() => verificarPin(() => {
       recargar();
       mostrarAnuncioSiCorresponde();
       setInterval(recargar, 30000);
-    });
+    }));
 
     async function entregarTodo() {
   const resueltos = todosLosReclamos.filter(r => r.estado === 'resuelto');

@@ -470,9 +470,9 @@
       document.getElementById('tooltip').classList.remove('visible');
     }
 
-    verificarConfig(() => {
+    verificarConfig(() => verificarPin(() => {
       cargar();
-    });
+    }));
   </script>
 </body>
 </html>

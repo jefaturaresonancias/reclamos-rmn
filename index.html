@@ -56,12 +56,19 @@
     .card-badge{font-size:.7rem;padding:4px 12px;border-radius:100px;font-weight:500;letter-spacing:.03em;}
     .admin .card-badge{background:rgba(79,124,255,.15);color:var(--accent);}
     .medico .card-badge{background:rgba(16,185,129,.15);color:var(--success);}
+    #app-content{display:none;}
+    .boot-spinner{width:28px;height:28px;border:3px solid var(--border);border-top-color:var(--accent);
+      border-radius:50%;animation:spin .8s linear infinite;position:relative;z-index:1;}
+    @keyframes spin{to{transform:rotate(360deg)}}
   </style>
 </head>
 <body>
   <div class="bg-grid"></div>
   <div class="bg-glow"></div>
-  <div class="container">
+
+  <div class="boot-spinner" id="boot-spinner"></div>
+
+  <div class="container" id="app-content">
     <div class="logo">
       <div class="logo-icon">🏥</div>
       <h1>Sistema de <span>Reclamos</span></h1>
@@ -83,7 +90,7 @@
     </div>
   </div>
 
-  <button onclick="localStorage.clear();location.reload();"
+  <button onclick="resetApiUrl();"
     style="position:fixed;bottom:20px;right:20px;background:none;
     border:1px solid #252a38;color:#4f5870;padding:8px 14px;
     border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;
@@ -92,6 +99,13 @@
     onmouseout="this.style.borderColor='#252a38';this.style.color='#4f5870'">
     ⚙️ Reconfigurar API
   </button>
-  
+
+  <script src="js/api.js"></script>
+  <script>
+    verificarConfig(() => verificarPin(() => {
+      document.getElementById('boot-spinner').style.display = 'none';
+      document.getElementById('app-content').style.display = 'flex';
+    }));
+  </script>
 </body>
 </html>

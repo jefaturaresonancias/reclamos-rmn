@@ -57,19 +57,27 @@ function jsonResponse(data) {
     .setMimeType(ContentService.MimeType.JSON);
 }
 
-// Apartado de Envíos (PDFs de informes reales + disparo de mail al paciente):
-// mientras no haya login real en el sistema, se protege con un PIN propio,
-// guardado en Propiedades del script (Configuración del proyecto → Propiedades
-// del script → INFORMES_PIN) — nunca en el código ni en git. Si la propiedad
-// no está seteada, estas acciones quedan bloqueadas por defecto (fail-closed).
-function _pinInformesValido(pin) {
-  const esperado = PropertiesService.getScriptProperties().getProperty('INFORMES_PIN');
+// Todo el sistema (datos de pacientes: nombre, DNI, diagnóstico, informes)
+// se protege con un PIN propio, guardado en Propiedades del script
+// (Configuración del proyecto → Propiedades del script → PIN_APP) — nunca
+// en el código ni en git. Si la propiedad no está seteada, todo queda
+// bloqueado por defecto (fail-closed). 'stats' queda afuera porque la PWA
+// lo usa para probar la conexión antes de que exista ningún PIN cargado
+// (pantalla de configuración inicial de la URL) y no expone datos de
+// pacientes, solo conteos agregados.
+const ACCIONES_SIN_PIN = ['stats'];
+
+function _pinValido(pin) {
+  const esperado = PropertiesService.getScriptProperties().getProperty('PIN_APP');
   return !!esperado && String(pin || '') === esperado;
 }
 
 function doGet(e) {
   const action = (e.parameter && e.parameter.action) ? e.parameter.action : 'list';
   try {
+    if (ACCIONES_SIN_PIN.indexOf(action) === -1 && !_pinValido(e.parameter.pin)) {
+      return jsonResponse({ ok: false, error: 'PIN inválido' });
+    }
     if      (action === 'list')      return jsonResponse(listReclamos(e.parameter));
     else if (action === 'stats')     return jsonResponse(getStats());
     else if (action === 'config')    return jsonResponse(getConfigData());
@@ -77,10 +85,7 @@ function doGet(e) {
     else if (action === 'dashboard') return jsonResponse(getDashboard());
     else if (action === 'analitica') return jsonResponse(getAnalitica());
     else if (action === 'pendientesInforme') return jsonResponse(listarPendientesInforme());
-    else if (action === 'listarInformesListos') {
-      if (!_pinInformesValido(e.parameter.pin)) return jsonResponse({ ok: false, error: 'PIN inválido' });
-      return jsonResponse(listarInformesListos());
-    }
+    else if (action === 'listarInformesListos') return jsonResponse(listarInformesListos());
     else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
   } catch(err) {
     return jsonResponse({ ok: false, error: err.message });
@@ -91,6 +96,8 @@ function doPost(e) {
   var body = {};
   try { body = JSON.parse(e.postData.contents); } catch(err) {}
   const action = body.action || '';
+
+  if (!_pinValido(body.pin)) return jsonResponse({ ok: false, error: 'PIN inválido' });
 
   // Todas las acciones de escritura hacen lectura + modificacion + guardado
   // (ej: leer regionStatus, sumarle una region, volver a guardar el JSON
@@ -114,14 +121,8 @@ function doPost(e) {
     else if (action === 'asignarTurno')   result = asignarTurnoRecitado(body.id, body.fechaNuevo);
     else if (action === 'resolverTodo')   result = resolverTodo(body.id, body.comentario, body.todasRegiones);
     else if (action === 'subirInforme')   result = subirInforme(body.id, body.archivoBase64, body.mimeType, body.nombreArchivo, body.credencial);
-    else if (action === 'confirmarEnvioInforme') {
-      if (!_pinInformesValido(body.pin)) return jsonResponse({ ok: false, error: 'PIN inválido' });
-      result = confirmarEnvioInforme(body.id);
-    }
-    else if (action === 'rechazarInforme') {
-      if (!_pinInformesValido(body.pin)) return jsonResponse({ ok: false, error: 'PIN inválido' });
-      result = rechazarInforme(body.id, body.motivo);
-    }
+    else if (action === 'confirmarEnvioInforme') result = confirmarEnvioInforme(body.id);
+    else if (action === 'rechazarInforme') result = rechazarInforme(body.id, body.motivo);
     else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
 
     if (result && result.ok) {
