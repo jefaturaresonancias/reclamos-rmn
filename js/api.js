@@ -206,18 +206,21 @@ async function resolverTodo(id, comentario, todasRegiones) {
 }
 
 // ── Envíos (bot-informes.js → reclamos-rmn) ─────────────────────────
-async function getInformesListos() {
-  const result = await apiGet({ action: 'listarInformesListos' });
+// Estas tres acciones exponen PDFs reales de estudios y disparan el envío
+// de mail al paciente — el Apps Script las rechaza sin un PIN válido
+// (ver INFORMES_PIN en Propiedades del script, y envios.html para el gate).
+async function getInformesListos(pin) {
+  const result = await apiGet({ action: 'listarInformesListos', pin });
   if (!result.ok) throw new Error(result.error);
   return result.listos;
 }
-async function confirmarEnvioInforme(id) {
-  const result = await apiPost({ action: 'confirmarEnvioInforme', id });
+async function confirmarEnvioInforme(id, pin) {
+  const result = await apiPost({ action: 'confirmarEnvioInforme', id, pin });
   if (!result.ok) throw new Error(result.error);
   return result;
 }
-async function rechazarInforme(id, motivo) {
-  const result = await apiPost({ action: 'rechazarInforme', id, motivo });
+async function rechazarInforme(id, motivo, pin) {
+  const result = await apiPost({ action: 'rechazarInforme', id, motivo, pin });
   if (!result.ok) throw new Error(result.error);
   return result;
 }

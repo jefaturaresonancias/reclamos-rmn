@@ -74,9 +74,34 @@
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
     .toast.ok{border-color:var(--success);color:var(--success);}
     .toast.error{border-color:var(--danger);color:var(--danger);}
+
+    #pin-overlay{position:fixed;inset:0;z-index:9999;background:#0d0f14;
+      display:none;align-items:center;justify-content:center;}
+    #pin-box{background:var(--surface);border:1px solid var(--border);border-radius:20px;
+      padding:36px;width:340px;max-width:90vw;display:flex;flex-direction:column;gap:16px;
+      text-align:center;}
+    #pin-box .pin-icon{font-size:2rem;}
+    #pin-box h2{font-family:'DM Serif Display',serif;font-weight:400;font-size:1.15rem;}
+    #pin-box p{font-size:.8rem;color:var(--text2);}
+    #pin-input{width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border);
+      border-radius:10px;color:var(--text);font-size:1.1rem;letter-spacing:.3em;text-align:center;
+      outline:none;}
+    #pin-input:focus{border-color:var(--accent);}
+    #pin-error{font-size:.78rem;color:var(--danger);min-height:1.1em;}
   </style>
 </head>
 <body>
+  <div id="pin-overlay">
+    <div id="pin-box">
+      <div class="pin-icon">🔒</div>
+      <h2>Acceso restringido</h2>
+      <p>Esta sección muestra informes reales de pacientes. Ingresá el PIN de administrativo para continuar.</p>
+      <input id="pin-input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••" />
+      <div id="pin-error"></div>
+      <button class="btn btn-success" id="btn-pin-entrar">Entrar</button>
+    </div>
+  </div>
+
   <nav>
     <div class="nav-brand">
       <span>📤</span>
@@ -95,6 +120,37 @@
   <script src="../js/api.js"></script>
   <script>
     let _actual = [];
+    const PIN_KEY = 'reclamos_envios_pin';
+
+    function getPin() { return sessionStorage.getItem(PIN_KEY) || ''; }
+
+    function pedirPin() {
+      const overlay = document.getElementById('pin-overlay');
+      const input = document.getElementById('pin-input');
+      const error = document.getElementById('pin-error');
+      overlay.style.display = 'flex';
+      input.value = '';
+      input.focus();
+
+      async function intentar() {
+        const pin = input.value.trim();
+        if (!pin) return;
+        error.textContent = '';
+        try {
+          await getInformesListos(pin); // valida contra el Apps Script
+          sessionStorage.setItem(PIN_KEY, pin);
+          overlay.style.display = 'none';
+          cargar();
+        } catch (err) {
+          error.textContent = 'PIN incorrecto';
+          input.value = '';
+          input.focus();
+        }
+      }
+
+      document.getElementById('btn-pin-entrar').onclick = intentar;
+      input.onkeydown = e => { if (e.key === 'Enter') intentar(); };
+    }
 
     function toast(msg, tipo) {
       const el = document.getElementById('toast');
@@ -163,11 +219,18 @@
       });
     }
 
+    function _sesionVencida() {
+      sessionStorage.removeItem(PIN_KEY);
+      toast('El PIN cambió o venció — ingresalo de nuevo', 'error');
+      pedirPin();
+    }
+
     async function cargar() {
       try {
-        _actual = await getInformesListos();
+        _actual = await getInformesListos(getPin());
         render(_actual);
       } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
         document.getElementById('wrap').innerHTML =
           `<div class="empty"><div class="big">⚠️</div><div>Error: ${err.message}</div></div>`;
       }
@@ -179,10 +242,11 @@
       btn.disabled = true;
       btn.textContent = 'Enviando…';
       try {
-        await confirmarEnvioInforme(id);
+        await confirmarEnvioInforme(id, getPin());
         toast('Informe enviado ✓', 'ok');
         cargar();
       } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
         toast('Error: ' + err.message, 'error');
         btn.disabled = false;
         btn.textContent = '✓ Confirmar y enviar';
@@ -193,15 +257,21 @@
       const motivo = prompt('¿Por qué se rechaza? (el bot va a volver a intentarlo en la próxima corrida)');
       if (motivo === null) return;
       try {
-        await rechazarInforme(id, motivo || 'Sin motivo especificado');
+        await rechazarInforme(id, motivo || 'Sin motivo especificado', getPin());
         toast('Informe rechazado — vuelve a quedar pendiente', 'ok');
         cargar();
       } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
         toast('Error: ' + err.message, 'error');
       }
     }
 
-    verificarConfig(cargar);
+    function iniciar() {
+      if (getPin()) cargar();
+      else pedirPin();
+    }
+
+    verificarConfig(iniciar);
   </script>
 </body>
 </html>
