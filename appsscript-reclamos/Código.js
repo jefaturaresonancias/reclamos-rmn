@@ -42,6 +42,13 @@ const COL = {
   RECITAR_CODIGO:      35,
   RECITAR_MOTIVO:      36,
   RECITAR_FECHA_NUEVO: 37,
+  // Bot de informes (HIS → reclamos-rmn con verificación humana antes de
+  // mandar el mail) — ver bot-informes.js en resonancia-bot.
+  EMAIL:               40, // email de contacto para el envío del informe
+  INFORME_ESTADO:      41, // '' | 'listo_para_revisar' | 'enviado' | 'rechazado'
+  INFORME_DRIVE_ID:    42, // id del PDF temporal en Drive (se borra al enviar)
+  INFORME_CREDENCIAL:  43, // qué credencial SIGEHOS lo bajó (auditoría)
+  INFORME_FECHA:       44, // cuándo se bajó/envió
 };
 
 function jsonResponse(data) {
@@ -59,6 +66,7 @@ function doGet(e) {
     else if (action === 'recitados') return jsonResponse(listRecitados());
     else if (action === 'dashboard') return jsonResponse(getDashboard());
     else if (action === 'analitica') return jsonResponse(getAnalitica());
+    else if (action === 'pendientesInforme') return jsonResponse(listarPendientesInforme());
     else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
   } catch(err) {
     return jsonResponse({ ok: false, error: err.message });
@@ -91,6 +99,9 @@ function doPost(e) {
     else if (action === 'recitar')        result = recitarReclamo(body.id, body.motivo);
     else if (action === 'asignarTurno')   result = asignarTurnoRecitado(body.id, body.fechaNuevo);
     else if (action === 'resolverTodo')   result = resolverTodo(body.id, body.comentario, body.todasRegiones);
+    else if (action === 'subirInforme')   result = subirInforme(body.id, body.archivoBase64, body.mimeType, body.nombreArchivo, body.credencial);
+    else if (action === 'confirmarEnvioInforme') result = confirmarEnvioInforme(body.id);
+    else if (action === 'rechazarInforme') result = rechazarInforme(body.id, body.motivo);
     else return jsonResponse({ ok: false, error: 'Accion no reconocida' });
 
     if (result && result.ok) {
@@ -141,6 +152,11 @@ function ensureExtraColumns() {
     [COL.RECITAR_CODIGO + 1]:      'RECITAR_CODIGO',
     [COL.RECITAR_MOTIVO + 1]:      'RECITAR_MOTIVO',
     [COL.RECITAR_FECHA_NUEVO + 1]: 'RECITAR_FECHA_NUEVO',
+    [COL.EMAIL + 1]:               'EMAIL',
+    [COL.INFORME_ESTADO + 1]:      'INFORME_ESTADO',
+    [COL.INFORME_DRIVE_ID + 1]:    'INFORME_DRIVE_ID',
+    [COL.INFORME_CREDENCIAL + 1]:  'INFORME_CREDENCIAL',
+    [COL.INFORME_FECHA + 1]:       'INFORME_FECHA',
   };
   Object.keys(headers).forEach(function(col) {
     const colNum = parseInt(col);
@@ -185,11 +201,17 @@ function validarEstructuraSheet(sheet) {
 }
 
 function getDataRows() {
+  // Idempotente (chequea antes de escribir) — se llama acá también, no solo
+  // en los paths de escritura que ya la llamaban, porque getRange de abajo
+  // pide 45 columnas y si la grilla todavía no se expandió a esa altura
+  // (recién agregadas EMAIL/INFORME_*) esto tira error antes de que ningún
+  // write dispare ensureExtraColumns().
+  ensureExtraColumns();
   const sheet = getSheet();
   const lastRow = sheet.getLastRow();
   if (lastRow < 2) return [];
   validarEstructuraSheet(sheet);
-  return sheet.getRange(2, 1, lastRow - 1, 40).getValues();
+  return sheet.getRange(2, 1, lastRow - 1, 45).getValues();
 }
 
 function fmtDate(val) {
@@ -259,6 +281,11 @@ function rowToObj(row, rowIndex) {
     recitarMotivo:       String(row[COL.RECITAR_MOTIVO]     || '').trim(),
     recitarFechaNuevo:   fmtDate(row[COL.RECITAR_FECHA_NUEVO]),
     archivado:           String(row[COL.RECLAMO_ARCHIVADO] || '').trim() === 'Si',
+    email:               String(row[COL.EMAIL]              || '').trim(),
+    informeEstado:       String(row[COL.INFORME_ESTADO]     || '').trim(),
+    informeDriveId:      String(row[COL.INFORME_DRIVE_ID]   || '').trim(),
+    informeCredencial:   String(row[COL.INFORME_CREDENCIAL] || '').trim(),
+    informeFecha:        fmtDate(row[COL.INFORME_FECHA]),
   };
 }
 
@@ -525,6 +552,11 @@ function updateReclamo(id, changes) {
     recitarMotivo:       COL.RECITAR_MOTIVO      + 1,
     recitarFechaNuevo:   COL.RECITAR_FECHA_NUEVO + 1,
     archivado:           COL.RECLAMO_ARCHIVADO   + 1,
+    email:               COL.EMAIL               + 1,
+    informeEstado:       COL.INFORME_ESTADO      + 1,
+    informeDriveId:      COL.INFORME_DRIVE_ID    + 1,
+    informeCredencial:   COL.INFORME_CREDENCIAL  + 1,
+    informeFecha:        COL.INFORME_FECHA       + 1,
   };
 
   for (var key in changes) {
@@ -606,6 +638,114 @@ function revisadoAdmin(id) {
   return updateReclamo(id, {
     estado:      'revisado-admin',
     entregadoAt: fmtDateTime(),
+  });
+}
+
+// ── Bot de informes (HIS → reclamos-rmn) ────────────────────────────
+// Carpeta de Drive donde se guardan los PDF temporales entre "el bot lo
+// bajó" y "administrativo confirmó el envío" — se borran apenas se mandan,
+// nunca quedan acumulados (son historias clínicas, no hay que retenerlas).
+// Se autocrea la primera vez (mismo criterio que _getHojaBDRIS con la hoja),
+// así no depende de que alguien pegue un ID de carpeta a mano.
+const CARPETA_INFORMES_TEMP_NOMBRE = 'reclamos-rmn — informes pendientes (temporal)';
+
+function _getCarpetaInformesTemp() {
+  const it = DriveApp.getFoldersByName(CARPETA_INFORMES_TEMP_NOMBRE);
+  if (it.hasNext()) return it.next();
+  return DriveApp.createFolder(CARPETA_INFORMES_TEMP_NOMBRE);
+}
+
+// GET ?action=pendientesInforme — reclamos resueltos por el médico que
+// todavía no tienen un informe bajado/en proceso. Server-side en vez de
+// traer todo el Sheet al bot en cada corrida.
+function listarPendientesInforme() {
+  const rows = getDataRows();
+  const pendientes = [];
+  for (var i = 0; i < rows.length; i++) {
+    const obj = rowToObj(rows[i], i + 2);
+    if (obj.estado === 'resuelto' && !obj.informeEstado && !obj.archivado) pendientes.push(obj);
+  }
+  return { ok: true, pendientes };
+}
+
+// POST { action:"subirInforme", id, archivoBase64, mimeType, nombreArchivo, credencial }
+// El bot manda el PDF ya descargado de HIS. Lo sube a Drive (carpeta
+// temporal) y deja el reclamo "listo_para_revisar" — nunca se manda nada
+// automático desde acá, eso lo hace confirmarEnvioInforme() y solo cuando
+// una persona lo confirma desde la PWA.
+function subirInforme(id, archivoBase64, mimeType, nombreArchivo, credencial) {
+  const found = findRowByTurnoId(id);
+  if (!found) return { ok: false, error: 'Reclamo no encontrado: ' + id };
+  if (!archivoBase64) return { ok: false, error: 'Falta archivoBase64' };
+
+  const blob = Utilities.newBlob(
+    Utilities.base64Decode(archivoBase64),
+    mimeType || 'application/pdf',
+    nombreArchivo || ('informe_' + id + '.pdf')
+  );
+  const archivo = _getCarpetaInformesTemp().createFile(blob);
+
+  return updateReclamo(id, {
+    informeEstado:     'listo_para_revisar',
+    informeDriveId:    archivo.getId(),
+    informeCredencial: credencial || '',
+    informeFecha:      fmtDateTime(),
+  });
+}
+
+// POST { action:"confirmarEnvioInforme", id }
+// Administrativo ya revisó el PDF y confirma — recién acá se manda el mail
+// de verdad, y se borra el archivo temporal de Drive (no se retiene nada
+// una vez enviado).
+function confirmarEnvioInforme(id) {
+  const found = findRowByTurnoId(id);
+  if (!found) return { ok: false, error: 'Reclamo no encontrado: ' + id };
+  const obj = rowToObj(found.row, found.rowIndex);
+
+  if (!obj.email) return { ok: false, error: 'El reclamo no tiene email cargado.' };
+  if (!obj.informeDriveId) return { ok: false, error: 'No hay informe cargado para este reclamo.' };
+
+  var archivo;
+  try {
+    archivo = DriveApp.getFileById(obj.informeDriveId);
+  } catch (e) {
+    return { ok: false, error: 'No se pudo abrir el informe en Drive: ' + e.message };
+  }
+
+  MailApp.sendEmail({
+    to:          obj.email,
+    subject:     'Informe de estudio — ' + obj.estudio,
+    body:        'Hola ' + obj.nombre + ',\n\nAdjuntamos el informe de tu estudio "' + obj.estudio +
+                 '" realizado el ' + obj.fechaEstudio + '.\n\nSaludos.',
+    attachments: [archivo.getBlob()],
+  });
+
+  archivo.setTrashed(true);
+
+  return updateReclamo(id, {
+    informeEstado: 'enviado',
+    informeFecha:  fmtDateTime(),
+  });
+}
+
+// POST { action:"rechazarInforme", id, motivo }
+// El PDF bajado no era el correcto (o vino mal) — se borra el temporal de
+// Drive y se vuelve a dejar el reclamo pendiente para que el bot lo
+// reintente en la próxima corrida.
+function rechazarInforme(id, motivo) {
+  const found = findRowByTurnoId(id);
+  if (!found) return { ok: false, error: 'Reclamo no encontrado: ' + id };
+  const obj = rowToObj(found.row, found.rowIndex);
+
+  if (obj.informeDriveId) {
+    try { DriveApp.getFileById(obj.informeDriveId).setTrashed(true); } catch (e) {}
+  }
+
+  return updateReclamo(id, {
+    informeEstado:     '',
+    informeDriveId:    '',
+    informeCredencial: '',
+    observaciones:     (obj.observaciones ? obj.observaciones + ' | ' : '') + 'Informe rechazado: ' + (motivo || 'sin motivo'),
   });
 }
 
