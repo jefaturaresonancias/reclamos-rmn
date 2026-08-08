@@ -104,8 +104,11 @@
       window._toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
     }
 
-    function previewUrl(driveId) {
-      return `https://drive.google.com/file/d/${driveId}/preview`;
+    // El PDF ya no vive en Drive con link público — sale de la propia API,
+    // atrás del mismo PIN que protege todo lo demás (ver /reclamos/:id/informe
+    // en reclamos-rmn-backend).
+    function previewUrl(id) {
+      return `${getApiUrl()}/reclamos/${id}/informe?pin=${encodeURIComponent(getPin())}`;
     }
 
     function render(lista) {
@@ -137,7 +140,7 @@
           </div>
           <div class="card-body">
             <div class="preview">
-              <iframe src="${previewUrl(r.informeDriveId)}" loading="lazy" allow="autoplay"></iframe>
+              <iframe src="${previewUrl(r.id)}" loading="lazy" allow="autoplay"></iframe>
             </div>
             <div class="side">
               <div class="email-box">
@@ -148,7 +151,7 @@
                 ✓ Confirmar y enviar
               </button>
               <button class="btn btn-danger" data-rechazar="${r.id}">✕ Rechazar</button>
-              <a href="${previewUrl(r.informeDriveId)}" target="_blank" rel="noopener" class="btn btn-ghost"
+              <a href="${previewUrl(r.id)}" target="_blank" rel="noopener" class="btn btn-ghost"
                 style="text-decoration:none;text-align:center;display:block">↗ Abrir en pestaña</a>
             </div>
           </div>
