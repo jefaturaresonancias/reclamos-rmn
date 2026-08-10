@@ -539,7 +539,11 @@ function addReclamo(data) {
   newRow[COL.RECLAMO_FECHA]       = ahora;
   newRow[COL.RECLAMO_OBS]         = data.observaciones      || '';
   newRow[COL.RECLAMO_NRO]         = nroReclamo;
-  newRow[COL.TURNO_ID]            = 'manual_' + new Date().getTime();
+  // data.id: usado por bot-conciliar-reclamos.js para preservar el mismo id
+  // que ya tiene en Postgres (así el mirror lo vuelve a encontrar en la
+  // próxima corrida en vez de crearlo de nuevo). Sin esto, se autogenera
+  // como siempre — ningún caller existente pasaba este campo hasta ahora.
+  newRow[COL.TURNO_ID]            = data.id || ('manual_' + new Date().getTime());
   newRow[COL.EMAIL]               = data.email              || '';
   sheet.appendRow(newRow);
   return { ok: true, id: newRow[COL.TURNO_ID], nroReclamo, vinculado: false };
