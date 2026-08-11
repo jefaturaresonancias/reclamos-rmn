@@ -432,14 +432,21 @@
             style="padding:8px 14px" title="Exportar la lista que se ve ahora">⬇️ Exportar CSV</button>
         </div>
         <div class="filters" id="filtroEstadoTabs"></div>
-        <div id="btnEntregarTodoWrap" style="display:none">
-          <button onclick="entregarTodo()"
+        <div id="btnEntregarTodoWrap" style="display:none;gap:8px;flex-direction:column">
+          <button onclick="enviarTodo()"
             style="padding:10px 20px;background:rgba(16,185,129,.12);
             border:1px solid rgba(16,185,129,.3);color:var(--success);
             border-radius:var(--r);cursor:pointer;font-family:'DM Sans',sans-serif;
             font-size:.875rem;font-weight:500;transition:all .2s;width:100%"
             id="btnEntregarTodo">
-            ✔ Entregar todos los resueltos
+            ✉️ Enviar todos los informes listos
+          </button>
+          <button onclick="correrBotInformesTodos()" id="btnCorrerBot"
+            style="padding:10px 20px;background:rgba(79,124,255,.12);
+            border:1px solid rgba(79,124,255,.3);color:var(--accent);
+            border-radius:var(--r);cursor:pointer;font-family:'DM Sans',sans-serif;
+            font-size:.875rem;font-weight:500;transition:all .2s;width:100%;display:none">
+            🤖 Correr bot de informes
           </button>
         </div>
         <div id="barraSeleccionWrap" style="display:none">
@@ -623,6 +630,7 @@
         filtrarLista();
         cargarStats(dash.stats);
         actualizarBadgeEntregar();
+        actualizarBotonCorrerBot();
         if (categoriaActual === 'recitados') renderRecitadosAdmin();
 
       } catch(e) {
@@ -805,8 +813,24 @@ function cargarStats(s) {
       document.querySelectorAll('#filtroEstadoTabs .filter-btn').forEach(function(b){
         b.classList.toggle('active', b.dataset.estado === estado);
       });
-      document.getElementById('btnEntregarTodoWrap').style.display = estado === 'resuelto' ? '' : 'none';
+      document.getElementById('btnEntregarTodoWrap').style.display = estado === 'resuelto' ? 'flex' : 'none';
+      if (estado === 'resuelto') actualizarBotonCorrerBot();
       filtrarLista();
+    }
+
+    // Muestra "Correr bot de informes" solo cuando hay resueltos cuyo
+    // informe todavía no bajó del HIS (informeEstado==='') — si no hay
+    // ninguno, no tiene sentido ofrecer el botón.
+    function actualizarBotonCorrerBot() {
+      const btn = document.getElementById('btnCorrerBot');
+      if (!btn) return;
+      const pendientesDeBot = todosLosReclamos.filter(
+        r => r.estado === 'resuelto' && !r.informeEstado
+      ).length;
+      btn.style.display = pendientesDeBot > 0 ? '' : 'none';
+      btn.textContent = pendientesDeBot > 0
+        ? `🤖 Correr bot de informes (${pendientesDeBot} pendiente${pendientesDeBot !== 1 ? 's' : ''})`
+        : '🤖 Correr bot de informes';
     }
 
     // ── Filtrar y renderizar lista ────────────────────────────────
@@ -930,6 +954,11 @@ function cargarStats(s) {
           r.reclamoTurno       ? `<span class="badge badge-turno">🚨 Turno: ${r.reclamoTurno !== 'Si' ? r.reclamoTurno : 'próximo'}</span>` : '',
           esRecitado && r.recitarFechaNuevo
             ? `<span class="badge badge-recitado">📅 Nuevo: ${r.recitarFechaNuevo}</span>` : '',
+          r.estado === 'resuelto'
+            ? (r.informeEstado === 'listo_para_revisar'
+                ? `<span class="badge badge-resuelto">📎 Informe listo para enviar</span>`
+                : `<span class="badge badge-pendiente">⏳ Falta que corra el bot</span>`)
+            : '',
         ].join('');
 
         return `
@@ -960,7 +989,7 @@ function cargarStats(s) {
             </div>
             <div class="card-actions" onclick="event.stopPropagation()">
               ${r.estado === 'resuelto'
-                ? `<button class="btn-sm btn-sm-green" onclick="entregar('${r.id}')">✔ Entregar</button>`
+                ? `<button class="btn-sm btn-sm-green" onclick="enviarInforme('${r.id}')">✉️ Enviar</button>`
                 : ''}
               ${r.estado === 'pendiente'
                 ? `<button class="btn-sm btn-sm-blue"
@@ -1081,14 +1110,38 @@ function filtrarPorStat(tipo) {
       document.getElementById('f-estudio').value = '';
     }
 
-    // ── Entregar ──────────────────────────────────────────────────
-    async function entregar(id) {
+    // ── Enviar informe por mail ──────────────────────────────────────
+    // Reemplaza al viejo "Entregar" (que solo marcaba estado='entregado' sin
+    // mandar nada): ahora manda el mail con confirmarEnvioInforme y, si sale
+    // bien, además marca entregado — mismo estado final que antes, pero
+    // disparado por el envío real en vez de un click sin efecto en el mail.
+    async function enviarInforme(id) {
       try {
+        await confirmarEnvioInforme(id);
         await entregarReclamo(id);
         await recargar();
-        toast('📦 Reclamo marcado como entregado');
+        toast('✉️ Informe enviado por mail');
         cerrarModal();
-      } catch(e) { toast('❌ Error: ' + e.message, 'error'); }
+      } catch(e) {
+        if (/no tiene email cargado/i.test(e.message)) {
+          const email = prompt('Este reclamo no tiene email cargado. Ingresalo para enviar el informe:');
+          if (!email) return;
+          try {
+            await updateReclamo(id, { email: email.trim() });
+            await enviarInforme(id);
+          } catch (e2) { toast('❌ Error: ' + e2.message, 'error'); }
+          return;
+        }
+        if (/no hay informe cargado/i.test(e.message)) {
+          toast('⏳ El bot todavía no bajó este informe. Corriéndolo ahora...', 'warn');
+          try {
+            await correrBotInformes(id);
+            toast('🤖 Bot disparado para este reclamo — probá "Enviar" de nuevo en un rato.');
+          } catch (e2) { toast('❌ Error al correr el bot: ' + e2.message, 'error'); }
+          return;
+        }
+        toast('❌ Error: ' + e.message, 'error');
+      }
     }
 
     // ── Editar ────────────────────────────────────────────────────
@@ -1256,7 +1309,7 @@ function filtrarPorStat(tipo) {
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             ${r.estado === 'resuelto'
               ? `<button class="btn-sm btn-sm-green"
-                  onclick="entregar('${r.id}')">✔ Marcar entregado</button>` : ''}
+                  onclick="enviarInforme('${r.id}')">✉️ Enviar informe</button>` : ''}
             <button class="btn-sm btn-sm-gray"
               onclick="cerrarModal();editarReclamo('${r.id}')">✏ Editar</button>
           </div>
@@ -1368,7 +1421,7 @@ function filtrarPorStat(tipo) {
       const badge  = document.getElementById('navBadgeEntregar');
       const listos = todosLosReclamos.filter(r => r.estado === 'resuelto').length;
       if (listos > 0) {
-        badge.textContent = listos + ' para entregar';
+        badge.textContent = listos + ' para enviar';
         badge.style.display = 'inline';
       } else {
         badge.style.display = 'none';
@@ -1514,41 +1567,52 @@ function renderEstudiosChips() {
       setInterval(recargar, 30000);
     }));
 
-    async function entregarTodo() {
+    // Manda el mail de todos los que ya tienen el informe listo
+// (informeEstado === 'listo_para_revisar'); los que todavía no lo tienen
+// (bot no corrió) se saltean y se cuentan aparte — no tiene sentido
+// reintentarlos uno por uno acá, para eso está el botón de correr el bot.
+async function enviarTodo() {
   const resueltos = todosLosReclamos.filter(r => r.estado === 'resuelto');
-  if (!resueltos.length) return;
+  const listos = resueltos.filter(r => r.informeEstado === 'listo_para_revisar');
+  if (!listos.length) {
+    toast('⏳ Ninguno tiene el informe listo todavía — corré el bot primero.', 'warn');
+    return;
+  }
   const btn = document.getElementById('btnEntregarTodo');
   btn.disabled = true;
-  btn.textContent = '⏳ Entregando...';
+  btn.textContent = '⏳ Enviando...';
+  let enviados = 0, fallidos = 0;
   try {
-    for (const r of resueltos) {
-      await entregarReclamo(r.id);
+    for (const r of listos) {
+      try {
+        await confirmarEnvioInforme(r.id);
+        await entregarReclamo(r.id);
+        enviados++;
+      } catch (e) { fallidos++; }
     }
     await recargar();
-    toast(`📦 ${resueltos.length} reclamo${resueltos.length > 1 ? 's' : ''} entregado${resueltos.length > 1 ? 's' : ''}`);
-  } catch(e) {
-    toast('❌ Error: ' + e.message, 'error');
+    const salteados = resueltos.length - listos.length;
+    toast(`✉️ ${enviados} informe${enviados !== 1 ? 's' : ''} enviado${enviados !== 1 ? 's' : ''}` +
+      (fallidos ? ` · ${fallidos} con error` : '') +
+      (salteados ? ` · ${salteados} sin informe listo todavía` : ''));
+  } finally {
     btn.disabled = false;
-    btn.textContent = '✔ Entregar todos los resueltos';
+    btn.textContent = '✉️ Enviar todos los informes listos';
   }
 }
 
-async function entregarTodo() {
-  const resueltos = todosLosReclamos.filter(r => r.estado === 'resuelto');
-  if (!resueltos.length) return;
-  const btn = document.getElementById('btnEntregarTodo');
-  btn.disabled = true;
-  btn.textContent = '⏳ Entregando...';
+// Dispara bot-informes.js (pasada completa) desde el panel — inserta en
+// bot_commands, mismo mecanismo que el panel de bots externo.
+async function correrBotInformesTodos() {
+  const btn = document.getElementById('btnCorrerBot');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Disparando...'; }
   try {
-    for (const r of resueltos) {
-      await entregarReclamo(r.id);
-    }
-    await recargar();
-    toast(`📦 ${resueltos.length} reclamo${resueltos.length > 1 ? 's' : ''} entregado${resueltos.length > 1 ? 's' : ''}`);
-  } catch(e) {
+    await correrBotInformes();
+    toast('🤖 Bot de informes disparado — puede tardar unos minutos en verse reflejado.');
+  } catch (e) {
     toast('❌ Error: ' + e.message, 'error');
-    btn.disabled = false;
-    btn.textContent = '✔ Entregar todos los resueltos';
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '🤖 Correr bot de informes'; }
   }
 }
     
