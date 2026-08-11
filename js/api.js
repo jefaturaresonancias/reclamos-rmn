@@ -169,6 +169,11 @@ async function resolverReclamo(id, comentario) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+async function resolverPlacas(id, comentario) {
+  const result = await apiPost({ action: 'resolverPlacas', id, comentario });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
 async function resolverRegion(id, region, comentario, todasRegiones) {
   const result = await apiPost({ action: 'resolverRegion', id, region, comentario, todasRegiones });
   if (!result.ok) throw new Error(result.error);

@@ -381,6 +381,17 @@
               <input type="date" id="f-turno-fecha" style="margin-top:8px" />
             </div>
           </label>
+          <label class="tipo-check" id="check-placas-wrap" onclick="toggleCheck('placas',this)">
+            <input type="checkbox" id="f-reclamo-placas" onclick="event.stopPropagation()" />
+            <span class="tipo-check-icon">🩻</span>
+            <div class="tipo-check-text">
+              <span class="tipo-check-title">Placas viejas (reimpresión)</span>
+              <span class="tipo-check-desc">Pide que se reimpriman placas de un estudio anterior — lo resuelve jefatura</span>
+            </div>
+            <div class="turno-fecha-wrap" id="placas-detalle-wrap" onclick="event.stopPropagation()">
+              <input id="f-placas-detalle" placeholder="Qué placas / de qué estudio y fecha" style="margin-top:8px" />
+            </div>
+          </label>
         </div>
       </div>
 
@@ -498,6 +509,10 @@
         document.getElementById('turno-fecha-wrap')
           .classList.toggle('visible', checkbox.checked);
       }
+      if (tipo === 'placas') {
+        document.getElementById('placas-detalle-wrap')
+          .classList.toggle('visible', checkbox.checked);
+      }
     }
 
     function getTiposReclamo() {
@@ -507,13 +522,16 @@
         reclamoDiagnostico: document.getElementById('f-reclamo-diagnostico').checked ? 'Si' : '',
         reclamoTurno:       document.getElementById('f-reclamo-turno').checked
           ? (turnoFecha || 'Si') : '',
+        reclamoPlacas:      document.getElementById('f-reclamo-placas').checked ? 'Si' : '',
+        placasDetalle:      document.getElementById('f-placas-detalle').value.trim(),
       };
     }
 
     function hayAlgunTipoSeleccionado() {
       return document.getElementById('f-reclamo-informado').checked  ||
              document.getElementById('f-reclamo-diagnostico').checked ||
-             document.getElementById('f-reclamo-turno').checked;
+             document.getElementById('f-reclamo-turno').checked ||
+             document.getElementById('f-reclamo-placas').checked;
     }
 
     // ── Búsqueda DNI ─────────────────────────────────────────────
@@ -1045,14 +1063,15 @@ function filtrarPorStat(tipo) {
     }
 
     function limpiarForm() {
-      ['f-dni-buscar','f-apellido','f-nombre','f-estudio','f-obs','f-turno-fecha','f-email']
+      ['f-dni-buscar','f-apellido','f-nombre','f-estudio','f-obs','f-turno-fecha','f-email','f-placas-detalle']
         .forEach(id => { document.getElementById(id).value = ''; });
       document.getElementById('f-fechaEstudio').value = '';
-      ['f-reclamo-informado','f-reclamo-diagnostico','f-reclamo-turno']
+      ['f-reclamo-informado','f-reclamo-diagnostico','f-reclamo-turno','f-reclamo-placas']
         .forEach(id => { document.getElementById(id).checked = false; });
-      ['check-informado-wrap','check-diagnostico-wrap','check-turno-wrap']
+      ['check-informado-wrap','check-diagnostico-wrap','check-turno-wrap','check-placas-wrap']
         .forEach(id => { document.getElementById(id).classList.remove('checked'); });
       document.getElementById('turno-fecha-wrap').classList.remove('visible');
+      document.getElementById('placas-detalle-wrap').classList.remove('visible');
       document.getElementById('vinculadoInfo').classList.remove('visible');
       renderHistorialDni([]);
       turnoVinculado = null;
@@ -1121,6 +1140,14 @@ function filtrarPorStat(tipo) {
           <input type="date" id="e-turno-fecha"
             value="${r.reclamoTurno && r.reclamoTurno !== 'Si' ? r.reclamoTurno : ''}"
             style="display:${r.reclamoTurno ? 'block' : 'none'}" />
+          <label style="display:flex;gap:10px;align-items:center;cursor:pointer">
+            <input type="checkbox" id="e-placas" ${r.reclamoPlacas ? 'checked' : ''}
+              onchange="document.getElementById('e-placas-detalle').style.display=this.checked?'block':'none'" />
+            <span style="font-size:.85rem">🩻 Placas viejas (reimpresión) — lo resuelve jefatura</span>
+          </label>
+          <input id="e-placas-detalle" value="${r.placasDetalle || ''}"
+            placeholder="Qué placas / de qué estudio y fecha"
+            style="display:${r.reclamoPlacas ? 'block' : 'none'}" />
           <div class="field"><label>Observaciones</label>
             <textarea id="e-obs">${r.observaciones || ''}</textarea></div>
           <button class="btn btn-primary" id="btnGuardar"
@@ -1143,6 +1170,8 @@ function filtrarPorStat(tipo) {
           fechaEstudio:       document.getElementById('e-fecha').value,
           reclamoDiagnostico: document.getElementById('e-diagnostico').checked ? 'Si' : '',
           reclamoTurno:       turnoChecked ? (turnoFecha || 'Si') : '',
+          reclamoPlacas:      document.getElementById('e-placas').checked ? 'Si' : '',
+          placasDetalle:      document.getElementById('e-placas-detalle').value.trim(),
           observaciones:      document.getElementById('e-obs').value.trim(),
           email:              document.getElementById('e-email').value.trim(),
         };

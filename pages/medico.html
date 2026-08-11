@@ -297,6 +297,7 @@
         <button class="filter-btn" onclick="setFiltro('turno',this)">🚨 Con turno médico</button>
         <button class="filter-btn" onclick="setFiltro('diagnostico',this)">🔬 Diagnóstico</button>
         <button class="filter-btn" onclick="setFiltro('informado',this)">📄 Sin informe</button>
+        <button class="filter-btn" onclick="setFiltro('placas',this)">🩻 Placas viejas</button>
         <button class="filter-btn" onclick="setFiltro('resuelto',this)">✅ Resueltos</button>
         <button class="filter-btn" onclick="setFiltro('todos',this)">Todos</button>
       </div>
@@ -337,6 +338,7 @@
         'turno':       'Con turno médico próximo',
         'diagnostico': 'Reclamos de diagnóstico',
         'informado':   'Sin informe',
+        'placas':      'Placas viejas (reimpresión)',
         'resuelto':    'Resueltos',
         'todos':       'Todos los reclamos',
       };
@@ -495,6 +497,7 @@
       else if (filtroActual === 'turno')       data = data.filter(r => r.reclamoTurno && r.estado === 'pendiente');
       else if (filtroActual === 'diagnostico') data = data.filter(r => r.reclamoDiagnostico && r.estado === 'pendiente');
       else if (filtroActual === 'informado')   data = data.filter(r => r.reclamoInformado && r.estado === 'pendiente');
+      else if (filtroActual === 'placas')      data = data.filter(r => r.reclamoPlacas && r.estado === 'pendiente');
       else if (filtroActual === 'resuelto')    data = data.filter(r => r.estado === 'resuelto');
 
       data.sort((a, b) => {
@@ -512,6 +515,7 @@
         const msgs = {
           pendiente:'🎉 No hay reclamos pendientes',turno:'✅ Sin turno médico pendiente',
           diagnostico:'✅ Sin reclamos de diagnóstico',informado:'✅ Sin reclamos sin informe',
+          placas:'✅ Sin placas pendientes de reimprimir',
           resuelto:'📭 No hay reclamos resueltos',todos:'📭 No hay reclamos cargados',
         };
         lista.innerHTML = '<div class="empty"><span>' + (busq ? '🔍' : '📭') + '</span>' +
@@ -543,6 +547,7 @@
       if (r.reclamoTurno)            return '<div class="prioridad-bar alta"></div>';
       if (r.reclamoDiagnostico)      return '<div class="prioridad-bar media"></div>';
       if (r.reclamoInformado)        return '<div class="prioridad-bar normal"></div>';
+      if (r.reclamoPlacas)           return '<div class="prioridad-bar media"></div>';
       return '';
     }
 
@@ -572,7 +577,10 @@
         placeholder="Comentario sobre el informe..."></textarea>`;
 
       let resolveButtons = '';
-      if (!regiones.length) {
+      if (r.reclamoPlacas) {
+        resolveButtons = `<button class="btn-resolver" id="btn-res-${r.id}"
+          onclick="marcarPlacasResueltas('${r.id}')">🩻 Marcar placas reimpresas</button>`;
+      } else if (!regiones.length) {
         resolveButtons = `<button class="btn-resolver" id="btn-res-${r.id}"
           onclick="marcarInformado('${r.id}')">✅ Marcar como Informado</button>`;
       } else if (regiones.length === 1) {
@@ -647,6 +655,8 @@
           ? `<div class="tipo-chip diagnostico">🔬 Reclamo de diagnóstico</div>` : '',
         r.reclamoInformado
           ? `<div class="tipo-chip informado">📄 Sin informe / fuera de fecha</div>` : '',
+        r.reclamoPlacas
+          ? `<div class="tipo-chip diagnostico">🩻 Placas viejas (reimpresión)</div>` : '',
       ].join('');
 
       return `
@@ -688,6 +698,10 @@
                 <div class="detail-label">Observaciones</div>
                 <div class="detail-value" style="color:var(--text2)">${formatObservacion(r.observaciones)}</div>
                 </div>` : ''}
+              ${r.placasDetalle ? `<div class="detail-full">
+                <div class="detail-label">🩻 Placas a reimprimir</div>
+                <div class="detail-value" style="color:var(--text2)">${r.placasDetalle}</div>
+                </div>` : ''}
             </div>
             <div class="badges">
               ${resuelto   ? '<span class="badge badge-resuelto">✅ Resuelto</span>'  : ''}
@@ -705,6 +719,21 @@
           </div>
           ${renderResolveArea(r, regs)}
         </div>`;
+    }
+
+    async function marcarPlacasResueltas(id) {
+      const comentario = (document.getElementById(`coment-${id}`)?.value || '').trim();
+      const btn = document.getElementById(`btn-res-${id}`);
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Guardando...'; }
+      delete comentariosTemp[`coment-${id}`];
+      try {
+        await resolverPlacas(id, comentario);
+        await recargar();
+        toast('✅ Placas marcadas como reimpresas.');
+      } catch(e) {
+        toast('❌ Error: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '🩻 Marcar placas reimpresas'; }
+      }
     }
 
     async function marcarInformado(id) {
