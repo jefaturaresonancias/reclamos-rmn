@@ -656,13 +656,13 @@ function cargarStats(s) {
         <div class="stat-num danger">${s.urgentes}</div>
         <div class="stat-label">Con turno</div>
       </div>
-      <div class="stat-box" onclick="filtrarPorStat('resuelto')" style="cursor:pointer" title="Ver resueltos sin entregar">
+      <div class="stat-box" onclick="filtrarPorStat('resuelto')" style="cursor:pointer" title="Informados por el médico, todavía sin mandar el mail">
         <div class="stat-num success">${s.resueltos}</div>
-        <div class="stat-label">Resueltos sin entregar</div>
+        <div class="stat-label">Resueltos sin enviar</div>
       </div>
-      <div class="stat-box" onclick="filtrarPorStat('entregado')" style="cursor:pointer" title="Ver enviados">
-        <div class="stat-num" style="color:var(--accent)">${s.entregados}</div>
-        <div class="stat-label">✉️ Enviados</div>
+      <div class="stat-box" onclick="filtrarPorStat('enviadoMail')" style="cursor:pointer" title="Informes mandados por mail (no cuenta entregas físicas viejas en DVD)">
+        <div class="stat-num" style="color:var(--accent)">${s.enviadosMail}</div>
+        <div class="stat-label">✉️ Enviados por mail</div>
       </div>
       <div class="stat-box" onclick="filtrarPorStat('recitados')"
         style="cursor:pointer" title="Ver pacientes por recitar">
@@ -801,6 +801,7 @@ function cargarStats(s) {
         'resuelto':         'Resueltos por médico',
         'revisado-admin':   'Revisados por administrativo',
         'entregado':        'Entregados',
+        'enviado':          'Enviados por mail',
         'archivado':        'Archivados (+3 meses)',
         'recitar':          'Por recitar (sin turno asignado)',
         'recitado':         'Recitados (turno ya asignado)',
@@ -820,6 +821,25 @@ function cargarStats(s) {
       document.getElementById('btnEntregarTodoWrap').style.display = estado === 'resuelto' ? 'flex' : 'none';
       if (estado === 'resuelto') actualizarBotonCorrerBot();
       filtrarLista();
+    }
+
+    // Informes efectivamente mandados por mail — informeEstado, no estado
+    // (ver comentario en filtrarPorStat sobre por qué no usar 'entregado').
+    function mostrarEnviados() {
+      const data = todosLosReclamos.filter(r => r.informeEstado === 'enviado' && !r.archivado);
+      actualizarListaHeader('enviado', data.length);
+      renderLista(data);
+    }
+
+    // Subtab "Enviados" dentro de la familia "Resueltos" — misma lista que
+    // mostrarEnviados(), pero mantiene el tab activo marcado y el botón de
+    // "Enviar todo" oculto (no aplica a algo que ya se mandó).
+    function mostrarEnviadosSubtab() {
+      document.querySelectorAll('#filtroEstadoTabs .filter-btn').forEach(function(b){
+        b.classList.toggle('active', b.dataset.estado === 'enviado');
+      });
+      document.getElementById('btnEntregarTodoWrap').style.display = 'none';
+      mostrarEnviados();
     }
 
     // Muestra "Correr bot de informes" solo cuando hay resueltos cuyo
@@ -1032,14 +1052,26 @@ function filtrarPorStat(tipo) {
   document.getElementById('lista').style.display = '';
   document.getElementById('listaRecitados').style.display = 'none';
 
-  // ── Familia "Resueltos": Resueltos sin entregar / Entregados ──
+  // ── Familia "Resueltos": Resueltos sin enviar / Enviados ──
   if (tipo === 'resuelto') {
     tabsWrap.innerHTML =
       '<button class="filter-btn active" data-estado="resuelto" ' +
-        'onclick="setFiltroEstado(\'resuelto\')">✅ Resueltos sin entregar</button>' +
-      '<button class="filter-btn" data-estado="entregado" ' +
-        'onclick="setFiltroEstado(\'entregado\')">✉️ Enviados</button>';
+        'onclick="setFiltroEstado(\'resuelto\')">✅ Resueltos sin enviar</button>' +
+      '<button class="filter-btn" data-estado="enviado" ' +
+        'onclick="mostrarEnviadosSubtab()">✉️ Enviados</button>';
     setFiltroEstado('resuelto');
+    document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
+    return;
+  }
+
+  // ── Card "Enviados" del grid principal: mismo criterio que el subtab de
+  // arriba (informeEstado === 'enviado', el mail realmente salió), no
+  // estado === 'entregado' — ese campo viene de la entrega física en DVD
+  // de antes del sistema de mail, y mezclarlos infla el número sin
+  // reflejar nada de lo que se mandó hoy.
+  if (tipo === 'enviadoMail') {
+    tabsWrap.innerHTML = '';
+    mostrarEnviados();
     document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
     return;
   }
