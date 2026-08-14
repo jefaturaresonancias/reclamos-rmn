@@ -170,6 +170,33 @@
       font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;transition:opacity .2s;}
     .btn-recitar-confirm:disabled{opacity:.5;cursor:not-allowed;}
 
+    .rctr-modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);
+      display:none;align-items:center;justify-content:center;padding:20px;}
+    .rctr-modal-overlay.open{display:flex;}
+    .rctr-modal-box{background:var(--surface);border:1px solid rgba(6,182,212,.3);
+      border-radius:20px;padding:28px;width:440px;max-width:92vw;
+      display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+    .rctr-modal-title{font-family:'DM Serif Display',serif;font-size:1.2rem;
+      font-weight:400;color:var(--recitar);}
+    .rctr-modal-box label{font-size:.72rem;color:var(--text2);font-weight:600;
+      display:block;margin-bottom:4px;}
+    .rctr-modal-box input,.rctr-modal-box textarea{width:100%;padding:9px 12px;
+      background:var(--surface2);border:1px solid var(--border);border-radius:8px;
+      color:var(--text);font-family:'DM Sans',sans-serif;font-size:.85rem;
+      outline:none;transition:border-color .2s;}
+    .rctr-modal-box input:focus,.rctr-modal-box textarea:focus{border-color:var(--recitar);}
+    .rctr-modal-box textarea{resize:vertical;min-height:70px;}
+    .rctr-modal-row{display:flex;gap:10px;}
+    .rctr-modal-row > div{flex:1;}
+    .rctr-modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:4px;}
+    .rctr-modal-cancel{padding:9px 18px;border-radius:10px;background:none;
+      border:1px solid var(--border);color:var(--text2);cursor:pointer;
+      font-family:'DM Sans',sans-serif;font-size:.85rem;}
+    .rctr-modal-confirm{padding:9px 18px;border-radius:10px;background:var(--recitar);
+      border:none;color:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;
+      font-size:.85rem;font-weight:500;transition:opacity .2s;}
+    .rctr-modal-confirm:disabled{opacity:.5;cursor:not-allowed;}
+
     .resuelto-banner{background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);
       border-radius:var(--r);padding:10px 14px;font-size:.8rem;color:var(--success);
       display:flex;flex-direction:column;gap:4px;}
@@ -285,9 +312,16 @@
       </div>
     </div>
 
-    <div class="search-wrap">
-      <span class="search-icon">🔍</span>
-      <input id="buscar" placeholder="Buscar por apellido o DNI..." oninput="renderLista()" />
+    <div class="search-wrap" style="display:flex;gap:10px;align-items:center;">
+      <div style="flex:1;position:relative;">
+        <span class="search-icon">🔍</span>
+        <input id="buscar" placeholder="Buscar por apellido o DNI..." oninput="renderLista()" />
+      </div>
+      <button onclick="abrirSolicitarRecitado()"
+        style="flex-shrink:0;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);
+        color:var(--recitar);padding:10px 16px;border-radius:var(--r);cursor:pointer;
+        font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;white-space:nowrap;">
+        🔄 Solicitar recitado</button>
     </div>
 
     <div class="filters-section">
@@ -298,6 +332,7 @@
         <button class="filter-btn" onclick="setFiltro('diagnostico',this)">🔬 Diagnóstico</button>
         <button class="filter-btn" onclick="setFiltro('informado',this)">📄 Sin informe</button>
         <button class="filter-btn" onclick="setFiltro('placas',this)">🩻 Placas viejas</button>
+        <button class="filter-btn" onclick="setFiltro('recitados',this)">🔄 Recitados</button>
         <button class="filter-btn" onclick="setFiltro('resuelto',this)">✅ Resueltos</button>
         <button class="filter-btn" onclick="setFiltro('todos',this)">Todos</button>
       </div>
@@ -320,6 +355,40 @@
     </div>
   </div>
 
+  <div class="rctr-modal-overlay" id="rctrModalOverlay">
+    <div class="rctr-modal-box">
+      <div class="rctr-modal-title">🔄 Solicitar recitado</div>
+      <div style="font-size:.8rem;color:var(--text2);line-height:1.5;">
+        Para un paciente que necesita repetir el estudio — no hace falta que
+        tenga un reclamo cargado. Administrativo lo va a ver en "Por recitar"
+        para llamarlo y asignarle turno nuevo.
+      </div>
+      <div class="rctr-modal-row">
+        <div><label>Apellido *</label><input id="rctr-apellido" placeholder="García" /></div>
+        <div><label>Nombre *</label><input id="rctr-nombre" placeholder="Juan" /></div>
+      </div>
+      <div class="rctr-modal-row">
+        <div><label>DNI *</label><input id="rctr-dni" type="number" placeholder="12345678" /></div>
+        <div><label>Estudio *</label><input id="rctr-estudio" placeholder="Rm de cerebro con contraste" /></div>
+      </div>
+      <div>
+        <label>Motivo *</label>
+        <div class="recitar-chips" style="margin-bottom:6px;">
+          <button type="button" class="chip-motivo" onclick="agregarMotivoChipRctr('Mala imagen')">Mala imagen</button>
+          <button type="button" class="chip-motivo" onclick="agregarMotivoChipRctr('Movimiento del paciente')">Movimiento</button>
+          <button type="button" class="chip-motivo" onclick="agregarMotivoChipRctr('Artefacto')">Artefacto</button>
+          <button type="button" class="chip-motivo" onclick="agregarMotivoChipRctr('Estudio incompleto')">Estudio incompleto</button>
+        </div>
+        <textarea id="rctr-motivo" placeholder="Mala imagen, movimiento, artefacto, etc."></textarea>
+      </div>
+      <div id="rctr-error" style="font-size:.78rem;color:#ef4444;min-height:1.1em;"></div>
+      <div class="rctr-modal-actions">
+        <button class="rctr-modal-cancel" onclick="cerrarSolicitarRecitado()">Cancelar</button>
+        <button class="rctr-modal-confirm" id="rctr-modal-confirm-btn" onclick="confirmarSolicitarRecitado()">Solicitar recitado</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
   <script src="../js/api.js"></script>
   <script>
@@ -328,6 +397,7 @@
     let regionesConfig   = {};
     let todosLosReclamos = [];
     let recitadosData    = [];
+    let recitadosEsperandoAsistencia = [];
     let filtroColumnaActual = null;
     const reclamoRegionesMap = {};
     const comentariosTemp    = {}; // ← guarda comentarios entre re-renders
@@ -341,6 +411,7 @@
         'placas':      'Placas viejas (reimpresión)',
         'resuelto':    'Resueltos',
         'todos':       'Todos los reclamos',
+        'recitados':   'Recitados confirmados',
       };
       document.getElementById('seccionTitulo').textContent =
         titulos[filtro] || 'Reclamos';
@@ -390,6 +461,14 @@
         (regionesConfig[a]?.numero || 0) - (regionesConfig[b]?.numero || 0));
     }
 
+    // Un 'recitado' recién es informable cuando bot-verificar-recitados.js
+    // confirmó que el paciente se presentó al turno nuevo — antes de eso
+    // no debería aparecer como accionable en la cola (queda en la sección
+    // aparte, ver recitadosEsperandoAsistencia).
+    function esRecitadoInformable(r) {
+      return r.estado === 'recitado' && !!r.recitarAtendidoEn;
+    }
+
     function reclamoEnRegion(r, region) {
       if (!region) return true;
       return getRegionesDeEstudio(r.estudio).includes(region);
@@ -400,6 +479,11 @@
         const dash = await getDashboard();
         todosLosReclamos = dash.list;
         recitadosData    = dash.recitados;
+        // 'recitado' (turno ya asignado) pero todavía sin confirmar que el
+        // paciente se presentó (bot-verificar-recitados.js) — no van a la
+        // cola normal, se muestran aparte como "esperando" nomás.
+        recitadosEsperandoAsistencia = todosLosReclamos.filter(
+          r => r.estado === 'recitado' && !r.recitarAtendidoEn);
         actualizarPendingBadge();
         if (todosLosReclamos.length === 0) {
           document.getElementById('lista').innerHTML =
@@ -429,19 +513,20 @@
       const lista   = document.getElementById('listaRecitados');
       const count   = document.getElementById('recitadosSectionCount');
 
+      const total = recitadosData.length + recitadosEsperandoAsistencia.length;
       const pill = document.getElementById('recitadosPill');
-      if (recitadosData.length > 0) {
-        pill.textContent = '🔄 ' + recitadosData.length + ' recitado' +
-          (recitadosData.length !== 1 ? 's' : '') + ' esperando turno';
+      if (total > 0) {
+        pill.textContent = '🔄 ' + total + ' recitado' + (total !== 1 ? 's' : '') + ' en curso';
         pill.style.display = 'inline';
       } else {
         pill.style.display = 'none';
       }
 
-      if (!recitadosData.length) { section.style.display = 'none'; return; }
+      if (!total) { section.style.display = 'none'; return; }
       section.style.display = 'flex';
-      count.textContent = `${recitadosData.length} paciente${recitadosData.length !== 1 ? 's' : ''} esperando turno`;
-      lista.innerHTML = recitadosData.map(r => `
+      count.textContent = `${total} paciente${total !== 1 ? 's' : ''} en curso`;
+
+      const cardEsperandoTurno = r => `
         <div class="recitado-info-card">
           <div style="display:flex;align-items:center;gap:10px;">
             <div class="card-num-badge">#${r.nroReclamo || r.id}</div>
@@ -457,7 +542,29 @@
           <div style="font-size:.72rem;color:var(--text3)">
             ⏳ Esperando que el administrativo asigne nuevo turno
           </div>
-        </div>`).join('');
+        </div>`;
+
+      const cardEsperandoAsistencia = r => `
+        <div class="recitado-info-card">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div class="card-num-badge">#${r.nroReclamo || r.id}</div>
+            <div style="flex:1">
+              <div style="font-weight:600">${r.apellido}, ${r.nombre}</div>
+              <div style="font-size:.75rem;color:var(--text3)">DNI ${r.dni} · ${r.estudio}</div>
+            </div>
+            <span style="font-size:.7rem;background:rgba(6,182,212,.12);color:var(--recitar);
+              padding:3px 10px;border-radius:100px;font-weight:600;white-space:nowrap;">
+              ${r.recitarCodigo}</span>
+          </div>
+          <div class="recitado-motivo-box">💬 <strong>Motivo:</strong> ${r.recitarMotivo}</div>
+          <div style="font-size:.72rem;color:var(--text3)">
+            📅 Turno nuevo: ${r.recitarFechaNuevo || '—'} · esperando que se presente
+          </div>
+        </div>`;
+
+      lista.innerHTML =
+        recitadosData.map(cardEsperandoTurno).join('') +
+        recitadosEsperandoAsistencia.map(cardEsperandoAsistencia).join('');
     }
 
     function actualizarPendingBadge() {
@@ -489,16 +596,21 @@
         String(r.dni).includes(busq));
       if (regionActual) data = data.filter(r => reclamoEnRegion(r, regionActual));
       if (filtroColumnaActual === 'parcial') {
-      data = data.filter(r => esColumna(r.estudio) && (r.estado === 'pendiente' || r.estado === 'recitado'));
+      data = data.filter(r => esColumna(r.estudio) && (r.estado === 'pendiente' || esRecitadoInformable(r)));
     } else if (filtroColumnaActual === 'completa') {
-      data = data.filter(r => esColumnaCompleta(r.estudio) && (r.estado === 'pendiente' || r.estado === 'recitado'));
+      data = data.filter(r => esColumnaCompleta(r.estudio) && (r.estado === 'pendiente' || esRecitadoInformable(r)));
     }
-      if      (filtroActual === 'pendiente')   data = data.filter(r => r.estado === 'pendiente' || r.estado === 'recitado');
+      if      (filtroActual === 'pendiente')   data = data.filter(r => r.estado === 'pendiente' || esRecitadoInformable(r));
       else if (filtroActual === 'turno')       data = data.filter(r => r.reclamoTurno && r.estado === 'pendiente');
       else if (filtroActual === 'diagnostico') data = data.filter(r => r.reclamoDiagnostico && r.estado === 'pendiente');
       else if (filtroActual === 'informado')   data = data.filter(r => r.reclamoInformado && r.estado === 'pendiente');
       else if (filtroActual === 'placas')      data = data.filter(r => r.reclamoPlacas && r.estado === 'pendiente');
       else if (filtroActual === 'resuelto')    data = data.filter(r => r.estado === 'resuelto');
+      else if (filtroActual === 'recitados')   data = data.filter(r => esRecitadoInformable(r));
+      // 'todos' no tiene filtro de estado propio, pero igual hay que sacar
+      // los recitados sin confirmar — si no, quedarían accionables acá
+      // aunque el paciente ni se haya presentado al turno nuevo.
+      data = data.filter(r => r.estado !== 'recitado' || esRecitadoInformable(r));
 
       data.sort((a, b) => {
         const pa = prioridad(a), pb = prioridad(b);
@@ -517,6 +629,7 @@
           diagnostico:'✅ Sin reclamos de diagnóstico',informado:'✅ Sin reclamos sin informe',
           placas:'✅ Sin placas pendientes de reimprimir',
           resuelto:'📭 No hay reclamos resueltos',todos:'📭 No hay reclamos cargados',
+          recitados:'✅ Sin recitados confirmados para informar',
         };
         lista.innerHTML = '<div class="empty"><span>' + (busq ? '🔍' : '📭') + '</span>' +
           (busq ? `Sin resultados para "<strong>${busq}</strong>"` :
@@ -802,6 +915,57 @@
       } catch(e) {
         toast('❌ Error: ' + e.message, 'error');
         if (btn) { btn.disabled = false; btn.textContent = '✔ Confirmar recitar'; }
+      }
+    }
+
+    // ── Solicitar recitado sin partir de un reclamo (modal standalone) ──
+    function abrirSolicitarRecitado() {
+      ['rctr-apellido','rctr-nombre','rctr-dni','rctr-estudio','rctr-motivo'].forEach(id => {
+        document.getElementById(id).value = '';
+      });
+      document.getElementById('rctr-error').textContent = '';
+      document.getElementById('rctrModalOverlay').classList.add('open');
+      document.getElementById('rctr-apellido').focus();
+    }
+
+    function cerrarSolicitarRecitado() {
+      document.getElementById('rctrModalOverlay').classList.remove('open');
+    }
+
+    function agregarMotivoChipRctr(texto) {
+      const el = document.getElementById('rctr-motivo');
+      const actual = el.value.trim();
+      el.value = actual ? actual + ', ' + texto : texto;
+      el.focus();
+    }
+
+    async function confirmarSolicitarRecitado() {
+      const data = {
+        apellido: document.getElementById('rctr-apellido').value.trim(),
+        nombre:   document.getElementById('rctr-nombre').value.trim(),
+        dni:      document.getElementById('rctr-dni').value.trim(),
+        estudio:  document.getElementById('rctr-estudio').value.trim(),
+        motivo:   document.getElementById('rctr-motivo').value.trim(),
+      };
+      const errorEl = document.getElementById('rctr-error');
+      if (!data.apellido || !data.nombre || !data.dni || !data.estudio || !data.motivo) {
+        errorEl.textContent = 'Completá todos los campos.';
+        return;
+      }
+      errorEl.textContent = '';
+      const btn = document.getElementById('rctr-modal-confirm-btn');
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      try {
+        await solicitarRecitado(data);
+        cerrarSolicitarRecitado();
+        await recargar();
+        toast('🔄 Recitado solicitado — administrativo lo va a ver en "Por recitar".');
+      } catch (e) {
+        errorEl.textContent = 'Error: ' + e.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Solicitar recitado';
       }
     }
 

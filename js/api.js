@@ -189,6 +189,11 @@ async function asignarTurnoRecitado(id, fechaNuevo) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+async function solicitarRecitado(data) {
+  const result = await apiPost({ action: 'solicitarRecitado', data });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
 async function entregarReclamo(id) {
   const result = await apiPost({ action: 'entregar', id });
   if (!result.ok) throw new Error(result.error);
