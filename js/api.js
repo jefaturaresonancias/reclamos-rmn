@@ -222,3 +222,13 @@ async function rechazarInforme(id, motivo) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+async function getInformesRebotados() {
+  const result = await apiGet({ action: 'listarInformesRebotados' });
+  if (!result.ok) throw new Error(result.error);
+  return result.rebotados;
+}
+async function reintentarEnvioInforme(id) {
+  const result = await apiPost({ action: 'reintentarEnvioInforme', id });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
