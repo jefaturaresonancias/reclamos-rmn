@@ -660,6 +660,10 @@ function cargarStats(s) {
         <div class="stat-num success">${s.resueltos}</div>
         <div class="stat-label">Resueltos sin entregar</div>
       </div>
+      <div class="stat-box" onclick="filtrarPorStat('entregado')" style="cursor:pointer" title="Ver enviados">
+        <div class="stat-num" style="color:var(--accent)">${s.entregados}</div>
+        <div class="stat-label">✉️ Enviados</div>
+      </div>
       <div class="stat-box" onclick="filtrarPorStat('recitados')"
         style="cursor:pointer" title="Ver pacientes por recitar">
         <div class="stat-num" style="color:var(--recitar)">
@@ -1034,7 +1038,7 @@ function filtrarPorStat(tipo) {
       '<button class="filter-btn active" data-estado="resuelto" ' +
         'onclick="setFiltroEstado(\'resuelto\')">✅ Resueltos sin entregar</button>' +
       '<button class="filter-btn" data-estado="entregado" ' +
-        'onclick="setFiltroEstado(\'entregado\')">📦 Entregados</button>';
+        'onclick="setFiltroEstado(\'entregado\')">✉️ Enviados</button>';
     setFiltroEstado('resuelto');
     document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
     return;
@@ -1118,10 +1122,6 @@ function filtrarPorStat(tipo) {
     async function enviarInforme(id) {
       try {
         await confirmarEnvioInforme(id);
-        await entregarReclamo(id);
-        await recargar();
-        toast('✉️ Informe enviado por mail');
-        cerrarModal();
       } catch(e) {
         if (/no tiene email cargado/i.test(e.message)) {
           const email = prompt('Este reclamo no tiene email cargado. Ingresalo para enviar el informe:');
@@ -1141,6 +1141,33 @@ function filtrarPorStat(tipo) {
           return;
         }
         toast('❌ Error: ' + e.message, 'error');
+        return;
+      }
+
+      // El mail ya salió — separado del try de arriba a propósito: si esto
+      // falla, no es lo mismo que "no se mandó nada" (mensaje que confundía
+      // acá antes, ej. reintentar mostraba "el bot no bajó el informe"
+      // cuando en realidad ya se había mandado y borrado el temporal).
+      try {
+        await entregarConReintento(id);
+        toast('✉️ Informe enviado por mail');
+      } catch (e) {
+        toast('✉️ El mail se mandó, pero no se pudo marcar como entregado: ' + e.message, 'error');
+      }
+      await recargar();
+      cerrarModal();
+    }
+
+    // entregarReclamo() es idempotente (solo pisa estado/fecha) — un
+    // reintento acá no tiene riesgo, y evita que un hipo transitorio del
+    // backend deje un reclamo "mandado pero no archivado" como pasó en
+    // producción el 2026-08-14 (29 reclamos, coincidió con un deploy).
+    async function entregarConReintento(id) {
+      try {
+        await entregarReclamo(id);
+      } catch (e) {
+        await new Promise(res => setTimeout(res, 1500));
+        await entregarReclamo(id);
       }
     }
 
@@ -1581,18 +1608,26 @@ async function enviarTodo() {
   const btn = document.getElementById('btnEntregarTodo');
   btn.disabled = true;
   btn.textContent = '⏳ Enviando...';
-  let enviados = 0, fallidos = 0;
+  let enviados = 0, fallidos = 0, sinArchivar = 0;
   try {
     for (const r of listos) {
+      // Separado a propósito: si confirmarEnvioInforme sale bien pero
+      // entregarReclamo falla (ej. un deploy del backend justo en el medio
+      // de la corrida — pasó en producción el 2026-08-14, 29 reclamos
+      // quedaron mandados pero sin marcar entregado), no queremos contar
+      // eso como un envío fallido — el mail ya salió.
       try {
         await confirmarEnvioInforme(r.id);
-        await entregarReclamo(r.id);
-        enviados++;
-      } catch (e) { fallidos++; }
+      } catch (e) { fallidos++; continue; }
+      try {
+        await entregarConReintento(r.id);
+      } catch (e) { sinArchivar++; }
+      enviados++;
     }
     await recargar();
     const salteados = resueltos.length - listos.length;
     toast(`✉️ ${enviados} informe${enviados !== 1 ? 's' : ''} enviado${enviados !== 1 ? 's' : ''}` +
+      (sinArchivar ? ` · ${sinArchivar} mandado(s) pero no se pudo marcar entregado (avisale a sistemas)` : '') +
       (fallidos ? ` · ${fallidos} con error` : '') +
       (salteados ? ` · ${salteados} sin informe listo todavía` : ''));
   } finally {
