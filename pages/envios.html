@@ -200,6 +200,7 @@
               <button class="btn btn-danger" data-rechazar="${r.id}">✕ Rechazar</button>
               <a href="${previewUrl(r.id)}" target="_blank" rel="noopener" class="btn btn-ghost"
                 style="text-decoration:none;text-align:center;display:block">↗ Abrir en pestaña</a>
+              <button class="btn btn-ghost" data-marcar-enviado="${r.id}">📌 Ya se mandó por otra vía</button>
             </div>
           </div>
         </div>
@@ -210,6 +211,9 @@
       });
       wrap.querySelectorAll('[data-rechazar]').forEach(btn => {
         btn.addEventListener('click', () => onRechazar(btn.dataset.rechazar));
+      });
+      wrap.querySelectorAll('[data-marcar-enviado]').forEach(btn => {
+        btn.addEventListener('click', () => onMarcarEnviado(btn.dataset.marcarEnviado, btn));
       });
       wrap.querySelectorAll('[data-email-val]').forEach(el => {
         el.addEventListener('click', () => onEditarEmail(el.dataset.emailVal));
@@ -397,6 +401,27 @@
         toast('Error: ' + err.message, 'error');
         btn.disabled = false;
         btn.textContent = '✓ Confirmar y enviar';
+      }
+    }
+
+    // No manda ningún mail — es para cuando el informe ya se le entregó al
+    // paciente por otra vía y solo hace falta archivar el reclamo y liberar
+    // el temporal.
+    async function onMarcarEnviado(id, btn) {
+      const reclamo = _actual.find(r => r.id === id);
+      if (!confirm(`¿Marcar como enviado a ${reclamo ? reclamo.apellido + ', ' + reclamo.nombre : 'este reclamo'} SIN mandar el mail?\n\nUsalo solo si ya se lo entregaste por otra vía. Esto borra el PDF temporal igual y no se puede deshacer.`)) return;
+      btn.disabled = true;
+      btn.textContent = 'Marcando…';
+      try {
+        await marcarComoEnviado(id);
+        _enviados = null;
+        toast('Marcado como enviado ✓', 'ok');
+        cargar();
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        toast('Error: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '📌 Ya se mandó por otra vía';
       }
     }
 
