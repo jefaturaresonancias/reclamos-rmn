@@ -227,6 +227,11 @@ async function getInformesRebotados() {
   if (!result.ok) throw new Error(result.error);
   return result.rebotados;
 }
+async function getInformesEnviados(dias) {
+  const result = await apiGet({ action: 'listarInformesEnviados', ...(dias ? { dias } : {}) });
+  if (!result.ok) throw new Error(result.error);
+  return result.enviados;
+}
 async function reintentarEnvioInforme(id) {
   const result = await apiPost({ action: 'reintentarEnvioInforme', id });
   if (!result.ok) throw new Error(result.error);

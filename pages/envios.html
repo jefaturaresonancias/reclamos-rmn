@@ -90,6 +90,20 @@
     .rebote-body .email-box{flex:1;min-width:200px;}
     .rebote-body .btn{width:auto;white-space:nowrap;}
 
+    .nav-toggle{background:none;border:1px solid var(--border);color:var(--text2);
+      font-family:'DM Sans',sans-serif;font-size:.8rem;border-radius:100px;padding:6px 14px;
+      cursor:pointer;transition:all .2s;}
+    .nav-toggle:hover{border-color:var(--accent);color:var(--text);}
+    .enviados-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+      overflow:hidden;}
+    .enviados-panel .card-head{padding:14px 20px;}
+    .enviados-list{max-height:360px;overflow-y:auto;}
+    .enviado-row{display:flex;align-items:center;gap:14px;padding:10px 20px;font-size:.82rem;
+      border-top:1px solid var(--border);flex-wrap:wrap;}
+    .enviado-row .nom{flex:1;min-width:140px;color:var(--text);}
+    .enviado-row .email{color:var(--text2);word-break:break-all;flex:1;min-width:160px;}
+    .enviado-row .fecha{color:var(--text3);font-size:.76rem;white-space:nowrap;}
+
     .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
       background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
       padding:12px 20px;font-size:.85rem;opacity:0;pointer-events:none;transition:all .25s;z-index:999;}
@@ -105,10 +119,14 @@
       <span class="nav-title">Envíos de informes</span>
       <span class="nav-badge" id="contadorBadge">Reclamos RMN</span>
     </div>
-    <a href="administrativo.html" class="nav-back">← Volver a Administrativo</a>
+    <div style="display:flex;align-items:center;gap:14px;">
+      <button class="nav-toggle" id="btnVerEnviados">📋 Ver enviados</button>
+      <a href="administrativo.html" class="nav-back">← Volver a Administrativo</a>
+    </div>
   </nav>
 
   <div class="wrap" id="wrap">
+    <div id="enviadosPanel" style="display:none"></div>
     <div id="rebotadosWrap"></div>
     <div id="listosWrap"><div class="spinner"></div></div>
   </div>
@@ -119,6 +137,7 @@
   <script>
     let _actual = [];
     let _rebotados = [];
+    let _enviados = null; // null = todavía no se pidió
 
     function _buscar(id) {
       return _actual.find(r => r.id === id) || _rebotados.find(r => r.id === id);
@@ -237,6 +256,47 @@
       });
     }
 
+    async function toggleEnviados() {
+      const panel = document.getElementById('enviadosPanel');
+      const abierto = panel.style.display !== 'none';
+      if (abierto) { panel.style.display = 'none'; return; }
+
+      panel.style.display = 'block';
+      if (_enviados === null) {
+        panel.innerHTML = `<div class="spinner"></div>`;
+        try {
+          _enviados = await getInformesEnviados(30);
+        } catch (err) {
+          if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+          panel.innerHTML = `<div class="empty"><div class="big">⚠️</div><div>Error: ${err.message}</div></div>`;
+          return;
+        }
+      }
+      renderEnviados(_enviados);
+    }
+
+    function renderEnviados(lista) {
+      const panel = document.getElementById('enviadosPanel');
+      if (!lista.length) {
+        panel.innerHTML = `<div class="empty" style="padding:30px 20px;">
+          <div>No se mandó ningún informe en los últimos 30 días</div></div>`;
+        return;
+      }
+      panel.innerHTML = `
+        <div class="enviados-panel">
+          <div class="card-head"><h3>✓ Enviados — últimos 30 días</h3></div>
+          <div class="enviados-list">
+            ${lista.map(r => `
+              <div class="enviado-row">
+                <span class="nom">${r.apellido}, ${r.nombre} · DNI ${r.dni}</span>
+                <span class="email">${r.email || '—'}</span>
+                <span class="fecha">${r.informeFecha}</span>
+              </div>
+            `).join('')}
+          </div>
+        </div>`;
+    }
+
     async function onReintentar(id, btn) {
       const reclamo = _buscar(id);
       if (!reclamo || !reclamo.email) { toast('Cargá un email antes de reintentar', 'error'); return; }
@@ -323,11 +383,13 @@
 
     async function onConfirmar(id, btn) {
       const reclamo = _actual.find(r => r.id === id);
-      if (!confirm(`¿Confirmar el envío del informe a ${reclamo ? reclamo.email : 'este contacto'}?\n\nEsta acción manda el mail de verdad, borra el PDF temporal cargado y no se puede deshacer.`)) return;
+      if (!confirm(`¿Enviar el informe a ${reclamo ? reclamo.email : 'este contacto'}?\n\nEsta acción manda el mail de verdad.`)) return;
+      if (!confirm(`Al enviarlo se va a borrar el PDF temporal cargado y el reclamo va a pasar a "enviado". No se puede deshacer.\n\n¿Confirmás?`)) return;
       btn.disabled = true;
       btn.textContent = 'Enviando…';
       try {
         await confirmarEnvioInforme(id);
+        _enviados = null; // el historial quedó desactualizado
         toast('Informe enviado ✓', 'ok');
         cargar();
       } catch (err) {
@@ -351,6 +413,7 @@
       }
     }
 
+    document.getElementById('btnVerEnviados').addEventListener('click', toggleEnviados);
     verificarConfig(() => verificarPin(cargar));
   </script>
 </body>
