@@ -389,23 +389,41 @@
       }
     }
 
+    // Dos acciones independientes, cada una con su propia confirmación: la
+    // primera manda el mail de verdad y pasa pase lo que pase con la
+    // segunda; la segunda (borrar el temporal + archivar como "enviado")
+    // se pregunta después y por separado — si se cancela, el mail ya salió
+    // igual y el reclamo sigue en la cola.
     async function onConfirmar(id, btn) {
       const reclamo = _actual.find(r => r.id === id);
-      if (!confirm(`¿Enviar el informe a ${reclamo ? reclamo.email : 'este contacto'}?\n\nEsta acción manda el mail de verdad.`)) return;
-      if (!confirm(`Al enviarlo se va a borrar el PDF temporal cargado y el reclamo va a pasar a "enviado". No se puede deshacer.\n\n¿Confirmás?`)) return;
+      if (!confirm(`¿Enviar el informe a ${reclamo ? reclamo.email : 'este contacto'}?\n\nEsta acción manda el mail de verdad y no se puede deshacer.`)) return;
       btn.disabled = true;
       btn.textContent = 'Enviando…';
       try {
-        await confirmarEnvioInforme(id);
-        _enviados = null; // el historial quedó desactualizado
-        toast('Informe enviado ✓', 'ok');
-        cargar();
+        await enviarMailInforme(id);
+        toast('Mail enviado ✓', 'ok');
       } catch (err) {
         if (err.message === 'PIN inválido') { _sesionVencida(); return; }
-        toast('Error: ' + err.message, 'error');
+        toast('Error al enviar: ' + err.message, 'error');
         btn.disabled = false;
         btn.textContent = '✓ Confirmar y enviar';
+        return;
       }
+
+      const archivar = confirm('El mail ya se mandó. ¿Confirmás borrar el PDF temporal y archivar el reclamo como "enviado"?');
+      if (archivar) {
+        try {
+          await marcarComoEnviado(id);
+          _enviados = null; // el historial quedó desactualizado
+          toast('Archivado ✓', 'ok');
+        } catch (err) {
+          if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+          toast('El mail se mandó, pero no se pudo archivar: ' + err.message, 'error');
+        }
+      } else {
+        toast('Mail enviado — el reclamo sigue en la cola sin archivar', 'ok');
+      }
+      cargar();
     }
 
     // No manda ningún mail — es para cuando el informe ya se le entregó al

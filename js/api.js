@@ -212,6 +212,11 @@ async function confirmarEnvioInforme(id) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+async function enviarMailInforme(id) {
+  const result = await apiPost({ action: 'enviarMailInforme', id });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
 async function marcarComoEnviado(id) {
   const result = await apiPost({ action: 'marcarComoEnviado', id });
   if (!result.ok) throw new Error(result.error);
