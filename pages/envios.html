@@ -349,6 +349,10 @@
       const input = box.querySelector('input');
       const email = input.value.trim();
       if (!email) { toast('Ingresá un email', 'error'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        toast('Ese email no tiene un formato válido (¿falta la @?)', 'error');
+        return;
+      }
       const saveBtn = box.querySelector('[data-guardar-email]');
       saveBtn.disabled = true;
       saveBtn.textContent = 'Guardando…';
