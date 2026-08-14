@@ -56,6 +56,16 @@
       display:block;margin-bottom:4px;}
     .email-box .val{color:var(--text);word-break:break-all;}
     .email-box .missing{color:var(--danger);font-style:italic;}
+    .email-box .val.editable{cursor:pointer;}
+    .email-box .val.editable:hover{text-decoration:underline;}
+    .email-box .edit-row{display:flex;gap:6px;margin-top:4px;}
+    .email-box input{flex:1;min-width:0;background:var(--surface);border:1px solid var(--border);
+      border-radius:8px;color:var(--text);font-size:.82rem;padding:6px 8px;font-family:'DM Sans',sans-serif;}
+    .email-box input:focus{outline:none;border-color:var(--accent);}
+    .email-box .edit-row button{flex-shrink:0;padding:6px 10px;border-radius:8px;border:none;
+      cursor:pointer;font-size:.78rem;font-family:'DM Sans',sans-serif;}
+    .email-box .edit-row .save{background:var(--success);color:#04140e;}
+    .email-box .edit-row .cancel{background:transparent;border:1px solid var(--border);color:var(--text2);}
 
     .btn{padding:11px 16px;border-radius:var(--r);border:none;cursor:pointer;
       font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:500;
@@ -143,9 +153,9 @@
               <iframe src="${previewUrl(r.id)}" loading="lazy" allow="autoplay"></iframe>
             </div>
             <div class="side">
-              <div class="email-box">
+              <div class="email-box" data-email-box="${r.id}">
                 <label>Enviar a</label>
-                <div class="val ${r.email ? '' : 'missing'}">${r.email || 'Sin email cargado — no se puede enviar'}</div>
+                <div class="val ${r.email ? 'editable' : 'missing'}" data-email-val="${r.id}">${r.email || 'Sin email cargado — click para agregar'}</div>
               </div>
               <button class="btn btn-success" data-confirmar="${r.id}" ${r.email ? '' : 'disabled'}>
                 ✓ Confirmar y enviar
@@ -164,6 +174,52 @@
       wrap.querySelectorAll('[data-rechazar]').forEach(btn => {
         btn.addEventListener('click', () => onRechazar(btn.dataset.rechazar));
       });
+      wrap.querySelectorAll('[data-email-val]').forEach(el => {
+        el.addEventListener('click', () => onEditarEmail(el.dataset.emailVal));
+      });
+    }
+
+    function onEditarEmail(id) {
+      const reclamo = _actual.find(r => r.id === id);
+      const box = document.querySelector(`[data-email-box="${id}"]`);
+      if (!box) return;
+      box.innerHTML = `
+        <label>Enviar a</label>
+        <div class="edit-row">
+          <input type="email" data-email-input="${id}" placeholder="paciente@mail.com" value="${reclamo && reclamo.email ? reclamo.email : ''}" />
+          <button class="save" data-guardar-email="${id}">Guardar</button>
+          <button class="cancel" data-cancelar-email="${id}">✕</button>
+        </div>`;
+      const input = box.querySelector('input');
+      input.focus();
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') onGuardarEmail(id);
+        if (e.key === 'Escape') render(_actual);
+      });
+      box.querySelector('[data-guardar-email]').addEventListener('click', () => onGuardarEmail(id));
+      box.querySelector('[data-cancelar-email]').addEventListener('click', () => render(_actual));
+    }
+
+    async function onGuardarEmail(id) {
+      const box = document.querySelector(`[data-email-box="${id}"]`);
+      const input = box.querySelector('input');
+      const email = input.value.trim();
+      if (!email) { toast('Ingresá un email', 'error'); return; }
+      const saveBtn = box.querySelector('[data-guardar-email]');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Guardando…';
+      try {
+        await updateReclamo(id, { email });
+        const reclamo = _actual.find(r => r.id === id);
+        if (reclamo) reclamo.email = email;
+        render(_actual);
+        toast('Email guardado ✓', 'ok');
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        toast('Error: ' + err.message, 'error');
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Guardar';
+      }
     }
 
     // Si el PIN cambió/venció a mitad de sesión, apiGet/apiPost ya lo
