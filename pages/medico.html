@@ -29,6 +29,17 @@
     .nav-back:hover{color:var(--text);}
     .nav-right{display:flex;align-items:center;gap:12px;}
 
+    .layout{display:grid;grid-template-columns:320px 1fr;align-items:start;}
+    .ptg-sidebar{position:sticky;top:57px;height:calc(100vh - 57px);
+      background:var(--surface);border-right:1px solid rgba(245,158,11,.25);
+      display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
+    .ptg-sidebar-header{padding:20px 20px 12px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:8px;flex-shrink:0;}
+    .ptg-sidebar-title{font-family:'DM Serif Display',serif;font-size:1.05rem;
+      font-weight:400;color:var(--warn);}
+    .ptg-sidebar-body{flex:1;overflow-y:auto;padding:16px 20px;
+      display:flex;flex-direction:column;gap:20px;}
+
     .page{max-width:960px;margin:0 auto;padding:32px 24px;
       display:flex;flex-direction:column;gap:20px;}
     .section-header{display:flex;align-items:center;justify-content:space-between;
@@ -170,23 +181,23 @@
       font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;transition:opacity .2s;}
     .btn-recitar-confirm:disabled{opacity:.5;cursor:not-allowed;}
 
-    .pedidos-turno-overlay{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.5);
-      display:none;}
-    .pedidos-turno-overlay.open{display:block;}
-    .pedidos-turno-drawer{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:92vw;
-      background:var(--surface);border-left:1px solid rgba(245,158,11,.3);
-      z-index:601;display:flex;flex-direction:column;
-      transform:translateX(100%);transition:transform .25s ease;
-      box-shadow:-20px 0 60px rgba(0,0,0,.5);}
-    .pedidos-turno-drawer.open{transform:translateX(0);}
-    .pedidos-turno-drawer-header{display:flex;align-items:center;justify-content:space-between;
-      padding:18px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
-    .pedidos-turno-drawer-title{font-family:'DM Serif Display',serif;font-size:1.15rem;
-      font-weight:400;color:var(--warn);}
-    .pedidos-turno-drawer-close{background:none;border:none;color:var(--text2);
-      font-size:1.2rem;cursor:pointer;line-height:1;padding:4px;}
-    .pedidos-turno-drawer-body{flex:1;overflow-y:auto;padding:16px 20px;
-      display:flex;flex-direction:column;gap:20px;}
+    .ptg-alert-overlay{position:fixed;inset:0;z-index:700;background:rgba(0,0,0,.75);
+      display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;
+      transition:opacity .25s;}
+    .ptg-alert-overlay.open{opacity:1;pointer-events:all;}
+    .ptg-alert-box{background:var(--surface);border:1px solid rgba(245,158,11,.35);
+      border-radius:20px;padding:32px;width:400px;max-width:92vw;
+      display:flex;flex-direction:column;align-items:center;gap:14px;text-align:center;
+      transform:scale(.95);transition:transform .25s;box-shadow:0 20px 60px rgba(0,0,0,.5);}
+    .ptg-alert-overlay.open .ptg-alert-box{transform:scale(1);}
+    .ptg-alert-icon{font-size:2.4rem;}
+    .ptg-alert-titulo{font-family:'DM Serif Display',serif;font-size:1.25rem;font-weight:400;}
+    .ptg-alert-desc{font-size:.85rem;color:var(--text2);line-height:1.5;}
+    .ptg-alert-btn{padding:11px 24px;border-radius:10px;background:var(--warn);
+      border:none;color:#2a1a00;cursor:pointer;font-family:'DM Sans',sans-serif;
+      font-size:.9rem;font-weight:600;transition:all .2s;margin-top:4px;}
+    .ptg-alert-btn:hover{filter:brightness(1.08);}
+
     .ptg-group-title{font-size:.75rem;font-weight:700;text-transform:uppercase;
       letter-spacing:.03em;color:var(--text2);display:flex;align-items:center;gap:8px;
       margin-bottom:10px;}
@@ -268,6 +279,11 @@
     .toast.error{border-color:rgba(239,68,68,.3);}
     .toast.warn{border-color:rgba(245,158,11,.3);}
 
+    @media(max-width:900px){
+      .layout{grid-template-columns:1fr;}
+      .ptg-sidebar{position:static;height:auto;border-right:none;
+        border-bottom:1px solid rgba(245,158,11,.25);}
+    }
     @media(max-width:640px){
       .reclamo-card{grid-template-columns:1fr;}
       .card-detail{grid-template-columns:1fr;}
@@ -336,19 +352,18 @@
         style="background:none;border:1px solid var(--border);color:var(--text2);
         padding:6px 12px;border-radius:8px;cursor:pointer;
         font-family:'DM Sans',sans-serif;font-size:.8rem;">🔄 Actualizar</button>
-      <button id="btnPedidosTurno" onclick="togglePedidosTurnoDrawer()"
-        style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);
-        color:var(--warn);padding:6px 12px;border-radius:8px;cursor:pointer;
-        font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;
-        display:flex;align-items:center;gap:6px;">
-        🛏️ Pedidos de turno
-        <span id="pedidosTurnoBadge" style="display:none;background:var(--warn);color:#2a1a00;
-          border-radius:100px;padding:1px 7px;font-size:.7rem;"></span>
-      </button>
       <a href="../index.html" class="nav-back">← Cambiar rol</a>
     </div>
   </nav>
 
+  <div class="layout">
+  <aside class="ptg-sidebar">
+    <div class="ptg-sidebar-header">
+      <span>🛏️</span>
+      <div class="ptg-sidebar-title">Pedidos de turno</div>
+    </div>
+    <div class="ptg-sidebar-body" id="listaPedidosTurno"></div>
+  </aside>
   <div class="page">
     <div class="section-header">
       <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
@@ -401,14 +416,15 @@
     </div>
 
   </div>
+  </div>
 
-  <div class="pedidos-turno-overlay" id="pedidosTurnoOverlay" onclick="togglePedidosTurnoDrawer(false)"></div>
-  <div class="pedidos-turno-drawer" id="pedidosTurnoDrawer">
-    <div class="pedidos-turno-drawer-header">
-      <div class="pedidos-turno-drawer-title">🛏️ Pedidos de turno — internados</div>
-      <button class="pedidos-turno-drawer-close" onclick="togglePedidosTurnoDrawer(false)">✕</button>
+  <div class="ptg-alert-overlay" id="ptgAlertOverlay">
+    <div class="ptg-alert-box">
+      <div class="ptg-alert-icon">🛏️</div>
+      <div class="ptg-alert-titulo" id="ptgAlertTitulo"></div>
+      <div class="ptg-alert-desc">Los tenés a la izquierda, en el panel de "Pedidos de turno".</div>
+      <button class="ptg-alert-btn" onclick="cerrarAlertaPedidosTurno()">Entendido</button>
     </div>
-    <div class="pedidos-turno-drawer-body" id="listaPedidosTurno"></div>
   </div>
 
   <div class="rctr-modal-overlay" id="rctrModalOverlay">
@@ -573,12 +589,19 @@
       if (section) section.scrollIntoView({behavior:'smooth', block:'start'});
     }
 
-    function togglePedidosTurnoDrawer(forzar) {
-      const overlay = document.getElementById('pedidosTurnoOverlay');
-      const drawer  = document.getElementById('pedidosTurnoDrawer');
-      const abrir = typeof forzar === 'boolean' ? forzar : !drawer.classList.contains('open');
-      overlay.classList.toggle('open', abrir);
-      drawer.classList.toggle('open', abrir);
+    // Se muestra una sola vez por carga de página (no en cada poll de
+    // recargar() cada 30s, eso sería un cartel cada 30 segundos) — apenas
+    // el médico abre el panel y hay pendientes de revisar.
+    let _alertaPedidosMostrada = false;
+    function mostrarAlertaPedidosTurnoSiCorresponde(cantidadPendientes) {
+      if (_alertaPedidosMostrada || cantidadPendientes <= 0) return;
+      _alertaPedidosMostrada = true;
+      document.getElementById('ptgAlertTitulo').textContent =
+        `Tenés ${cantidadPendientes} pedido${cantidadPendientes !== 1 ? 's' : ''} de turno para autorizar`;
+      document.getElementById('ptgAlertOverlay').classList.add('open');
+    }
+    function cerrarAlertaPedidosTurno() {
+      document.getElementById('ptgAlertOverlay').classList.remove('open');
     }
 
     // Tarjeta de un pedido — el detalle varía según el estado: pendiente
@@ -634,13 +657,7 @@
         rechazado: pedidosTurnoData.filter(p => p.estado === 'rechazado'),
       };
 
-      const badge = document.getElementById('pedidosTurnoBadge');
-      if (porEstado.pendiente.length > 0) {
-        badge.textContent = porEstado.pendiente.length;
-        badge.style.display = 'inline';
-      } else {
-        badge.style.display = 'none';
-      }
+      mostrarAlertaPedidosTurnoSiCorresponde(porEstado.pendiente.length);
 
       const grupos = [
         { key: 'pendiente', titulo: '⏳ Pendientes de revisión' },
