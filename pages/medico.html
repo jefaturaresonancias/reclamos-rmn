@@ -170,23 +170,42 @@
       font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;transition:opacity .2s;}
     .btn-recitar-confirm:disabled{opacity:.5;cursor:not-allowed;}
 
-    .pedidos-turno-section{display:none;flex-direction:column;gap:12px;
-      padding:20px;border:1px solid rgba(245,158,11,.25);
-      border-radius:16px;margin-top:8px;
-      background:linear-gradient(135deg,rgba(245,158,11,.05),transparent);}
-    .pedidos-turno-header{display:flex;align-items:center;justify-content:space-between;}
-    .pedidos-turno-title{font-family:'DM Serif Display',serif;font-size:1.1rem;
+    .pedidos-turno-overlay{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.5);
+      display:none;}
+    .pedidos-turno-overlay.open{display:block;}
+    .pedidos-turno-drawer{position:fixed;top:0;right:0;bottom:0;width:400px;max-width:92vw;
+      background:var(--surface);border-left:1px solid rgba(245,158,11,.3);
+      z-index:601;display:flex;flex-direction:column;
+      transform:translateX(100%);transition:transform .25s ease;
+      box-shadow:-20px 0 60px rgba(0,0,0,.5);}
+    .pedidos-turno-drawer.open{transform:translateX(0);}
+    .pedidos-turno-drawer-header{display:flex;align-items:center;justify-content:space-between;
+      padding:18px 20px;border-bottom:1px solid var(--border);flex-shrink:0;}
+    .pedidos-turno-drawer-title{font-family:'DM Serif Display',serif;font-size:1.15rem;
       font-weight:400;color:var(--warn);}
-    .pedidos-turno-count{font-size:.8rem;color:var(--text2);}
-    .pedido-turno-card{background:var(--surface);border:1px solid rgba(245,158,11,.2);
-      border-radius:var(--r);padding:14px 18px;display:flex;flex-direction:column;gap:8px;}
-    .pedido-turno-diag{font-size:.8rem;color:var(--text2);
-      background:var(--surface2);border-radius:8px;padding:8px 10px;}
+    .pedidos-turno-drawer-close{background:none;border:none;color:var(--text2);
+      font-size:1.2rem;cursor:pointer;line-height:1;padding:4px;}
+    .pedidos-turno-drawer-body{flex:1;overflow-y:auto;padding:16px 20px;
+      display:flex;flex-direction:column;gap:20px;}
+    .ptg-group-title{font-size:.75rem;font-weight:700;text-transform:uppercase;
+      letter-spacing:.03em;color:var(--text2);display:flex;align-items:center;gap:8px;
+      margin-bottom:10px;}
+    .ptg-group-count{background:var(--surface2);border-radius:100px;padding:1px 8px;font-size:.7rem;}
+    .pedido-turno-card{background:var(--surface2);border:1px solid var(--border);
+      border-radius:var(--r);padding:14px 16px;display:flex;flex-direction:column;gap:8px;
+      margin-bottom:10px;}
+    .pedido-turno-card.pendiente{border-color:rgba(245,158,11,.3);}
+    .pedido-turno-card.autorizado{border-color:rgba(16,185,129,.3);}
+    .pedido-turno-card.rechazado{border-color:rgba(239,68,68,.3);}
+    .pedido-turno-card.turno_asignado{border-color:rgba(6,182,212,.3);}
+    .pedido-turno-diag{font-size:.78rem;color:var(--text2);
+      background:var(--surface);border-radius:8px;padding:8px 10px;}
     .pedido-turno-actions{display:flex;gap:8px;margin-top:2px;}
     .pedido-turno-actions button{flex:1;padding:8px 12px;border-radius:8px;border:none;
       cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;}
     .btn-autorizar{background:var(--success);color:#04140e;}
     .btn-rechazar{background:transparent;border:1px solid #ef4444 !important;color:#ef4444;}
+    .ptg-empty{font-size:.78rem;color:var(--text3);padding:8px 0;}
 
     .rctr-modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);
       display:none;align-items:center;justify-content:center;padding:20px;}
@@ -307,13 +326,6 @@
         cursor:pointer;transition:opacity .2s"
         onmouseover="this.style.opacity='0.75'"
         onmouseout="this.style.opacity='1'"></span>
-      <span id="pedidosTurnoPill" onclick="scrollToPedidosTurno()"
-        style="display:none;font-size:.72rem;
-        background:rgba(245,158,11,.15);color:var(--warn);
-        padding:3px 10px;border-radius:100px;font-weight:600;
-        cursor:pointer;transition:opacity .2s"
-        onmouseover="this.style.opacity='0.75'"
-        onmouseout="this.style.opacity='1'"></span>
     </div>
     <div class="nav-right">
       <button onclick="localStorage.clear();location.reload();"
@@ -324,6 +336,15 @@
         style="background:none;border:1px solid var(--border);color:var(--text2);
         padding:6px 12px;border-radius:8px;cursor:pointer;
         font-family:'DM Sans',sans-serif;font-size:.8rem;">🔄 Actualizar</button>
+      <button id="btnPedidosTurno" onclick="togglePedidosTurnoDrawer()"
+        style="background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);
+        color:var(--warn);padding:6px 12px;border-radius:8px;cursor:pointer;
+        font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;
+        display:flex;align-items:center;gap:6px;">
+        🛏️ Pedidos de turno
+        <span id="pedidosTurnoBadge" style="display:none;background:var(--warn);color:#2a1a00;
+          border-radius:100px;padding:1px 7px;font-size:.7rem;"></span>
+      </button>
       <a href="../index.html" class="nav-back">← Cambiar rol</a>
     </div>
   </nav>
@@ -379,13 +400,15 @@
       <div id="listaRecitados"></div>
     </div>
 
-    <div class="pedidos-turno-section" id="pedidosTurnoSection">
-      <div class="pedidos-turno-header">
-        <div class="pedidos-turno-title">🛏️ Pedidos de turno — internados</div>
-        <div class="pedidos-turno-count" id="pedidosTurnoCount"></div>
-      </div>
-      <div id="listaPedidosTurno"></div>
+  </div>
+
+  <div class="pedidos-turno-overlay" id="pedidosTurnoOverlay" onclick="togglePedidosTurnoDrawer(false)"></div>
+  <div class="pedidos-turno-drawer" id="pedidosTurnoDrawer">
+    <div class="pedidos-turno-drawer-header">
+      <div class="pedidos-turno-drawer-title">🛏️ Pedidos de turno — internados</div>
+      <button class="pedidos-turno-drawer-close" onclick="togglePedidosTurnoDrawer(false)">✕</button>
     </div>
+    <div class="pedidos-turno-drawer-body" id="listaPedidosTurno"></div>
   </div>
 
   <div class="rctr-modal-overlay" id="rctrModalOverlay">
@@ -550,49 +573,92 @@
       if (section) section.scrollIntoView({behavior:'smooth', block:'start'});
     }
 
-    function scrollToPedidosTurno(){
-      const section = document.getElementById('pedidosTurnoSection');
-      if (section) section.scrollIntoView({behavior:'smooth', block:'start'});
+    function togglePedidosTurnoDrawer(forzar) {
+      const overlay = document.getElementById('pedidosTurnoOverlay');
+      const drawer  = document.getElementById('pedidosTurnoDrawer');
+      const abrir = typeof forzar === 'boolean' ? forzar : !drawer.classList.contains('open');
+      overlay.classList.toggle('open', abrir);
+      drawer.classList.toggle('open', abrir);
     }
 
-    function renderPedidosTurnoMedico() {
-      const pendientes = pedidosTurnoData.filter(p => p.estado === 'pendiente');
-      const section = document.getElementById('pedidosTurnoSection');
-      const lista    = document.getElementById('listaPedidosTurno');
-      const count    = document.getElementById('pedidosTurnoCount');
-      const pill     = document.getElementById('pedidosTurnoPill');
-
-      if (pendientes.length > 0) {
-        pill.textContent = '🛏️ ' + pendientes.length + ' pedido' +
-          (pendientes.length !== 1 ? 's' : '') + ' de turno';
-        pill.style.display = 'inline';
-      } else {
-        pill.style.display = 'none';
-      }
-
-      if (!pendientes.length) { section.style.display = 'none'; return; }
-      section.style.display = 'flex';
-      count.textContent = `${pendientes.length} pedido${pendientes.length !== 1 ? 's' : ''} esperando revisión`;
-
-      lista.innerHTML = pendientes.map(p => `
-        <div class="pedido-turno-card">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <div style="flex:1">
-              <div style="font-weight:600">${p.apellido}, ${p.nombre}</div>
-              <div style="font-size:.75rem;color:var(--text3)">
-                DNI ${p.dni} · ${p.sectorInternacion} · Cama ${p.cama}
-              </div>
+    // Tarjeta de un pedido — el detalle varía según el estado: pendiente
+    // tiene los botones de autorizar/rechazar, rechazado muestra el
+    // motivo, turno_asignado muestra fecha/hora (tanda 2).
+    function _pedidoTurnoCard(p) {
+      const cabecera = `
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="flex:1">
+            <div style="font-weight:600">${p.apellido}, ${p.nombre}</div>
+            <div style="font-size:.75rem;color:var(--text3)">
+              DNI ${p.dni} · ${p.sectorInternacion} · Cama ${p.cama}
             </div>
-            <span style="font-size:.7rem;background:rgba(245,158,11,.12);color:var(--warn);
-              padding:3px 10px;border-radius:100px;font-weight:600;white-space:nowrap;">
-              ${p.estudio}</span>
           </div>
-          <div class="pedido-turno-diag">🩺 <strong>Diagnóstico presuntivo:</strong> ${p.diagnosticoPresuntivo}</div>
+          <span style="font-size:.7rem;background:rgba(245,158,11,.12);color:var(--warn);
+            padding:3px 10px;border-radius:100px;font-weight:600;white-space:nowrap;">
+            ${p.estudio}</span>
+        </div>
+        <div class="pedido-turno-diag">🩺 <strong>Diagnóstico presuntivo:</strong> ${p.diagnosticoPresuntivo}</div>`;
+
+      if (p.estado === 'pendiente') {
+        return `<div class="pedido-turno-card pendiente">${cabecera}
           <div class="pedido-turno-actions">
             <button class="btn-autorizar" id="btn-aut-${p.id}" onclick="autorizarPedido('${p.id}')">✔ Autorizar</button>
             <button class="btn-rechazar" id="btn-rec-${p.id}" onclick="rechazarPedido('${p.id}')">✕ Rechazar</button>
           </div>
-        </div>`).join('');
+        </div>`;
+      }
+      if (p.estado === 'rechazado') {
+        return `<div class="pedido-turno-card rechazado">${cabecera}
+          <div class="pedido-turno-diag" style="color:var(--danger);background:rgba(239,68,68,.08);">
+            💬 <strong>Motivo del rechazo:</strong> ${p.motivoRechazo || '—'}</div>
+        </div>`;
+      }
+      if (p.estado === 'turno_asignado') {
+        return `<div class="pedido-turno-card turno_asignado">${cabecera}
+          <div class="pedido-turno-diag" style="color:var(--recitar);background:rgba(6,182,212,.08);">
+            📅 <strong>Turno:</strong> ${p.fechaTurno || '—'} ${p.horaTurno || ''}</div>
+        </div>`;
+      }
+      // autorizado — esperando que técnicos/administrativo le den el turno
+      return `<div class="pedido-turno-card autorizado">${cabecera}
+        <div class="pedido-turno-diag" style="color:var(--success);background:rgba(16,185,129,.08);">
+          ✅ Autorizado — esperando que se le asigne el turno</div>
+      </div>`;
+    }
+
+    function renderPedidosTurnoMedico() {
+      const porEstado = {
+        pendiente: pedidosTurnoData.filter(p => p.estado === 'pendiente'),
+        autorizado: pedidosTurnoData.filter(p => p.estado === 'autorizado'),
+        turno_asignado: pedidosTurnoData.filter(p => p.estado === 'turno_asignado'),
+        rechazado: pedidosTurnoData.filter(p => p.estado === 'rechazado'),
+      };
+
+      const badge = document.getElementById('pedidosTurnoBadge');
+      if (porEstado.pendiente.length > 0) {
+        badge.textContent = porEstado.pendiente.length;
+        badge.style.display = 'inline';
+      } else {
+        badge.style.display = 'none';
+      }
+
+      const grupos = [
+        { key: 'pendiente', titulo: '⏳ Pendientes de revisión' },
+        { key: 'autorizado', titulo: '✅ Autorizados' },
+        { key: 'turno_asignado', titulo: '📅 Con turno asignado' },
+        { key: 'rechazado', titulo: '✕ Rechazados' },
+      ];
+
+      document.getElementById('listaPedidosTurno').innerHTML = grupos.map(g => {
+        const items = porEstado[g.key];
+        return `
+          <div>
+            <div class="ptg-group-title">${g.titulo} <span class="ptg-group-count">${items.length}</span></div>
+            ${items.length
+              ? items.map(_pedidoTurnoCard).join('')
+              : `<div class="ptg-empty">Sin pedidos en esta categoría</div>`}
+          </div>`;
+      }).join('');
     }
 
     async function autorizarPedido(id) {
