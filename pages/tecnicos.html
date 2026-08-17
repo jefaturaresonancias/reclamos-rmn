@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Técnicos — Asignar turno RMN</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="../icon-180.png" />
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#f59e0b" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#0d0f14;--surface:#13161e;--surface2:#1a1e29;--border:#252a38;
+      --accent:#f59e0b;--danger:#ef4444;--success:#10b981;--info:#06b6d4;
+      --text:#e8ecf4;--text2:#8892aa;--text3:#4f5870;--r:12px;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+    nav{display:flex;align-items:center;justify-content:space-between;
+      padding:16px 32px;border-bottom:1px solid var(--border);
+      background:rgba(13,15,20,.9);backdrop-filter:blur(12px);
+      position:sticky;top:0;z-index:100;}
+    .nav-brand{display:flex;align-items:center;gap:10px;}
+    .nav-title{font-family:'DM Serif Display',serif;font-size:1.1rem;}
+    .nav-badge{font-size:.7rem;background:rgba(245,158,11,.15);color:var(--accent);
+      padding:3px 10px;border-radius:100px;}
+    .nav-back{font-size:.8rem;color:var(--text2);text-decoration:none;transition:color .2s;}
+    .nav-back:hover{color:var(--text);}
+
+    .wrap{max-width:760px;margin:0 auto;padding:28px 20px 60px;display:flex;flex-direction:column;gap:16px;}
+    .empty{text-align:center;padding:60px 20px;color:var(--text3);}
+    .empty .big{font-size:2.4rem;margin-bottom:10px;}
+    .spinner{width:26px;height:26px;border:3px solid var(--border);border-top-color:var(--accent);
+      border-radius:50%;animation:spin .8s linear infinite;margin:40px auto;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;}
+    .card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;}
+    .card-nombre{font-family:'DM Serif Display',serif;font-size:1.05rem;font-weight:400;}
+    .card-meta{font-size:.78rem;color:var(--text2);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;}
+    .card-badge{font-size:.7rem;background:rgba(245,158,11,.15);color:var(--accent);
+      padding:3px 10px;border-radius:100px;font-weight:600;white-space:nowrap;}
+    .card-diag{font-size:.8rem;color:var(--text2);background:var(--surface2);
+      border-radius:8px;padding:8px 10px;margin-top:8px;}
+
+    .asignar-form{display:none;flex-direction:column;gap:12px;margin-top:14px;
+      padding-top:14px;border-top:1px solid var(--border);}
+    .asignar-form.visible{display:flex;}
+    .field{display:flex;flex-direction:column;gap:6px;}
+    .field-row{display:flex;gap:12px;}
+    .field-row .field{flex:1;}
+    label{font-size:.72rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+    select,input{width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);
+      border-radius:var(--r);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.85rem;
+      outline:none;transition:border-color .2s;}
+    select:focus,input:focus{border-color:var(--accent);}
+
+    .btn{padding:10px 16px;border-radius:var(--r);border:none;cursor:pointer;
+      font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;transition:all .2s;}
+    .btn-ver{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.3);color:var(--accent);}
+    .btn-ver:hover{background:rgba(245,158,11,.2);}
+    .btn-ver:disabled{opacity:.5;cursor:not-allowed;}
+
+    .slots-wrap{display:flex;flex-wrap:wrap;gap:8px;}
+    .slot-chip{padding:7px 14px;border-radius:100px;background:var(--surface2);
+      border:1px solid var(--border);color:var(--text2);cursor:pointer;font-size:.8rem;
+      font-weight:500;transition:all .15s;}
+    .slot-chip:hover{border-color:var(--accent);color:var(--text);}
+    .slot-chip.selected{background:var(--accent);color:#2a1a00;border-color:var(--accent);font-weight:700;}
+    .slots-msg{font-size:.8rem;color:var(--text3);}
+
+    .btn-confirmar{background:var(--success);color:#04140e;width:100%;padding:12px;font-size:.9rem;}
+    .btn-confirmar:disabled{opacity:.5;cursor:not-allowed;}
+    .btn-toggle{background:transparent;border:1px solid rgba(245,158,11,.3);color:var(--accent);
+      width:100%;padding:10px;}
+    .btn-toggle:hover{background:rgba(245,158,11,.08);}
+
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+      background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+      padding:12px 20px;font-size:.85rem;opacity:0;pointer-events:none;transition:all .25s;z-index:999;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    .toast.ok{border-color:var(--success);color:var(--success);}
+    .toast.error{border-color:var(--danger);color:var(--danger);}
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-brand">
+      <span>🔧</span>
+      <span class="nav-title">Técnicos — Asignar turno</span>
+      <span class="nav-badge" id="contadorBadge">Internados</span>
+    </div>
+    <a href="../index.html" class="nav-back">← Cambiar rol</a>
+  </nav>
+
+  <div class="wrap" id="wrap">
+    <div class="spinner"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="../js/api.js"></script>
+  <script>
+    let _pedidos = [];
+    let _estudiosConfig = {};
+    let _horaSeleccionada = {}; // pedidoId -> { mins, hora }
+
+    function toast(msg, tipo) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = 'toast show' + (tipo ? ' ' + tipo : '');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+    }
+
+    // Sugerencia de estudio real a partir del texto libre del pedido — el
+    // técnico igual tiene que confirmarlo (o cambiarlo) en el <select>,
+    // esto solo ahorra el scroll cuando el nombre coincide.
+    function _sugerirEstudio(textoLibre) {
+      const nombres = Object.keys(_estudiosConfig);
+      const norm = (s) => s.toLowerCase().trim();
+      const exacto = nombres.find(n => norm(n) === norm(textoLibre));
+      if (exacto) return exacto;
+      const parcial = nombres.find(n => norm(textoLibre).includes(norm(n)) || norm(n).includes(norm(textoLibre)));
+      return parcial || '';
+    }
+
+    function hoyDDMMYYYY() {
+      const d = new Date();
+      return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+    }
+    function ddmmyyyyDesdeInputDate(v) {
+      // <input type="date"> da YYYY-MM-DD
+      const [y, m, d] = v.split('-');
+      return `${d}/${m}/${y}`;
+    }
+
+    function render() {
+      const wrap = document.getElementById('wrap');
+      document.getElementById('contadorBadge').textContent =
+        _pedidos.length + (_pedidos.length === 1 ? ' pedido autorizado' : ' pedidos autorizados');
+
+      if (!_pedidos.length) {
+        wrap.innerHTML = `
+          <div class="empty">
+            <div class="big">✅</div>
+            <div>No hay pedidos autorizados esperando turno</div>
+          </div>`;
+        return;
+      }
+
+      wrap.innerHTML = _pedidos.map(p => {
+        const inputDateDefault = (() => {
+          const d = new Date();
+          return d.toISOString().slice(0, 10);
+        })();
+        return `
+        <div class="card" data-id="${p.id}">
+          <div class="card-head">
+            <div>
+              <div class="card-nombre">${p.apellido}, ${p.nombre}</div>
+              <div class="card-meta">
+                <span>DNI <b>${p.dni}</b></span>
+                <span>${p.sectorInternacion} · Cama ${p.cama}</span>
+              </div>
+            </div>
+            <span class="card-badge">${p.estudio}</span>
+          </div>
+          <div class="card-diag">🩺 ${p.diagnosticoPresuntivo}</div>
+
+          <button class="btn btn-toggle" onclick="toggleForm('${p.id}')">📅 Asignar turno</button>
+
+          <div class="asignar-form" id="form-${p.id}">
+            <div class="field">
+              <label>Estudio real (agenda)</label>
+              <select id="estudio-${p.id}"></select>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Fecha</label>
+                <input type="date" id="fecha-${p.id}" value="${inputDateDefault}" />
+              </div>
+              <div class="field" style="justify-content:flex-end;">
+                <button class="btn btn-ver" id="btn-ver-${p.id}" onclick="verHorarios('${p.id}')">🔍 Ver horarios disponibles</button>
+              </div>
+            </div>
+            <div id="slots-${p.id}"></div>
+            <button class="btn btn-confirmar" id="btn-confirmar-${p.id}" disabled
+              onclick="confirmarAsignacion('${p.id}')">Confirmar turno</button>
+          </div>
+        </div>`;
+      }).join('');
+
+      // Poblar los <select> de estudio con la config real, sugiriendo el
+      // que más se parezca al texto libre del pedido.
+      _pedidos.forEach(p => {
+        const sel = document.getElementById(`estudio-${p.id}`);
+        if (!sel) return;
+        const nombres = Object.keys(_estudiosConfig).sort();
+        const sugerido = _sugerirEstudio(p.estudio);
+        sel.innerHTML = `<option value="">— Elegir estudio —</option>` +
+          nombres.map(n => `<option value="${n}" ${n === sugerido ? 'selected' : ''}>${n}</option>`).join('');
+      });
+    }
+
+    function toggleForm(id) {
+      const form = document.getElementById(`form-${id}`);
+      if (form) form.classList.toggle('visible');
+    }
+
+    async function verHorarios(id) {
+      const estudio = document.getElementById(`estudio-${id}`).value;
+      const fechaInput = document.getElementById(`fecha-${id}`).value;
+      const slotsWrap = document.getElementById(`slots-${id}`);
+      if (!estudio) { toast('⚠️ Elegí el estudio real primero', 'warn'); return; }
+      if (!fechaInput) { toast('⚠️ Elegí una fecha', 'warn'); return; }
+
+      const btn = document.getElementById(`btn-ver-${id}`);
+      btn.disabled = true;
+      btn.textContent = 'Buscando...';
+      slotsWrap.innerHTML = '';
+      _horaSeleccionada[id] = null;
+      document.getElementById(`btn-confirmar-${id}`).disabled = true;
+
+      try {
+        const fecha = ddmmyyyyDesdeInputDate(fechaInput);
+        const data = await resonanciaPwaSlots(fecha, estudio, 'INTERNACIÓN');
+        if (data.esFeriado) {
+          slotsWrap.innerHTML = `<div class="slots-msg">📅 Feriado: ${data.feriado}</div>`;
+        } else if (!data.libres || !data.libres.length) {
+          slotsWrap.innerHTML = `<div class="slots-msg">Sin horarios libres ese día para este estudio.</div>`;
+        } else {
+          slotsWrap.innerHTML = `<div class="slots-wrap">` +
+            data.libres.map(s => `<button type="button" class="slot-chip" data-mins="${s.mins}"
+              onclick="elegirHora('${id}', ${s.mins}, '${s.hora}', this)">${s.hora}</button>`).join('') +
+            `</div>`;
+        }
+      } catch (err) {
+        slotsWrap.innerHTML = `<div class="slots-msg">❌ ${err.message}</div>`;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '🔍 Ver horarios disponibles';
+      }
+    }
+
+    function elegirHora(id, mins, hora, btn) {
+      document.querySelectorAll(`#slots-${id} .slot-chip`).forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      _horaSeleccionada[id] = { mins, hora };
+      document.getElementById(`btn-confirmar-${id}`).disabled = false;
+    }
+
+    async function confirmarAsignacion(id) {
+      const pedido = _pedidos.find(p => p.id === id);
+      const estudio = document.getElementById(`estudio-${id}`).value;
+      const fechaInput = document.getElementById(`fecha-${id}`).value;
+      const seleccion = _horaSeleccionada[id];
+      if (!pedido || !estudio || !fechaInput || !seleccion) return;
+
+      const fecha = ddmmyyyyDesdeInputDate(fechaInput);
+      if (!confirm(`¿Confirmar turno de ${pedido.apellido}, ${pedido.nombre} — ${estudio} — ${fecha} ${seleccion.hora}?`)) return;
+
+      const btn = document.getElementById(`btn-confirmar-${id}`);
+      btn.disabled = true;
+      btn.textContent = 'Asignando...';
+      try {
+        const res = await resonanciaPwaAsignar({
+          nombre: pedido.nombre,
+          apellido: pedido.apellido,
+          dni: pedido.dni,
+          estudio,
+          origen: 'INTERNACIÓN',
+          fecha,
+          hora: seleccion.hora,
+          observaciones: `Pedido de piso — Cama ${pedido.cama}, ${pedido.sectorInternacion}. Dx presuntivo: ${pedido.diagnosticoPresuntivo}`,
+        });
+        await asignarTurnoPedido(id, { turnoId: res.turnoId, fecha, hora: seleccion.hora });
+        toast('✅ Turno asignado', 'ok');
+        await cargar();
+      } catch (err) {
+        toast('❌ Error: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Confirmar turno';
+      }
+    }
+
+    function _sesionVencida() {
+      toast('El PIN cambió o venció — ingresalo de nuevo', 'error');
+      verificarPin(cargar);
+    }
+
+    async function cargar() {
+      try {
+        const [todos, config] = await Promise.all([getPedidosTurno(), resonanciaPwaConfig()]);
+        _pedidos = todos.filter(p => p.estado === 'autorizado');
+        _estudiosConfig = config.estudios || {};
+        render();
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        document.getElementById('wrap').innerHTML =
+          `<div class="empty"><div class="big">⚠️</div><div>Error: ${err.message}</div></div>`;
+      }
+    }
+
+    verificarConfig(() => verificarPin(cargar));
+  </script>
+</body>
+</html>

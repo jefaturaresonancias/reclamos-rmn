@@ -216,6 +216,40 @@ async function rechazarPedidoTurno(id, motivo) {
   if (!result.ok) throw new Error(result.error);
   return result.pedido;
 }
+async function asignarTurnoPedido(id, turno) {
+  const result = await apiPost({ action: 'asignarTurnoPedido', id, turno });
+  if (!result.ok) throw new Error(result.error);
+  return result.pedido;
+}
+
+// ── Integración directa con resonancia-pwa (agenda real) ────────────
+// Mismo Apps Script que ya usa esa PWA — hablamos con él tal cual desde
+// acá para no duplicar la agenda ni reimplementar disponibilidad. Ambos
+// van por GET (incluso "asignar", que muta datos): así lo hace la propia
+// resonancia-pwa (js/api.js de ese repo) para evitar el preflight CORS
+// que dispara un POST con Content-Type JSON contra un Apps Script — este
+// no responde OPTIONS, así que ese preflight rompería la request.
+const RESONANCIA_PWA_URL = 'https://script.google.com/macros/s/AKfycbz-fzW9c4tVFfE1gmmzA4G3hJtEXHgaF35xGThLbOR2ZuIOXGDh_Ru-6UkWlZfS1WRv/exec';
+
+async function _resonanciaPwaGet(params) {
+  const qs = new URLSearchParams({ ...params, _ts: Date.now() }).toString();
+  const res = await fetch(`${RESONANCIA_PWA_URL}?${qs}`, { method: 'GET' });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Error de resonancia-pwa');
+  return json.data;
+}
+
+async function resonanciaPwaConfig() {
+  return _resonanciaPwaGet({ action: 'config' });
+}
+// fecha: dd/MM/yyyy
+async function resonanciaPwaSlots(fecha, estudio, origen) {
+  return _resonanciaPwaGet({ action: 'slots', fecha, estudio, origen: origen || 'AMBULATORIO' });
+}
+async function resonanciaPwaAsignar(datos) {
+  return _resonanciaPwaGet({ action: 'asignar', ...datos });
+}
 async function entregarReclamo(id) {
   const result = await apiPost({ action: 'entregar', id });
   if (!result.ok) throw new Error(result.error);
