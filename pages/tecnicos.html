@@ -183,6 +183,7 @@
                 <button class="btn btn-ver" id="btn-ver-${p.id}" onclick="verHorarios('${p.id}')">🔍 Ver horarios disponibles</button>
               </div>
             </div>
+            <div class="slots-msg">🕗 Internados van siempre de 20:00 a 22:00 — solo se muestran horarios de esa franja.</div>
             <div id="slots-${p.id}"></div>
             <button class="btn btn-confirmar" id="btn-confirmar-${p.id}" disabled
               onclick="confirmarAsignacion('${p.id}')">Confirmar turno</button>
@@ -207,6 +208,16 @@
       if (form) form.classList.toggle('visible');
     }
 
+    // La agenda reserva 20:00–22:00 para INTERNACIÓN (config real de
+    // resonancia-pwa: restriccionesOrigen), pero esa reserva no le IMPIDE
+    // a un internado tomar otro horario — solo bloquea a los demás
+    // orígenes durante esa franja. La regla real del hospital es al
+    // revés: los internados van SIEMPRE de 20 a 22, así que acá filtramos
+    // los libres a esa ventana para no ofrecer horarios fuera de eso
+    // (confirmado con el usuario 2026-08-17).
+    const VENTANA_INTERNADOS_DESDE = 20 * 60; // 1200
+    const VENTANA_INTERNADOS_HASTA = 22 * 60; // 1320
+
     async function verHorarios(id) {
       const estudio = document.getElementById(`estudio-${id}`).value;
       const fechaInput = document.getElementById(`fecha-${id}`).value;
@@ -224,13 +235,15 @@
       try {
         const fecha = ddmmyyyyDesdeInputDate(fechaInput);
         const data = await resonanciaPwaSlots(fecha, estudio, 'INTERNACIÓN');
+        const libres = (data.libres || []).filter(
+          s => s.mins >= VENTANA_INTERNADOS_DESDE && s.mins < VENTANA_INTERNADOS_HASTA);
         if (data.esFeriado) {
           slotsWrap.innerHTML = `<div class="slots-msg">📅 Feriado: ${data.feriado}</div>`;
-        } else if (!data.libres || !data.libres.length) {
-          slotsWrap.innerHTML = `<div class="slots-msg">Sin horarios libres ese día para este estudio.</div>`;
+        } else if (!libres.length) {
+          slotsWrap.innerHTML = `<div class="slots-msg">Sin horarios libres entre 20:00 y 22:00 ese día (internados van siempre en esa franja).</div>`;
         } else {
           slotsWrap.innerHTML = `<div class="slots-wrap">` +
-            data.libres.map(s => `<button type="button" class="slot-chip" data-mins="${s.mins}"
+            libres.map(s => `<button type="button" class="slot-chip" data-mins="${s.mins}"
               onclick="elegirHora('${id}', ${s.mins}, '${s.hora}', this)">${s.hora}</button>`).join('') +
             `</div>`;
         }
