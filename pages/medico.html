@@ -170,6 +170,24 @@
       font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:500;transition:opacity .2s;}
     .btn-recitar-confirm:disabled{opacity:.5;cursor:not-allowed;}
 
+    .pedidos-turno-section{display:none;flex-direction:column;gap:12px;
+      padding:20px;border:1px solid rgba(245,158,11,.25);
+      border-radius:16px;margin-top:8px;
+      background:linear-gradient(135deg,rgba(245,158,11,.05),transparent);}
+    .pedidos-turno-header{display:flex;align-items:center;justify-content:space-between;}
+    .pedidos-turno-title{font-family:'DM Serif Display',serif;font-size:1.1rem;
+      font-weight:400;color:var(--warn);}
+    .pedidos-turno-count{font-size:.8rem;color:var(--text2);}
+    .pedido-turno-card{background:var(--surface);border:1px solid rgba(245,158,11,.2);
+      border-radius:var(--r);padding:14px 18px;display:flex;flex-direction:column;gap:8px;}
+    .pedido-turno-diag{font-size:.8rem;color:var(--text2);
+      background:var(--surface2);border-radius:8px;padding:8px 10px;}
+    .pedido-turno-actions{display:flex;gap:8px;margin-top:2px;}
+    .pedido-turno-actions button{flex:1;padding:8px 12px;border-radius:8px;border:none;
+      cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.8rem;font-weight:600;}
+    .btn-autorizar{background:var(--success);color:#04140e;}
+    .btn-rechazar{background:transparent;border:1px solid #ef4444 !important;color:#ef4444;}
+
     .rctr-modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);
       display:none;align-items:center;justify-content:center;padding:20px;}
     .rctr-modal-overlay.open{display:flex;}
@@ -289,6 +307,13 @@
         cursor:pointer;transition:opacity .2s"
         onmouseover="this.style.opacity='0.75'"
         onmouseout="this.style.opacity='1'"></span>
+      <span id="pedidosTurnoPill" onclick="scrollToPedidosTurno()"
+        style="display:none;font-size:.72rem;
+        background:rgba(245,158,11,.15);color:var(--warn);
+        padding:3px 10px;border-radius:100px;font-weight:600;
+        cursor:pointer;transition:opacity .2s"
+        onmouseover="this.style.opacity='0.75'"
+        onmouseout="this.style.opacity='1'"></span>
     </div>
     <div class="nav-right">
       <button onclick="localStorage.clear();location.reload();"
@@ -353,6 +378,14 @@
       </div>
       <div id="listaRecitados"></div>
     </div>
+
+    <div class="pedidos-turno-section" id="pedidosTurnoSection">
+      <div class="pedidos-turno-header">
+        <div class="pedidos-turno-title">🛏️ Pedidos de turno — internados</div>
+        <div class="pedidos-turno-count" id="pedidosTurnoCount"></div>
+      </div>
+      <div id="listaPedidosTurno"></div>
+    </div>
   </div>
 
   <div class="rctr-modal-overlay" id="rctrModalOverlay">
@@ -398,6 +431,7 @@
     let todosLosReclamos = [];
     let recitadosData    = [];
     let recitadosEsperandoAsistencia = [];
+    let pedidosTurnoData = [];
     let filtroColumnaActual = null;
     const reclamoRegionesMap = {};
     const comentariosTemp    = {}; // ← guarda comentarios entre re-renders
@@ -501,11 +535,93 @@
           <small style="color:var(--text3)">${e.message}</small></div>`;
         toast('❌ Error de conexión: ' + e.message, 'error');
       }
+      // Aparte del try/catch de arriba: un error acá no debería tirar abajo
+      // el resto del panel, es una sección chica y secundaria.
+      try {
+        pedidosTurnoData = await getPedidosTurno();
+        renderPedidosTurnoMedico();
+      } catch (e) {
+        console.error('Error cargando pedidos de turno:', e);
+      }
     }
 
     function scrollToRecitados(){
       const section = document.getElementById('recitadosSection');
       if (section) section.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+
+    function scrollToPedidosTurno(){
+      const section = document.getElementById('pedidosTurnoSection');
+      if (section) section.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+
+    function renderPedidosTurnoMedico() {
+      const pendientes = pedidosTurnoData.filter(p => p.estado === 'pendiente');
+      const section = document.getElementById('pedidosTurnoSection');
+      const lista    = document.getElementById('listaPedidosTurno');
+      const count    = document.getElementById('pedidosTurnoCount');
+      const pill     = document.getElementById('pedidosTurnoPill');
+
+      if (pendientes.length > 0) {
+        pill.textContent = '🛏️ ' + pendientes.length + ' pedido' +
+          (pendientes.length !== 1 ? 's' : '') + ' de turno';
+        pill.style.display = 'inline';
+      } else {
+        pill.style.display = 'none';
+      }
+
+      if (!pendientes.length) { section.style.display = 'none'; return; }
+      section.style.display = 'flex';
+      count.textContent = `${pendientes.length} pedido${pendientes.length !== 1 ? 's' : ''} esperando revisión`;
+
+      lista.innerHTML = pendientes.map(p => `
+        <div class="pedido-turno-card">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="flex:1">
+              <div style="font-weight:600">${p.apellido}, ${p.nombre}</div>
+              <div style="font-size:.75rem;color:var(--text3)">
+                DNI ${p.dni} · ${p.sectorInternacion} · Cama ${p.cama}
+              </div>
+            </div>
+            <span style="font-size:.7rem;background:rgba(245,158,11,.12);color:var(--warn);
+              padding:3px 10px;border-radius:100px;font-weight:600;white-space:nowrap;">
+              ${p.estudio}</span>
+          </div>
+          <div class="pedido-turno-diag">🩺 <strong>Diagnóstico presuntivo:</strong> ${p.diagnosticoPresuntivo}</div>
+          <div class="pedido-turno-actions">
+            <button class="btn-autorizar" id="btn-aut-${p.id}" onclick="autorizarPedido('${p.id}')">✔ Autorizar</button>
+            <button class="btn-rechazar" id="btn-rec-${p.id}" onclick="rechazarPedido('${p.id}')">✕ Rechazar</button>
+          </div>
+        </div>`).join('');
+    }
+
+    async function autorizarPedido(id) {
+      const btn = document.getElementById(`btn-aut-${id}`);
+      if (btn) { btn.disabled = true; btn.textContent = 'Autorizando...'; }
+      try {
+        await autorizarPedidoTurno(id);
+        toast('✔ Pedido autorizado');
+        await recargar();
+      } catch (e) {
+        toast('❌ Error: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '✔ Autorizar'; }
+      }
+    }
+
+    async function rechazarPedido(id) {
+      const motivo = prompt('¿Por qué se rechaza este pedido de turno?');
+      if (motivo === null) return;
+      if (!motivo.trim()) { toast('⚠️ El motivo es obligatorio', 'warn'); return; }
+      const btn = document.getElementById(`btn-rec-${id}`);
+      if (btn) { btn.disabled = true; btn.textContent = 'Rechazando...'; }
+      try {
+        await rechazarPedidoTurno(id, motivo.trim());
+        toast('✕ Pedido rechazado');
+        await recargar();
+      } catch (e) {
+        toast('❌ Error: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '✕ Rechazar'; }
+      }
     }
 
     function renderRecitadosMedico() {

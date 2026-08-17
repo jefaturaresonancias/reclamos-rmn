@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Piso — Pedido de turno RMN</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="../icon-180.png" />
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#06b6d4" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#0d0f14;--surface:#13161e;--surface2:#1a1e29;--border:#252a38;
+      --accent:#06b6d4;--warn:#f59e0b;--danger:#ef4444;--success:#10b981;
+      --text:#e8ecf4;--text2:#8892aa;--text3:#4f5870;--r:12px;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+    nav{display:flex;align-items:center;justify-content:space-between;
+      padding:16px 32px;border-bottom:1px solid var(--border);
+      background:rgba(13,15,20,.9);backdrop-filter:blur(12px);
+      position:sticky;top:0;z-index:100;}
+    .nav-brand{display:flex;align-items:center;gap:10px;}
+    .nav-title{font-family:'DM Serif Display',serif;font-size:1.1rem;}
+    .nav-badge{font-size:.7rem;background:rgba(6,182,212,.15);color:var(--accent);
+      padding:3px 10px;border-radius:100px;}
+    .nav-back{font-size:.8rem;color:var(--text2);text-decoration:none;transition:color .2s;}
+    .nav-back:hover{color:var(--text);}
+
+    .wrap{max-width:640px;margin:0 auto;padding:28px 20px 60px;display:flex;flex-direction:column;gap:24px;}
+
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;}
+    .card h2{font-family:'DM Serif Display',serif;font-weight:400;font-size:1.15rem;margin-bottom:16px;}
+
+    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:14px;}
+    .field-row{display:flex;gap:12px;}
+    .field-row .field{flex:1;}
+    label{font-size:.75rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
+    input,textarea{width:100%;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);
+      border-radius:var(--r);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.9rem;
+      outline:none;transition:border-color .2s;}
+    input:focus,textarea:focus{border-color:var(--accent);}
+    textarea{resize:vertical;min-height:70px;}
+
+    .check-row{display:flex;align-items:center;gap:10px;background:rgba(6,182,212,.06);
+      border:1px solid rgba(6,182,212,.25);border-radius:var(--r);padding:14px 16px;margin-bottom:16px;}
+    .check-row input[type="checkbox"]{width:20px;height:20px;flex-shrink:0;accent-color:var(--accent);}
+    .check-row label{font-size:.85rem;color:var(--text);font-weight:600;text-transform:none;letter-spacing:0;
+      cursor:pointer;}
+
+    .btn{padding:13px 18px;border-radius:var(--r);border:none;cursor:pointer;
+      font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:600;
+      transition:all .2s;width:100%;}
+    .btn-primary{background:var(--accent);color:#042530;}
+    .btn-primary:hover{filter:brightness(1.08);transform:translateY(-1px);}
+    .btn-primary:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+
+    .error-msg{font-size:.8rem;color:var(--danger);min-height:1.1em;margin-bottom:8px;}
+
+    .search-wrap{position:relative;}
+    .search-wrap input{padding-left:36px;}
+    .search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--text3);}
+
+    .pedido-row{background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+      padding:14px 16px;display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+    .pedido-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+    .pedido-nombre{font-weight:600;font-size:.9rem;}
+    .pedido-meta{font-size:.75rem;color:var(--text3);}
+    .pedido-badge{font-size:.7rem;padding:3px 10px;border-radius:100px;font-weight:600;white-space:nowrap;}
+    .badge-pendiente{background:rgba(245,158,11,.15);color:var(--warn);}
+    .badge-autorizado{background:rgba(16,185,129,.15);color:var(--success);}
+    .badge-rechazado{background:rgba(239,68,68,.15);color:var(--danger);}
+    .badge-turno_asignado{background:rgba(6,182,212,.15);color:var(--accent);}
+    .pedido-motivo{font-size:.78rem;color:var(--danger);background:rgba(239,68,68,.08);
+      border-radius:8px;padding:6px 10px;}
+    .empty{text-align:center;padding:30px 20px;color:var(--text3);font-size:.85rem;}
+    .spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);
+      border-radius:50%;animation:spin .8s linear infinite;margin:30px auto;}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+      background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+      padding:12px 20px;font-size:.85rem;opacity:0;pointer-events:none;transition:all .25s;z-index:999;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    .toast.ok{border-color:var(--success);color:var(--success);}
+    .toast.error{border-color:var(--danger);color:var(--danger);}
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-brand">
+      <span>🛏️</span>
+      <span class="nav-title">Piso — Pedido de turno</span>
+      <span class="nav-badge">RMN</span>
+    </div>
+    <a href="../index.html" class="nav-back">← Cambiar rol</a>
+  </nav>
+
+  <div class="wrap">
+    <div class="card">
+      <h2>Nuevo pedido de turno</h2>
+      <div class="field-row">
+        <div class="field"><label>Apellido *</label><input id="f-apellido" placeholder="García" /></div>
+        <div class="field"><label>Nombre *</label><input id="f-nombre" placeholder="Juan" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>DNI *</label><input id="f-dni" type="number" placeholder="12345678" /></div>
+        <div class="field"><label>Cama *</label><input id="f-cama" placeholder="Ej: 12B" /></div>
+      </div>
+      <div class="field"><label>Sector de internación *</label>
+        <input id="f-sector" placeholder="Ej: Clínica Médica — 3er piso" /></div>
+      <div class="field"><label>Estudio solicitado *</label>
+        <input id="f-estudio" placeholder="Ej: Rm de cerebro con contraste" /></div>
+      <div class="field"><label>Diagnóstico presuntivo *</label>
+        <textarea id="f-diagnostico" placeholder="Motivo clínico del pedido"></textarea></div>
+
+      <div class="check-row">
+        <input type="checkbox" id="f-digital" />
+        <label for="f-digital">Confirmo que esta es una solicitud digital</label>
+      </div>
+
+      <div class="error-msg" id="f-error"></div>
+      <button class="btn btn-primary" id="btn-enviar" onclick="enviarPedido()">Enviar pedido</button>
+    </div>
+
+    <div class="card">
+      <h2>Mis pedidos recientes</h2>
+      <div class="search-wrap" style="margin-bottom:14px;">
+        <span class="search-icon">🔍</span>
+        <input id="buscar" placeholder="Buscar por apellido o DNI..." oninput="renderPedidos()" />
+      </div>
+      <div id="listaPedidos"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="../js/api.js"></script>
+  <script>
+    let _pedidos = [];
+
+    function toast(msg, tipo) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = 'toast show' + (tipo ? ' ' + tipo : '');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+    }
+
+    const BADGE_LABEL = {
+      pendiente: '⏳ Pendiente',
+      autorizado: '✅ Autorizado',
+      rechazado: '✕ Rechazado',
+      turno_asignado: '📅 Turno asignado',
+    };
+
+    function renderPedidos() {
+      const busq = (document.getElementById('buscar').value || '').toLowerCase();
+      let data = _pedidos;
+      if (busq) data = data.filter(p =>
+        (p.apellido + ' ' + p.nombre).toLowerCase().includes(busq) ||
+        String(p.dni).includes(busq));
+
+      const cont = document.getElementById('listaPedidos');
+      if (!data.length) {
+        cont.innerHTML = `<div class="empty">${busq ? 'Sin resultados' : 'Todavía no cargaste ningún pedido'}</div>`;
+        return;
+      }
+      cont.innerHTML = data.map(p => `
+        <div class="pedido-row">
+          <div class="pedido-top">
+            <div>
+              <div class="pedido-nombre">${p.apellido}, ${p.nombre}</div>
+              <div class="pedido-meta">DNI ${p.dni} · ${p.estudio} · Cama ${p.cama}</div>
+            </div>
+            <span class="pedido-badge badge-${p.estado}">${BADGE_LABEL[p.estado] || p.estado}</span>
+          </div>
+          ${p.estado === 'rechazado' && p.motivoRechazo
+            ? `<div class="pedido-motivo">💬 ${p.motivoRechazo}</div>` : ''}
+          ${p.estado === 'turno_asignado' && p.fechaTurno
+            ? `<div class="pedido-meta">Turno: ${p.fechaTurno} ${p.horaTurno || ''}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    async function cargarPedidos() {
+      try {
+        _pedidos = await getPedidosTurno();
+        renderPedidos();
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        document.getElementById('listaPedidos').innerHTML =
+          `<div class="empty">⚠️ Error: ${err.message}</div>`;
+      }
+    }
+
+    function _sesionVencida() {
+      toast('El PIN cambió o venció — ingresalo de nuevo', 'error');
+      verificarPin(cargarPedidos);
+    }
+
+    async function enviarPedido() {
+      const data = {
+        apellido: document.getElementById('f-apellido').value.trim(),
+        nombre: document.getElementById('f-nombre').value.trim(),
+        dni: document.getElementById('f-dni').value.trim(),
+        sectorInternacion: document.getElementById('f-sector').value.trim(),
+        cama: document.getElementById('f-cama').value.trim(),
+        estudio: document.getElementById('f-estudio').value.trim(),
+        diagnosticoPresuntivo: document.getElementById('f-diagnostico').value.trim(),
+        solicitudDigital: document.getElementById('f-digital').checked,
+      };
+      const errorEl = document.getElementById('f-error');
+      if (!data.apellido || !data.nombre || !data.dni || !data.sectorInternacion ||
+          !data.cama || !data.estudio || !data.diagnosticoPresuntivo) {
+        errorEl.textContent = 'Completá todos los campos obligatorios (*).';
+        return;
+      }
+      if (!data.solicitudDigital) {
+        errorEl.textContent = 'Tenés que confirmar "Solicitud digital" para enviar el pedido.';
+        return;
+      }
+      errorEl.textContent = '';
+      const btn = document.getElementById('btn-enviar');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+      try {
+        await crearPedidoTurno(data);
+        toast('✅ Pedido enviado — el médico lo va a revisar', 'ok');
+        ['f-apellido','f-nombre','f-dni','f-cama','f-sector','f-estudio','f-diagnostico'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+        document.getElementById('f-digital').checked = false;
+        await cargarPedidos();
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        errorEl.textContent = 'Error: ' + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Enviar pedido';
+      }
+    }
+
+    verificarConfig(() => verificarPin(cargarPedidos));
+  </script>
+</body>
+</html>

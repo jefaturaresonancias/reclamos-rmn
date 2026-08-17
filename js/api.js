@@ -194,6 +194,28 @@ async function solicitarRecitado(data) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+
+// ── Pedidos de turno para internados ────────────────────────────────
+async function crearPedidoTurno(data) {
+  const result = await apiPost({ action: 'crearPedidoTurno', data });
+  if (!result.ok) throw new Error(result.error);
+  return result.pedido;
+}
+async function getPedidosTurno() {
+  const result = await apiGet({ action: 'listarPedidosTurno' });
+  if (!result.ok) throw new Error(result.error);
+  return result.pedidos;
+}
+async function autorizarPedidoTurno(id) {
+  const result = await apiPost({ action: 'autorizarPedidoTurno', id });
+  if (!result.ok) throw new Error(result.error);
+  return result.pedido;
+}
+async function rechazarPedidoTurno(id, motivo) {
+  const result = await apiPost({ action: 'rechazarPedidoTurno', id, motivo });
+  if (!result.ok) throw new Error(result.error);
+  return result.pedido;
+}
 async function entregarReclamo(id) {
   const result = await apiPost({ action: 'entregar', id });
   if (!result.ok) throw new Error(result.error);
