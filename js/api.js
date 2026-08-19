@@ -308,3 +308,10 @@ async function reintentarEnvioInforme(id) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+
+// ── Órdenes escaneadas (escaner-ordenes-resonancia → reclamos-rmn) ──
+async function getOrdenes(fecha, categoria) {
+  const result = await apiGet({ action: 'listarOrdenes', ...(fecha ? { fecha } : {}), ...(categoria ? { categoria } : {}) });
+  if (!result.ok) throw new Error(result.error);
+  return result.ordenes;
+}
