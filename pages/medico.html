@@ -28,6 +28,13 @@
     .nav-back{font-size:.8rem;color:var(--text2);text-decoration:none;transition:color .2s;}
     .nav-back:hover{color:var(--text);}
     .nav-right{display:flex;align-items:center;gap:12px;}
+    .nav-analitica-btn{display:inline-flex;align-items:center;gap:6px;
+      padding:7px 14px;border-radius:100px;
+      background:rgba(79,124,255,.12);border:1px solid rgba(79,124,255,.25);
+      color:var(--accent);text-decoration:none;
+      font-family:'DM Sans',sans-serif;font-size:.78rem;font-weight:600;
+      transition:all .2s;}
+    .nav-analitica-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
 
     .layout{display:grid;grid-template-columns:320px 1fr;align-items:start;}
     .ptg-sidebar{position:sticky;top:57px;height:calc(100vh - 57px);
@@ -344,6 +351,7 @@
         onmouseout="this.style.opacity='1'"></span>
     </div>
     <div class="nav-right">
+      <a href="ordenes.html" class="nav-analitica-btn">🗂️ Órdenes</a>
       <button onclick="localStorage.clear();location.reload();"
         style="background:none;border:1px solid #252a38;color:#4f5870;padding:5px 10px;
         border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.72rem;">

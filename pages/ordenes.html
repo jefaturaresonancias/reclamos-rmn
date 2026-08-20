@@ -71,7 +71,7 @@
       <span class="nav-title">Órdenes escaneadas</span>
       <span class="nav-badge" id="contadorBadge">Reclamos RMN</span>
     </div>
-    <a href="administrativo.html" class="nav-back">← Volver a Administrativo</a>
+    <a href="administrativo.html" class="nav-back" id="linkVolver">← Volver</a>
   </nav>
 
   <div class="wrap">
@@ -158,6 +158,14 @@
         if (err.message === 'PIN inválido') { verificarPin(cargar); return; }
         resultado.innerHTML = `<div class="empty"><div class="big">⚠️</div><div>Error: ${err.message}</div></div>`;
       }
+    }
+
+    // Vuelve a la página que trajo hasta acá (Administrativo o Panel
+    // Médico) — se llega desde las dos, no siempre desde Administrativo.
+    if (document.referrer && document.referrer.includes('medico.html')) {
+      const link = document.getElementById('linkVolver');
+      link.href = 'medico.html';
+      link.textContent = '← Volver al Panel Médico';
     }
 
     document.getElementById('btnBuscar').addEventListener('click', cargar);
