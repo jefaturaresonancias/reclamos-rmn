@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Política de privacidad — Sistema de Reclamos RMN</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root{--bg:#0d0f14;--surface:#13161e;--border:#252a38;
+      --accent:#4f7cff;--text:#e8ecf4;--text2:#8892aa;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);
+      line-height:1.6;}
+    .wrap{max-width:720px;margin:0 auto;padding:48px 24px 80px;}
+    h1{font-family:'DM Serif Display',serif;font-weight:400;font-size:1.7rem;margin-bottom:6px;}
+    .updated{color:var(--text2);font-size:.8rem;margin-bottom:32px;}
+    h2{font-family:'DM Serif Display',serif;font-weight:400;font-size:1.15rem;
+      margin-top:32px;margin-bottom:10px;color:var(--accent);}
+    p, li{color:var(--text);font-size:.92rem;margin-bottom:10px;}
+    ul{padding-left:20px;margin-bottom:10px;}
+    a{color:var(--accent);}
+    .box{background:var(--surface);border:1px solid var(--border);border-radius:12px;
+      padding:16px 20px;margin:20px 0;}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Política de privacidad</h1>
+    <div class="updated">Sistema de Reclamos RMN · Última actualización: 22/08/2026</div>
+
+    <p>
+      El Sistema de Reclamos RMN es una herramienta de uso interno del sector de
+      Resonancia Magnética del hospital para gestionar reclamos por informes de
+      estudios y coordinar su entrega a los pacientes. No es una aplicación
+      pública: el acceso está restringido con PIN al personal administrativo y
+      médico del servicio.
+    </p>
+
+    <h2>Qué datos maneja</h2>
+    <p>Para poder gestionar un reclamo, el sistema guarda:</p>
+    <ul>
+      <li>Nombre, apellido y DNI del paciente</li>
+      <li>Estudio realizado y fecha</li>
+      <li>Dirección de email del paciente, cuando se carga para el envío del informe</li>
+      <li>El informe del estudio (PDF) mientras está pendiente de envío</li>
+    </ul>
+
+    <h2>Uso de la API de Gmail</h2>
+    <p>
+      El sistema usa la API de Gmail (permiso <code>gmail.send</code>) exclusivamente
+      para enviar el PDF del informe al email que el paciente dejó al hacer el
+      reclamo, desde la casilla <strong>resonancia.santojanni@gmail.com</strong>
+      del servicio. Con ese permiso la aplicación solo puede enviar mensajes en
+      nombre de esa casilla — no puede leer, buscar ni modificar el contenido de
+      esa cuenta de Gmail ni de ninguna otra.
+    </p>
+    <div class="box">
+      El envío lo dispara siempre una persona del personal administrativo,
+      revisando el informe y el destinatario antes de confirmar — no hay envíos
+      automáticos sin intervención humana.
+    </div>
+
+    <h2>Retención y borrado</h2>
+    <p>
+      El PDF del informe se borra del sistema apenas se confirma el envío. Si un
+      informe queda pendiente de revisión sin enviarse ni rechazarse, se borra
+      automáticamente a los 7 días.
+    </p>
+
+    <h2>Con quién se comparte</h2>
+    <p>
+      Los datos no se comparten con terceros. El informe se envía únicamente al
+      email del propio paciente que hizo el reclamo, con el fin exclusivo de
+      hacerle llegar el resultado de su estudio.
+    </p>
+
+    <h2>Contacto</h2>
+    <p>
+      Consultas sobre esta política o sobre datos personales:
+      <a href="mailto:resonancia.santojanni@gmail.com">resonancia.santojanni@gmail.com</a>
+    </p>
+  </div>
+</body>
+</html>
