@@ -268,6 +268,9 @@ async function getInformesListos() {
   if (!result.ok) throw new Error(result.error);
   return result.listos;
 }
+async function getGmailHealth() {
+  return apiGet({ action: 'gmailHealth' }); // { ok, error? } — no tira si falla, se chequea a mano
+}
 async function confirmarEnvioInforme(id) {
   const result = await apiPost({ action: 'confirmarEnvioInforme', id });
   if (!result.ok) throw new Error(result.error);

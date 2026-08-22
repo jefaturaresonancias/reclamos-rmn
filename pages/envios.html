@@ -110,6 +110,9 @@
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
     .toast.ok{border-color:var(--success);color:var(--success);}
     .toast.error{border-color:var(--danger);color:var(--danger);}
+    .gmail-alert{background:rgba(239,68,68,.1);border:1px solid var(--danger);border-radius:var(--r);
+      padding:14px 18px;font-size:.85rem;color:var(--text);display:flex;gap:10px;align-items:flex-start;}
+    .gmail-alert b{color:var(--danger);}
   </style>
 </head>
 <body>
@@ -126,6 +129,7 @@
   </nav>
 
   <div class="wrap" id="wrap">
+    <div id="gmailAlert"></div>
     <div id="enviadosPanel" style="display:none"></div>
     <div id="rebotadosWrap"></div>
     <div id="listosWrap"><div class="spinner"></div></div>
@@ -377,7 +381,29 @@
       verificarPin(cargar);
     }
 
+    // Chequeo aparte, best-effort: si esto falla por una razón ajena al
+    // estado de Gmail (red, PIN vencido a mitad de sesión) no hay que tapar
+    // la pantalla con un aviso falso — solo se muestra cuando el backend
+    // contesta explícitamente ok:false.
+    async function chequearGmail() {
+      const el = document.getElementById('gmailAlert');
+      try {
+        const health = await getGmailHealth();
+        if (health.ok === false) {
+          el.innerHTML = `<div class="gmail-alert">⚠️ <div><b>El envío por mail está caído.</b><br>
+            No se pudo conectar con Gmail (token expirado o revocado). Los informes se pueden marcar
+            como "Ya se mandó por otra vía" mientras se resuelve — avisar para renovar la conexión.<br>
+            <span style="color:var(--text2)">Detalle: ${health.error || ''}</span></div></div>`;
+        } else {
+          el.innerHTML = '';
+        }
+      } catch (err) {
+        el.innerHTML = ''; // no tapar la pantalla por un error de red al chequear
+      }
+    }
+
     async function cargar() {
+      chequearGmail();
       try {
         [_actual, _rebotados] = await Promise.all([getInformesListos(), getInformesRebotados()]);
         render(_actual);
