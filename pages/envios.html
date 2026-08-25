@@ -451,7 +451,14 @@
 
     function mostrarVerificacionEnvio(v, email) {
       return new Promise((resolve) => {
-        const hayMismatch = v.coincideNombre === false || v.coincideDni === false;
+        const hayMismatch = v.coincideNombre === false || v.coincideDni === false || v.coincideFecha === false;
+        const motivos = [];
+        if (v.coincideNombre === false || v.coincideDni === false) {
+          motivos.push('el paciente del PDF no parece ser el mismo del reclamo');
+        }
+        if (v.coincideFecha === false) {
+          motivos.push('la fecha del estudio en el PDF es ANTERIOR a la reclamada — puede ser el informe de un estudio viejo distinto');
+        }
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
@@ -460,23 +467,25 @@
             <div class="modal-row">
               <label>Reclamo cargado a nombre de</label>
               <div class="quien"><b>${v.nombreReclamo}</b> — DNI <b>${v.dniReclamo || '—'}</b></div>
+              <div class="quien" style="margin-top:4px">Estudio reclamado: <b>${v.fechaEstudioReclamo || '—'}</b></div>
             </div>
             <div class="modal-row">
               <label>Este informe (PDF) pertenece a</label>
               <div class="quien"><b>${v.nombrePdf || 'No se pudo leer el nombre del PDF'}</b> — DNI <b>${v.dniPdf || 'No se pudo leer'}</b></div>
+              <div class="quien" style="margin-top:4px">Fecha del estudio en el PDF: <b>${v.fechaEstudioPdf || 'No se pudo leer'}</b></div>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;">
               <div>Nombre: ${_iconoMatch(v.coincideNombre)}</div>
               <div>DNI: ${_iconoMatch(v.coincideDni)}</div>
+              <div>Fecha del estudio: ${_iconoMatch(v.coincideFecha)}</div>
             </div>
             ${hayMismatch ? `
               <div class="modal-warning">
-                <b>Los datos del PDF no coinciden con el reclamo.</b> Es probable que sea el informe
-                de otro paciente. No confirmes el envío salvo que ya hayas revisado el PDF a mano y
-                estés seguro de que corresponde.
+                <b>Ojo:</b> ${motivos.join('; ')}. No confirmes el envío salvo que ya hayas
+                revisado el PDF a mano y estés seguro de que corresponde.
               </div>` : (!v.pudoLeer ? `
               <div class="modal-warning" style="border-color:var(--warn);background:rgba(245,158,11,.12)">
-                No se pudo leer nombre ni DNI dentro del PDF (puede ser una imagen escaneada) —
+                No se pudo leer nombre, DNI ni fecha dentro del PDF (puede ser una imagen escaneada) —
                 revisá el documento manualmente antes de confirmar.
               </div>` : '')}
             <div class="modal-row">
