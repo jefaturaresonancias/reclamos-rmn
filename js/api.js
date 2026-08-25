@@ -271,6 +271,13 @@ async function getInformesListos() {
 async function getGmailHealth() {
   return apiGet({ action: 'gmailHealth' }); // { ok, error? } — no tira si falla, se chequea a mano
 }
+// Lee nombre/DNI de adentro del PDF y los compara contra el reclamo — se
+// llama antes de mandar el mail para mostrar el cartel de confirmación.
+async function verificarInforme(id) {
+  const result = await apiGet({ action: 'verificarInforme', id });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
 async function confirmarEnvioInforme(id) {
   const result = await apiPost({ action: 'confirmarEnvioInforme', id });
   if (!result.ok) throw new Error(result.error);

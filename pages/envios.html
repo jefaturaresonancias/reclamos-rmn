@@ -113,6 +113,28 @@
     .gmail-alert{background:rgba(239,68,68,.1);border:1px solid var(--danger);border-radius:var(--r);
       padding:14px 18px;font-size:.85rem;color:var(--text);display:flex;gap:10px;align-items:flex-start;}
     .gmail-alert b{color:var(--danger);}
+
+    .modal-overlay{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.6);
+      display:flex;align-items:center;justify-content:center;padding:20px;}
+    .modal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;
+      width:440px;max-width:100%;max-height:90vh;overflow-y:auto;padding:24px;
+      display:flex;flex-direction:column;gap:16px;}
+    .modal-box.mismatch{border-color:var(--danger);box-shadow:0 0 0 1px var(--danger);}
+    .modal-title{font-family:'DM Serif Display',serif;font-weight:400;font-size:1.15rem;}
+    .modal-row{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+      padding:10px 14px;font-size:.85rem;}
+    .modal-row label{font-size:.68rem;color:var(--text2);text-transform:uppercase;
+      letter-spacing:.03em;display:block;margin-bottom:3px;}
+    .modal-row .quien{color:var(--text);}
+    .match-line{display:flex;align-items:center;gap:8px;font-size:.85rem;font-weight:500;}
+    .match-ok{color:var(--success);}
+    .match-bad{color:var(--danger);font-weight:700;}
+    .match-unknown{color:var(--warn);}
+    .modal-warning{background:rgba(239,68,68,.12);border:1px solid var(--danger);border-radius:10px;
+      padding:12px 14px;font-size:.82rem;color:var(--text);}
+    .modal-warning b{color:var(--danger);}
+    .modal-btns{display:flex;gap:10px;margin-top:4px;}
+    .modal-btns .btn{width:auto;flex:1;}
   </style>
 </head>
 <body>
@@ -415,14 +437,81 @@
       }
     }
 
-    // Dos acciones independientes, cada una con su propia confirmación: la
-    // primera manda el mail de verdad y pasa pase lo que pase con la
-    // segunda; la segunda (borrar el temporal + archivar como "enviado")
-    // se pregunta después y por separado — si se cancela, el mail ya salió
-    // igual y el reclamo sigue en la cola.
+    // Cartel de verificación antes de mandar: lee el nombre/DNI de ADENTRO
+    // del PDF (verificarInforme) y los muestra contra lo cargado en el
+    // reclamo — agregado después de que un match automático (por fecha, no
+    // por DNI) le mandó a un paciente el informe de otro (reclamo N°334,
+    // 2026-08). Devuelve una Promise<boolean>: true si administrativo
+    // confirma el envío, false si cancela.
+    function _iconoMatch(valor) {
+      if (valor === true)  return `<span class="match-line match-ok">✅ Coincide</span>`;
+      if (valor === false) return `<span class="match-line match-bad">❌ NO COINCIDE</span>`;
+      return `<span class="match-line match-unknown">⚠️ No se pudo verificar</span>`;
+    }
+
+    function mostrarVerificacionEnvio(v, email) {
+      return new Promise((resolve) => {
+        const hayMismatch = v.coincideNombre === false || v.coincideDni === false;
+        const overlay = document.createElement('div');
+        overlay.className = 'modal-overlay';
+        overlay.innerHTML = `
+          <div class="modal-box ${hayMismatch ? 'mismatch' : ''}">
+            <div class="modal-title">${hayMismatch ? '⚠️ Verificar antes de enviar' : 'Confirmar envío'}</div>
+            <div class="modal-row">
+              <label>Reclamo cargado a nombre de</label>
+              <div class="quien"><b>${v.nombreReclamo}</b> — DNI <b>${v.dniReclamo || '—'}</b></div>
+            </div>
+            <div class="modal-row">
+              <label>Este informe (PDF) pertenece a</label>
+              <div class="quien"><b>${v.nombrePdf || 'No se pudo leer el nombre del PDF'}</b> — DNI <b>${v.dniPdf || 'No se pudo leer'}</b></div>
+            </div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div>Nombre: ${_iconoMatch(v.coincideNombre)}</div>
+              <div>DNI: ${_iconoMatch(v.coincideDni)}</div>
+            </div>
+            ${hayMismatch ? `
+              <div class="modal-warning">
+                <b>Los datos del PDF no coinciden con el reclamo.</b> Es probable que sea el informe
+                de otro paciente. No confirmes el envío salvo que ya hayas revisado el PDF a mano y
+                estés seguro de que corresponde.
+              </div>` : (!v.pudoLeer ? `
+              <div class="modal-warning" style="border-color:var(--warn);background:rgba(245,158,11,.12)">
+                No se pudo leer nombre ni DNI dentro del PDF (puede ser una imagen escaneada) —
+                revisá el documento manualmente antes de confirmar.
+              </div>` : '')}
+            <div class="modal-row">
+              <label>Se va a enviar a</label>
+              <div class="quien">${email || '—'}</div>
+            </div>
+            <div class="modal-btns">
+              <button class="btn btn-ghost" data-cancelar-verif>Cancelar</button>
+              <button class="btn ${hayMismatch ? 'btn-danger' : 'btn-success'}" data-confirmar-verif>
+                ${hayMismatch ? 'Enviar de todas formas' : '✓ Confirmar y enviar'}
+              </button>
+            </div>
+          </div>`;
+        document.body.appendChild(overlay);
+        overlay.querySelector('[data-cancelar-verif]').addEventListener('click', () => { overlay.remove(); resolve(false); });
+        overlay.querySelector('[data-confirmar-verif]').addEventListener('click', () => { overlay.remove(); resolve(true); });
+      });
+    }
+
+    // Tres pasos: 1) leer y comparar el PDF contra el reclamo (cartel de
+    // verificación, obligatorio); 2) mandar el mail de verdad; 3) preguntar
+    // aparte si se archiva — si se cancela, el mail ya salió igual y el
+    // reclamo sigue en la cola.
     async function onConfirmar(id, btn) {
       const reclamo = _actual.find(r => r.id === id);
-      if (!confirm(`¿Enviar el informe a ${reclamo ? reclamo.email : 'este contacto'}?\n\nEsta acción manda el mail de verdad y no se puede deshacer.`)) return;
+      let verif;
+      try {
+        verif = await verificarInforme(id);
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        toast('No se pudo verificar el informe: ' + err.message, 'error');
+        return;
+      }
+      const ok = await mostrarVerificacionEnvio(verif, reclamo && reclamo.email);
+      if (!ok) return;
       btn.disabled = true;
       btn.textContent = 'Enviando…';
       try {
