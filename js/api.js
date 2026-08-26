@@ -222,6 +222,20 @@ async function asignarTurnoPedido(id, turno) {
   return result.pedido;
 }
 
+// Piso: reclamo directo para un estudio ya realizado cuyo informe no llegó
+// (sin pasar por un pedido de turno), y el estado de los que ya se cargaron
+// desde acá (por esta vía o porque se les asignó el turno).
+async function crearReclamoInternado(data) {
+  const result = await apiPost({ action: 'crearReclamoInternado', data });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
+async function getInternadosPiso() {
+  const result = await apiGet({ action: 'listarInternadosPiso' });
+  if (!result.ok) throw new Error(result.error);
+  return result.internados;
+}
+
 // ── Integración directa con resonancia-pwa (agenda real) ────────────
 // Mismo Apps Script que ya usa esa PWA — hablamos con él tal cual desde
 // acá para no duplicar la agenda ni reimplementar disponibilidad. Ambos

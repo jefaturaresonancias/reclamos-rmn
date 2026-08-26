@@ -25,8 +25,41 @@
       padding:3px 10px;border-radius:100px;}
     .nav-back{font-size:.8rem;color:var(--text2);text-decoration:none;transition:color .2s;}
     .nav-back:hover{color:var(--text);}
+    .nav-refresh{background:none;border:1px solid var(--border);color:var(--text2);
+      padding:6px 12px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.8rem;}
+    .nav-refresh:hover{border-color:var(--accent);color:var(--text);}
+
+    .layout{display:grid;grid-template-columns:200px 1fr 280px;gap:0;align-items:start;}
+    .left-sidebar{position:sticky;top:57px;height:calc(100vh - 57px);
+      background:var(--surface);border-right:1px solid var(--border);
+      display:flex;flex-direction:column;gap:6px;padding:20px 14px;flex-shrink:0;}
+    .tab-btn{width:100%;text-align:left;padding:11px 14px;border-radius:var(--r);border:1px solid transparent;
+      background:none;color:var(--text2);cursor:pointer;font-family:'DM Sans',sans-serif;
+      font-size:.85rem;font-weight:500;transition:all .2s;}
+    .tab-btn:hover{background:var(--surface2);color:var(--text);}
+    .tab-btn.active{background:rgba(6,182,212,.12);color:var(--accent);border-color:rgba(6,182,212,.3);}
+
+    .right-sidebar{position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;
+      background:var(--surface);border-left:1px solid var(--border);
+      padding:20px 16px;display:flex;flex-direction:column;gap:20px;flex-shrink:0;}
+    .side-card h3{font-family:'DM Serif Display',serif;font-weight:400;font-size:.95rem;margin-bottom:10px;}
+    .side-item{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
+      padding:10px 12px;font-size:.78rem;margin-bottom:8px;}
+    .side-item .nom{font-weight:600;font-size:.82rem;}
+    .side-item .meta{color:var(--text3);margin-top:2px;}
+    .side-empty{font-size:.78rem;color:var(--text3);padding:6px 0;}
+
+    .hint{font-size:.8rem;color:var(--text2);line-height:1.5;margin-bottom:16px;}
 
     .wrap{max-width:640px;margin:0 auto;padding:28px 20px 60px;display:flex;flex-direction:column;gap:24px;}
+
+    @media(max-width:960px){
+      .layout{grid-template-columns:1fr;}
+      .left-sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap;
+        border-right:none;border-bottom:1px solid var(--border);}
+      .tab-btn{width:auto;flex:1;text-align:center;}
+      .right-sidebar{position:static;height:auto;border-left:none;border-top:1px solid var(--border);}
+    }
 
     .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;}
     .card h2{font-family:'DM Serif Display',serif;font-weight:400;font-size:1.15rem;margin-bottom:16px;}
@@ -92,43 +125,85 @@
       <span class="nav-title">Piso — Pedido de turno</span>
       <span class="nav-badge">RMN</span>
     </div>
+    <button class="nav-refresh" onclick="cargarTodo()">🔄 Actualizar</button>
   </nav>
 
-  <div class="wrap">
-    <div class="card">
-      <h2>Nuevo pedido de turno</h2>
-      <div class="field-row">
-        <div class="field"><label>Apellido *</label><input id="f-apellido" placeholder="García" /></div>
-        <div class="field"><label>Nombre *</label><input id="f-nombre" placeholder="Juan" /></div>
-      </div>
-      <div class="field-row">
-        <div class="field"><label>DNI *</label><input id="f-dni" type="number" placeholder="12345678" /></div>
-        <div class="field"><label>Cama *</label><input id="f-cama" placeholder="Ej: 12B" /></div>
-      </div>
-      <div class="field"><label>Sector de internación *</label>
-        <input id="f-sector" placeholder="Ej: Clínica Médica — 3er piso" /></div>
-      <div class="field"><label>Estudio solicitado *</label>
-        <input id="f-estudio" placeholder="Ej: Rm de cerebro con contraste" /></div>
-      <div class="field"><label>Diagnóstico presuntivo *</label>
-        <textarea id="f-diagnostico" placeholder="Motivo clínico del pedido"></textarea></div>
+  <div class="layout">
+    <aside class="left-sidebar">
+      <button class="tab-btn active" id="tab-turno" onclick="cambiarVista('turno')">📅 Pedido de turno</button>
+      <button class="tab-btn" id="tab-informe" onclick="cambiarVista('informe')">📄 Solicitud de informe atrasado</button>
+    </aside>
 
-      <div class="check-row">
-        <input type="checkbox" id="f-digital" />
-        <label for="f-digital">Confirmo que esta es una solicitud digital</label>
+    <div class="wrap">
+      <div class="card" id="vista-turno">
+        <h2>Nuevo pedido de turno</h2>
+        <div class="field-row">
+          <div class="field"><label>Apellido *</label><input id="f-apellido" placeholder="García" /></div>
+          <div class="field"><label>Nombre *</label><input id="f-nombre" placeholder="Juan" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>DNI *</label><input id="f-dni" type="number" placeholder="12345678" /></div>
+          <div class="field"><label>Cama *</label><input id="f-cama" placeholder="Ej: 12B" /></div>
+        </div>
+        <div class="field"><label>Sector de internación *</label>
+          <input id="f-sector" placeholder="Ej: Clínica Médica — 3er piso" /></div>
+        <div class="field"><label>Estudio solicitado *</label>
+          <input id="f-estudio" placeholder="Ej: Rm de cerebro con contraste" /></div>
+        <div class="field"><label>Diagnóstico presuntivo *</label>
+          <textarea id="f-diagnostico" placeholder="Motivo clínico del pedido"></textarea></div>
+
+        <div class="check-row">
+          <input type="checkbox" id="f-digital" />
+          <label for="f-digital">Confirmo que esta es una solicitud digital</label>
+        </div>
+
+        <div class="error-msg" id="f-error"></div>
+        <button class="btn btn-primary" id="btn-enviar" onclick="enviarPedido()">Enviar pedido</button>
       </div>
 
-      <div class="error-msg" id="f-error"></div>
-      <button class="btn btn-primary" id="btn-enviar" onclick="enviarPedido()">Enviar pedido</button>
+      <div class="card" id="vista-informe" style="display:none">
+        <h2>Solicitud de informe atrasado</h2>
+        <p class="hint">Para un estudio que YA se hizo (no necesita pedido de turno) pero cuyo informe no llegó — se carga directo como reclamo y el médico lo va a ver como internado pendiente de informar.</p>
+        <div class="field-row">
+          <div class="field"><label>Apellido *</label><input id="i-apellido" placeholder="García" /></div>
+          <div class="field"><label>Nombre *</label><input id="i-nombre" placeholder="Juan" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>DNI *</label><input id="i-dni" type="number" placeholder="12345678" /></div>
+          <div class="field"><label>Cama</label><input id="i-cama" placeholder="Ej: 12B" /></div>
+        </div>
+        <div class="field"><label>Sector de internación</label>
+          <input id="i-sector" placeholder="Ej: Clínica Médica — 3er piso" /></div>
+        <div class="field"><label>Estudio realizado *</label>
+          <input id="i-estudio" placeholder="Ej: Rm de cerebro con contraste" /></div>
+        <div class="field"><label>Fecha del estudio *</label><input type="date" id="i-fecha" /></div>
+        <div class="field"><label>Observaciones</label>
+          <textarea id="i-obs" placeholder="Detalle adicional (opcional)"></textarea></div>
+
+        <div class="error-msg" id="i-error"></div>
+        <button class="btn btn-primary" id="btn-enviar-informe" onclick="enviarInformeAtrasado()">Enviar reclamo</button>
+      </div>
+
+      <div class="card">
+        <h2>Mis pedidos recientes</h2>
+        <div class="search-wrap" style="margin-bottom:14px;">
+          <span class="search-icon">🔍</span>
+          <input id="buscar" placeholder="Buscar por apellido o DNI..." oninput="renderPedidos()" />
+        </div>
+        <div id="listaPedidos"><div class="spinner"></div></div>
+      </div>
     </div>
 
-    <div class="card">
-      <h2>Mis pedidos recientes</h2>
-      <div class="search-wrap" style="margin-bottom:14px;">
-        <span class="search-icon">🔍</span>
-        <input id="buscar" placeholder="Buscar por apellido o DNI..." oninput="renderPedidos()" />
+    <aside class="right-sidebar">
+      <div class="side-card">
+        <h3>📅 Turnos autorizados y asignados</h3>
+        <div id="listaTurnosLaterales"><div class="spinner"></div></div>
       </div>
-      <div id="listaPedidos"><div class="spinner"></div></div>
-    </div>
+      <div class="side-card">
+        <h3>📄 Estado de informes</h3>
+        <div id="listaInternados"><div class="spinner"></div></div>
+      </div>
+    </aside>
   </div>
 
   <div class="toast" id="toast"></div>
@@ -136,6 +211,7 @@
   <script src="../js/api.js"></script>
   <script>
     let _pedidos = [];
+    let _internados = [];
 
     function toast(msg, tipo) {
       const el = document.getElementById('toast');
@@ -185,6 +261,7 @@
       try {
         _pedidos = await getPedidosTurno();
         renderPedidos();
+        renderTurnosLaterales();
       } catch (err) {
         if (err.message === 'PIN inválido') { _sesionVencida(); return; }
         document.getElementById('listaPedidos').innerHTML =
@@ -192,9 +269,107 @@
       }
     }
 
+    // Mismos pedidos que "Mis pedidos recientes", solo agrupados por estado
+    // — no pide nada nuevo al backend.
+    function renderTurnosLaterales() {
+      const cont = document.getElementById('listaTurnosLaterales');
+      const relevantes = _pedidos.filter(p => p.estado === 'autorizado' || p.estado === 'turno_asignado');
+      if (!relevantes.length) {
+        cont.innerHTML = `<div class="side-empty">Sin turnos autorizados o asignados todavía</div>`;
+        return;
+      }
+      cont.innerHTML = relevantes.map(p => `
+        <div class="side-item">
+          <div class="nom">${p.apellido}, ${p.nombre}</div>
+          <div class="meta">${p.estudio} · Cama ${p.cama}</div>
+          <div style="margin-top:6px">
+            <span class="pedido-badge badge-${p.estado}">${BADGE_LABEL[p.estado] || p.estado}</span>
+            ${p.estado === 'turno_asignado' && p.fechaTurno
+              ? `<span class="meta" style="margin-left:6px">${p.fechaTurno} ${p.horaTurno || ''}</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Estado del informe de cada internado cargado desde acá (pedido con
+    // turno ya asignado, o solicitud de informe atrasado directa) — es lo
+    // que reemplaza a un aviso: piso entra acá y ve si ya se informó.
+    async function cargarInternados() {
+      const cont = document.getElementById('listaInternados');
+      try {
+        _internados = await getInternadosPiso();
+        if (!_internados.length) {
+          cont.innerHTML = `<div class="side-empty">Sin internados cargados todavía</div>`;
+          return;
+        }
+        cont.innerHTML = _internados.map(i => `
+          <div class="side-item">
+            <div class="nom">${i.apellido}, ${i.nombre}</div>
+            <div class="meta">${i.estudio} · ${i.fechaEstudio || 'sin fecha'}</div>
+            <div style="margin-top:6px">
+              <span class="pedido-badge badge-${i.informado ? 'autorizado' : 'pendiente'}">
+                ${i.informado ? '✅ Informado' : '⏳ Pendiente'}
+              </span>
+            </div>
+          </div>
+        `).join('');
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        cont.innerHTML = `<div class="side-empty">⚠️ Error: ${err.message}</div>`;
+      }
+    }
+
+    function cargarTodo() {
+      cargarPedidos();
+      cargarInternados();
+    }
+
+    function cambiarVista(v) {
+      document.getElementById('vista-turno').style.display = v === 'turno' ? '' : 'none';
+      document.getElementById('vista-informe').style.display = v === 'informe' ? '' : 'none';
+      document.getElementById('tab-turno').classList.toggle('active', v === 'turno');
+      document.getElementById('tab-informe').classList.toggle('active', v === 'informe');
+    }
+
+    async function enviarInformeAtrasado() {
+      const data = {
+        apellido: document.getElementById('i-apellido').value.trim(),
+        nombre: document.getElementById('i-nombre').value.trim(),
+        dni: document.getElementById('i-dni').value.trim(),
+        cama: document.getElementById('i-cama').value.trim(),
+        sectorInternacion: document.getElementById('i-sector').value.trim(),
+        estudio: document.getElementById('i-estudio').value.trim(),
+        fechaEstudio: document.getElementById('i-fecha').value,
+        motivo: document.getElementById('i-obs').value.trim(),
+      };
+      const errorEl = document.getElementById('i-error');
+      if (!data.apellido || !data.nombre || !data.dni || !data.estudio || !data.fechaEstudio) {
+        errorEl.textContent = 'Completá todos los campos obligatorios (*).';
+        return;
+      }
+      errorEl.textContent = '';
+      const btn = document.getElementById('btn-enviar-informe');
+      btn.disabled = true;
+      btn.textContent = 'Enviando...';
+      try {
+        await crearReclamoInternado(data);
+        toast('✅ Reclamo cargado — el médico lo va a ver como internado pendiente', 'ok');
+        ['i-apellido','i-nombre','i-dni','i-cama','i-sector','i-estudio','i-fecha','i-obs'].forEach(id => {
+          document.getElementById(id).value = '';
+        });
+        await cargarInternados();
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        errorEl.textContent = 'Error: ' + err.message;
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Enviar reclamo';
+      }
+    }
+
     function _sesionVencida() {
       toast('El PIN cambió o venció — ingresalo de nuevo', 'error');
-      verificarPin(cargarPedidos);
+      verificarPin(cargarTodo);
     }
 
     async function enviarPedido() {
@@ -239,7 +414,7 @@
       }
     }
 
-    verificarConfig(() => verificarPin(cargarPedidos));
+    verificarConfig(() => verificarPin(cargarTodo));
   </script>
 </body>
 </html>
