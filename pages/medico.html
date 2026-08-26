@@ -12,7 +12,7 @@
   <style>
     :root{--bg:#0d0f14;--surface:#13161e;--surface2:#1a1e29;--border:#252a38;
       --accent:#4f7cff;--warn:#f59e0b;--danger:#ef4444;--success:#10b981;
-      --recitar:#06b6d4;--text:#e8ecf4;--text2:#8892aa;--text3:#4f5870;--r:12px;}
+      --recitar:#06b6d4;--internado:#ec4899;--text:#e8ecf4;--text2:#8892aa;--text3:#4f5870;--r:12px;}
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
 
@@ -36,7 +36,7 @@
       transition:all .2s;}
     .nav-analitica-btn:hover{background:var(--accent);color:#fff;border-color:var(--accent);}
 
-    .layout{display:grid;grid-template-columns:320px 1fr;align-items:start;}
+    .layout{display:grid;grid-template-columns:320px 1fr 260px;align-items:start;}
     .ptg-sidebar{position:sticky;top:57px;height:calc(100vh - 57px);
       background:var(--surface);border-right:1px solid rgba(245,158,11,.25);
       display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
@@ -46,6 +46,23 @@
       font-weight:400;color:var(--warn);}
     .ptg-sidebar-body{flex:1;overflow-y:auto;padding:16px 20px;
       display:flex;flex-direction:column;gap:20px;}
+
+    .internados-sidebar{position:sticky;top:57px;height:calc(100vh - 57px);
+      background:var(--surface);border-left:1px solid rgba(236,72,153,.25);
+      display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0;}
+    .internados-sidebar-header{padding:20px 20px 12px;border-bottom:1px solid var(--border);
+      display:flex;align-items:center;gap:8px;flex-shrink:0;}
+    .internados-sidebar-title{font-family:'DM Serif Display',serif;font-size:1.05rem;
+      font-weight:400;color:var(--internado);}
+    .internados-sidebar-body{flex:1;padding:24px 20px;display:flex;flex-direction:column;
+      align-items:center;text-align:center;gap:4px;}
+    .internados-count{font-size:2.6rem;font-weight:700;color:var(--internado);line-height:1;}
+    .internados-label{font-size:.78rem;color:var(--text2);margin-bottom:14px;}
+    .internados-link{padding:9px 16px;border-radius:100px;border:1px solid var(--internado);
+      background:rgba(236,72,153,.1);color:var(--internado);font-family:'DM Sans',sans-serif;
+      font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;width:100%;}
+    .internados-link:hover{background:var(--internado);color:#fff;}
+    .internados-link:disabled{opacity:.4;cursor:not-allowed;}
 
     .page{max-width:960px;margin:0 auto;padding:32px 24px;
       display:flex;flex-direction:column;gap:20px;}
@@ -87,6 +104,8 @@
       background:linear-gradient(135deg,rgba(239,68,68,.04),var(--surface));}
     .reclamo-card.recitado-estado{border-color:rgba(6,182,212,.3);
       background:linear-gradient(135deg,rgba(6,182,212,.04),var(--surface));}
+    .reclamo-card.internado-atrasado{border-color:rgba(236,72,153,.4);
+      background:linear-gradient(135deg,rgba(236,72,153,.06),var(--surface));}
     .reclamo-card.resuelto{opacity:.7;}
 
     .card-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;}
@@ -102,6 +121,7 @@
     .tipo-chip.informado{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);color:var(--warn);}
     .tipo-chip.diagnostico{background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);color:#a78bfa;}
     .tipo-chip.turno{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:var(--danger);}
+    .tipo-chip.internado{background:rgba(236,72,153,.12);border:1px solid rgba(236,72,153,.3);color:var(--internado);}
 
     .card-detail{background:var(--surface2);border-radius:10px;padding:14px;
       display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
@@ -131,6 +151,7 @@
     .prioridad-bar.media{background:linear-gradient(90deg,#a78bfa,rgba(167,139,250,.2));}
     .prioridad-bar.normal{background:linear-gradient(90deg,var(--warn),rgba(245,158,11,.2));}
     .prioridad-bar.recitado-bar{background:linear-gradient(90deg,var(--recitar),rgba(6,182,212,.2));}
+    .prioridad-bar.internado-bar{background:linear-gradient(90deg,var(--internado),rgba(236,72,153,.2));}
 
     .resolve-area{display:flex;flex-direction:column;gap:8px;min-width:200px;}
     textarea.comentario{width:100%;padding:10px 12px;background:var(--surface2);
@@ -290,6 +311,8 @@
       .layout{grid-template-columns:1fr;}
       .ptg-sidebar{position:static;height:auto;border-right:none;
         border-bottom:1px solid rgba(245,158,11,.25);}
+      .internados-sidebar{position:static;height:auto;border-left:none;
+        border-top:1px solid rgba(236,72,153,.25);}
     }
     @media(max-width:640px){
       .reclamo-card{grid-template-columns:1fr;}
@@ -403,6 +426,7 @@
         <button class="filter-btn" onclick="setFiltro('placas',this)">🩻 Placas viejas</button>
         <button class="filter-btn" onclick="setFiltro('recitados',this)">🔄 Recitados</button>
         <button class="filter-btn" onclick="setFiltro('resuelto',this)">✅ Resueltos</button>
+        <button class="filter-btn" id="filtroInternadoBtn" onclick="setFiltro('internado',this)">🏥 Internados</button>
         <button class="filter-btn" onclick="setFiltro('todos',this)">Todos</button>
       </div>
       <div class="filters-label">Región del cuerpo</div>
@@ -424,6 +448,17 @@
     </div>
 
   </div>
+  <aside class="internados-sidebar">
+    <div class="internados-sidebar-header">
+      <span>🏥</span>
+      <div class="internados-sidebar-title">Internados</div>
+    </div>
+    <div class="internados-sidebar-body">
+      <div class="internados-count" id="internadosCount">0</div>
+      <div class="internados-label">atrasados para informar</div>
+      <button class="internados-link" id="internadosLinkBtn" onclick="verInternadosAtrasados()">Ver listado →</button>
+    </div>
+  </aside>
   </div>
 
   <div class="ptg-alert-overlay" id="ptgAlertOverlay">
@@ -493,6 +528,7 @@
         'resuelto':    'Resueltos',
         'todos':       'Todos los reclamos',
         'recitados':   'Recitados confirmados',
+        'internado':   '🏥 Internados atrasados para informar',
       };
       document.getElementById('seccionTitulo').textContent =
         titulos[filtro] || 'Reclamos';
@@ -505,6 +541,14 @@
       document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       renderLista();
+    }
+
+    // Link del sidebar derecho — mismo efecto que tocar el filtro "🏥
+    // Internados" de la barra, para que quien llega desde ahí vea el tab
+    // correspondiente marcado como activo.
+    function verInternadosAtrasados() {
+      setFiltro('internado', document.getElementById('filtroInternadoBtn'));
+      document.getElementById('lista').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function setRegion(region, btn) {
@@ -778,6 +822,19 @@
       const pend = todosLosReclamos.filter(r => r.estado === 'pendiente').length;
       const el   = document.getElementById('pendingCount');
       el.textContent = pend ? `${pend} pendientes` : '';
+      actualizarInternadosBadge();
+    }
+
+    // Un internado "atrasado" es, por definición, cualquiera que siga
+    // pendiente de informar — no hay un umbral de días separado: un
+    // paciente internado esperando el informe para operarse no puede
+    // esperar semanas como sí puede esperar un reclamo ambulatorio típico.
+    function actualizarInternadosBadge() {
+      const count = todosLosReclamos.filter(r => r.esInternado && r.estado === 'pendiente').length;
+      document.getElementById('internadosCount').textContent = count;
+      const btn = document.getElementById('internadosLinkBtn');
+      btn.disabled = count === 0;
+      btn.textContent = count === 0 ? 'Sin pendientes' : 'Ver listado →';
     }
 
     function formatObservacion(text){
@@ -814,6 +871,7 @@
       else if (filtroActual === 'placas')      data = data.filter(r => r.reclamoPlacas && r.estado === 'pendiente');
       else if (filtroActual === 'resuelto')    data = data.filter(r => r.estado === 'resuelto');
       else if (filtroActual === 'recitados')   data = data.filter(r => esRecitadoInformable(r));
+      else if (filtroActual === 'internado')   data = data.filter(r => r.esInternado && r.estado === 'pendiente');
       // 'todos' no tiene filtro de estado propio, pero igual hay que sacar
       // los recitados sin confirmar — si no, quedarían accionables acá
       // aunque el paciente ni se haya presentado al turno nuevo.
@@ -837,6 +895,7 @@
           placas:'✅ Sin placas pendientes de reimprimir',
           resuelto:'📭 No hay reclamos resueltos',todos:'📭 No hay reclamos cargados',
           recitados:'✅ Sin recitados confirmados para informar',
+          internado:'🎉 Sin internados atrasados para informar',
         };
         lista.innerHTML = '<div class="empty"><span>' + (busq ? '🔍' : '📭') + '</span>' +
           (busq ? `Sin resultados para "<strong>${busq}</strong>"` :
@@ -855,6 +914,7 @@
     }
 
     function prioridad(r) {
+      if (r.esInternado && r.estado === 'pendiente') return 40;
       if (r.reclamoTurno && r.estado !== 'recitado') return 30;
       if (r.estado === 'recitado')   return 25;
       if (r.reclamoDiagnostico)      return 20;
@@ -863,6 +923,7 @@
     }
 
     function getPrioridadBar(r) {
+      if (r.esInternado && r.estado === 'pendiente') return '<div class="prioridad-bar internado-bar"></div>';
       if (r.estado === 'recitado')   return '<div class="prioridad-bar recitado-bar"></div>';
       if (r.reclamoTurno)            return '<div class="prioridad-bar alta"></div>';
       if (r.reclamoDiagnostico)      return '<div class="prioridad-bar media"></div>';
@@ -967,8 +1028,11 @@
       const resuelto   = r.estado === 'resuelto';
       const esRecitado = r.estado === 'recitado';
       const esUrgente  = !!r.reclamoTurno && !resuelto && !esRecitado;
+      const esInternadoAtrasado = !!r.esInternado && r.estado === 'pendiente';
 
       const tiposHtml = [
+        r.esInternado
+          ? `<div class="tipo-chip internado">🏥 Internado${esInternadoAtrasado ? ' — atrasado' : ''}</div>` : '',
         r.reclamoTurno
           ? `<div class="tipo-chip turno">🚨 Turno médico${r.reclamoTurno !== 'Si' ? ': ' + r.reclamoTurno : ' próximo'}</div>` : '',
         r.reclamoDiagnostico
@@ -983,7 +1047,8 @@
         <div class="reclamo-card
           ${esUrgente  ? 'urgente-turno'  : ''}
           ${esRecitado ? 'recitado-estado' : ''}
-          ${resuelto   ? 'resuelto'        : ''}">
+          ${resuelto   ? 'resuelto'        : ''}
+          ${esInternadoAtrasado ? 'internado-atrasado' : ''}">
           <div>
             ${getPrioridadBar(r)}
             <div class="card-top">

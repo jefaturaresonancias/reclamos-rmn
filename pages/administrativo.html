@@ -12,7 +12,7 @@
   <style>
     :root{--bg:#0d0f14;--surface:#13161e;--surface2:#1a1e29;--border:#252a38;
       --accent:#4f7cff;--warn:#f59e0b;--danger:#ef4444;--success:#10b981;
-      --recitar:#06b6d4;--text:#e8ecf4;--text2:#8892aa;--text3:#4f5870;--r:12px;}
+      --recitar:#06b6d4;--internado:#ec4899;--text:#e8ecf4;--text2:#8892aa;--text3:#4f5870;--r:12px;}
     *{margin:0;padding:0;box-sizing:border-box;}
     body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
     nav{display:flex;align-items:center;justify-content:space-between;
@@ -118,6 +118,8 @@
     .reclamo-card.urgente-border{border-left:3px solid var(--danger);}
     .reclamo-card.revisado-admin{opacity:.6;border-left:3px solid var(--accent);}
     .reclamo-card.recitado-borde{border-left:3px solid var(--recitar);}
+    .reclamo-card.internado-atrasado-border{border-left:3px solid var(--internado);
+      background:linear-gradient(90deg,rgba(236,72,153,.06),transparent 40%);}
     .card-num{font-size:.75rem;color:var(--text3);font-weight:600;min-width:40px;}
     .card-num-wrap{display:flex;flex-direction:column;align-items:center;gap:8px;}
     .chk-revisar{width:16px;height:16px;cursor:pointer;accent-color:var(--accent);}
@@ -135,6 +137,8 @@
     .badge-origen{background:rgba(255,255,255,.05);color:var(--text3);}
     .badge-revisado{background:rgba(79,124,255,.12);color:var(--accent);}
     .badge-recitado{background:rgba(6,182,212,.12);color:var(--recitar);}
+    .badge-internado{background:rgba(236,72,153,.12);color:var(--internado);}
+    .badge-internado-atrasado{background:rgba(236,72,153,.2);color:var(--internado);font-weight:700;}
     /* Secundarios: describen el motivo del reclamo, no su urgencia —
        mismo tono neutro que badge-dias para que no compitan con
        estado/turno/retraso, que son los que importan para priorizar */
@@ -350,6 +354,13 @@
       <div class="field"><label>Fecha del Estudio *</label><input type="date" id="f-fechaEstudio" /></div>
       <div class="field"><label>Email de contacto (para enviarle el informe)</label>
         <input type="email" id="f-email" placeholder="paciente@ejemplo.com" /></div>
+
+      <label style="display:flex;gap:10px;align-items:center;cursor:pointer;
+        background:rgba(236,72,153,.08);border:1px solid rgba(236,72,153,.25);
+        border-radius:var(--r);padding:10px 14px;margin-top:6px">
+        <input type="checkbox" id="f-internado" style="accent-color:var(--internado)" />
+        <span style="font-size:.85rem">🏥 Paciente internado — destacarlo por sobre el resto</span>
+      </label>
 
       <div class="section-divider"></div>
 
@@ -658,6 +669,10 @@ function cargarStats(s) {
         <div class="stat-num danger">${s.urgentes}</div>
         <div class="stat-label">Con turno</div>
       </div>
+      <div class="stat-box" onclick="filtrarPorStat('internado')" style="cursor:pointer;border-color:rgba(236,72,153,.3)" title="Ver pacientes internados">
+        <div class="stat-num" style="color:var(--internado)">${todosLosReclamos.filter(r => r.esInternado && !r.archivado).length}</div>
+        <div class="stat-label">🏥 Internados</div>
+      </div>
       <div class="stat-box" onclick="filtrarPorStat('resuelto')" style="cursor:pointer" title="Informados por el médico, todavía sin mandar el mail">
         <div class="stat-num success">${s.resueltos}</div>
         <div class="stat-label">Resueltos sin enviar</div>
@@ -800,6 +815,7 @@ function cargarStats(s) {
         '':                'Todos los reclamos',
         'pendiente':        'Pendientes',
         'urgente':          'Urgentes (con turno)',
+        'internado':        '🏥 Pacientes internados',
         'resuelto':         'Resueltos por médico',
         'revisado-admin':   'Revisados por administrativo',
         'entregado':        'Entregados',
@@ -965,6 +981,7 @@ function cargarStats(s) {
       lista.innerHTML = data.map(r => {
         const esUrgente  = r.estado === 'pendiente' && r.reclamoTurno;
         const esRecitado = r.estado === 'recitado';
+        const esInternadoAtrasado = r.esInternado && r.estado === 'pendiente';
 
         const estadoBadge = {
           pendiente:        `<span class="badge badge-pendiente">⏳ Pendiente</span>`,
@@ -975,6 +992,11 @@ function cargarStats(s) {
         }[r.estado] || '';
 
         const tiposBadges = [
+          r.esInternado
+            ? (esInternadoAtrasado
+                ? `<span class="badge badge-internado-atrasado">🏥 Internado atrasado</span>`
+                : `<span class="badge badge-internado">🏥 Internado</span>`)
+            : '',
           r.reclamoInformado   ? `<span class="badge badge-inform">📄 Sin informe</span>` : '',
           r.reclamoDiagnostico ? `<span class="badge badge-diag">🔬 Diagnóstico</span>` : '',
           r.reclamoTurno       ? `<span class="badge badge-turno">🚨 Turno: ${r.reclamoTurno !== 'Si' ? r.reclamoTurno : 'próximo'}</span>` : '',
@@ -991,7 +1013,8 @@ function cargarStats(s) {
           <div class="reclamo-card
             ${r.estado} ${esUrgente ? 'urgente-border' : ''}
             ${r.estado === 'revisado-admin' ? 'revisado-admin' : ''}
-            ${esRecitado ? 'recitado-borde' : ''}"
+            ${esRecitado ? 'recitado-borde' : ''}
+            ${esInternadoAtrasado ? 'internado-atrasado-border' : ''}"
             onclick="verDetalle('${r.id}')">
             ${getPrioridadCard(r)}
             <div class="card-num-wrap">
@@ -1088,6 +1111,13 @@ function filtrarPorStat(tipo) {
       .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
     actualizarListaHeader('urgente', data.length);
     renderLista(data);
+  } else if (tipo === 'internado') {
+    filtroEstadoActual = '';
+    const data = todosLosReclamos
+      .filter(r => r.esInternado && !r.archivado)
+      .sort((a, b) => (b.retraso || 0) - (a.retraso || 0));
+    actualizarListaHeader('internado', data.length);
+    renderLista(data);
   } else {
     setFiltroEstado(tipo);
   }
@@ -1115,6 +1145,7 @@ function filtrarPorStat(tipo) {
           apellido, nombre, dni, estudio, fechaEstudio,
           email: document.getElementById('f-email').value.trim(),
           observaciones: document.getElementById('f-obs').value.trim(),
+          esInternado: document.getElementById('f-internado').checked,
           ...tipos,
         });
         limpiarForm();
@@ -1139,6 +1170,7 @@ function filtrarPorStat(tipo) {
         .forEach(id => { document.getElementById(id).classList.remove('checked'); });
       document.getElementById('turno-fecha-wrap').classList.remove('visible');
       document.getElementById('placas-detalle-wrap').classList.remove('visible');
+      document.getElementById('f-internado').checked = false;
       document.getElementById('vinculadoInfo').classList.remove('visible');
       renderHistorialDni([]);
       turnoVinculado = null;
@@ -1229,6 +1261,12 @@ function filtrarPorStat(tipo) {
             <input id="e-estudio" value="${r.estudio}" /></div>
           <div class="field"><label>Email de contacto (para enviarle el informe)</label>
             <input type="email" id="e-email" value="${r.email || ''}" placeholder="paciente@ejemplo.com" /></div>
+          <label style="display:flex;gap:10px;align-items:center;cursor:pointer;
+            background:rgba(236,72,153,.08);border:1px solid rgba(236,72,153,.25);
+            border-radius:var(--r);padding:10px 14px">
+            <input type="checkbox" id="e-internado" ${r.esInternado ? 'checked' : ''} style="accent-color:var(--internado)" />
+            <span style="font-size:.85rem">🏥 Paciente internado — destacarlo por sobre el resto</span>
+          </label>
           <div class="section-divider"></div>
           <div style="font-size:.78rem;color:var(--text2);font-weight:500;
             letter-spacing:.03em;text-transform:uppercase">Tipos de reclamo</div>
@@ -1288,6 +1326,7 @@ function filtrarPorStat(tipo) {
           placasDetalle:      document.getElementById('e-placas-detalle').value.trim(),
           observaciones:      document.getElementById('e-obs').value.trim(),
           email:              document.getElementById('e-email').value.trim(),
+          esInternado:        document.getElementById('e-internado').checked,
         };
         // RECLAMO_INFORMADO hace doble uso: acá es el checkbox "tipo de
         // reclamo: sin informe", pero bot-informes.js le pone "OK" para
@@ -1392,6 +1431,9 @@ function filtrarPorStat(tipo) {
     }
 
     function getPrioridadCard(r) {
+      if (r.esInternado && r.estado === 'pendiente')
+        return '<div style="grid-column:1/-1;height:3px;border-radius:3px;margin-bottom:12px;' +
+               'background:linear-gradient(90deg,var(--internado),transparent)"></div>';
       if (r.reclamoTurno && r.estado !== 'recitado')
         return '<div style="grid-column:1/-1;height:3px;border-radius:3px;margin-bottom:12px;' +
                'background:linear-gradient(90deg,var(--danger),transparent)"></div>';
