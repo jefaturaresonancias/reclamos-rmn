@@ -52,7 +52,7 @@ function mostrarPantallaPin(onSuccess) {
       <div class="pin-icon">🔒</div>
       <h2>Acceso restringido</h2>
       <p>Este sistema tiene datos de pacientes. Ingresá el PIN de administrativo para continuar.</p>
-      <input id="pin-input" type="password" inputmode="numeric" autocomplete="off" placeholder="••••" />
+      <input id="pin-input" type="password" autocomplete="off" placeholder="••••" />
       <div id="pin-error"></div>
       <button id="btn-pin-entrar">Entrar</button>
     </div>`;
