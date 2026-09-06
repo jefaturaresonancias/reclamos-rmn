@@ -148,6 +148,8 @@
         </div>
         <div class="field"><label>Sector de internación *</label>
           <input id="f-sector" placeholder="Ej: Clínica Médica — 3er piso" /></div>
+        <div class="field"><label>Médico solicitante *</label>
+          <input id="f-medico" placeholder="Dr./Dra. ..." /></div>
         <div class="field"><label>Estudio solicitado *</label>
           <input id="f-estudio" placeholder="Ej: Rm de cerebro con contraste" /></div>
         <div class="field"><label>Diagnóstico presuntivo *</label>
@@ -380,13 +382,14 @@
         dni: document.getElementById('f-dni').value.trim(),
         sectorInternacion: document.getElementById('f-sector').value.trim(),
         cama: document.getElementById('f-cama').value.trim(),
+        medicoSolicitante: document.getElementById('f-medico').value.trim(),
         estudio: document.getElementById('f-estudio').value.trim(),
         diagnosticoPresuntivo: document.getElementById('f-diagnostico').value.trim(),
         solicitudDigital: document.getElementById('f-digital').checked,
       };
       const errorEl = document.getElementById('f-error');
       if (!data.apellido || !data.nombre || !data.dni || !data.sectorInternacion ||
-          !data.cama || !data.estudio || !data.diagnosticoPresuntivo) {
+          !data.cama || !data.medicoSolicitante || !data.estudio || !data.diagnosticoPresuntivo) {
         errorEl.textContent = 'Completá todos los campos obligatorios (*).';
         return;
       }
@@ -401,7 +404,7 @@
       try {
         await crearPedidoTurno(data);
         toast('✅ Pedido enviado — el médico lo va a revisar', 'ok');
-        ['f-apellido','f-nombre','f-dni','f-cama','f-sector','f-estudio','f-diagnostico'].forEach(id => {
+        ['f-apellido','f-nombre','f-dni','f-cama','f-sector','f-medico','f-estudio','f-diagnostico'].forEach(id => {
           document.getElementById(id).value = '';
         });
         document.getElementById('f-digital').checked = false;

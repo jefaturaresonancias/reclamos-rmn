@@ -237,6 +237,12 @@
     .pedido-turno-card.autorizado{border-color:rgba(16,185,129,.3);}
     .pedido-turno-card.rechazado{border-color:rgba(239,68,68,.3);}
     .pedido-turno-card.turno_asignado{border-color:rgba(6,182,212,.3);}
+    .pedido-turno-header{display:flex;flex-direction:column;gap:6px;}
+    .pedido-turno-nombre{font-weight:600;}
+    .pedido-turno-meta{font-size:.75rem;color:var(--text3);display:flex;flex-wrap:wrap;gap:4px 10px;}
+    .pedido-turno-badge{align-self:flex-start;font-size:.7rem;background:rgba(245,158,11,.12);
+      color:var(--warn);padding:3px 10px;border-radius:100px;font-weight:600;
+      white-space:normal;word-break:break-word;max-width:100%;}
     .pedido-turno-diag{font-size:.78rem;color:var(--text2);
       background:var(--surface);border-radius:8px;padding:8px 10px;}
     .pedido-turno-actions{display:flex;gap:8px;margin-top:2px;}
@@ -661,16 +667,15 @@
     // motivo, turno_asignado muestra fecha/hora (tanda 2).
     function _pedidoTurnoCard(p) {
       const cabecera = `
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div style="flex:1">
-            <div style="font-weight:600">${p.apellido}, ${p.nombre}</div>
-            <div style="font-size:.75rem;color:var(--text3)">
-              DNI ${p.dni} · ${p.sectorInternacion} · Cama ${p.cama}
-            </div>
+        <div class="pedido-turno-header">
+          <div class="pedido-turno-nombre">${p.apellido}, ${p.nombre}</div>
+          <div class="pedido-turno-meta">
+            <span>DNI ${p.dni}</span>
+            <span>${p.sectorInternacion} · Cama ${p.cama}</span>
+            <span>👨‍⚕️ ${p.medicoSolicitante || 'Sin registrar'}</span>
+            <span>🕒 ${p.creadoEn}</span>
           </div>
-          <span style="font-size:.7rem;background:rgba(245,158,11,.12);color:var(--warn);
-            padding:3px 10px;border-radius:100px;font-weight:600;white-space:nowrap;">
-            ${p.estudio}</span>
+          <span class="pedido-turno-badge">${p.estudio}</span>
         </div>
         <div class="pedido-turno-diag">🩺 <strong>Diagnóstico presuntivo:</strong> ${p.diagnosticoPresuntivo}</div>`;
 
