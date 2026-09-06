@@ -360,8 +360,8 @@ async function generarInformeDictado(texto, plantillaId) {
 
 // Lista compartida de dictados pendientes entre dispositivos — se guarda
 // desde donde se graba, se busca/usa desde cualquier otro con el mismo PIN.
-async function guardarDictadoPendiente(nombre, texto) {
-  const result = await apiPost({ action: 'guardarDictadoPendiente', nombre, texto });
+async function guardarDictadoPendiente(nombre, texto, estudio) {
+  const result = await apiPost({ action: 'guardarDictadoPendiente', nombre, texto, estudio });
   if (!result.ok) throw new Error(result.error);
   return result.pendiente;
 }
