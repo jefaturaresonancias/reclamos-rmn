@@ -51,6 +51,10 @@
 
     .hint{font-size:.8rem;color:var(--text2);line-height:1.5;margin-bottom:16px;}
 
+    .aviso-horario{background:var(--warn);color:#2a1a00;border-radius:var(--r);
+      padding:16px 20px;font-size:.85rem;font-weight:800;line-height:1.5;
+      text-align:center;margin-bottom:18px;box-shadow:0 4px 16px rgba(245,158,11,.35);}
+
     .wrap{max-width:640px;margin:0 auto;padding:28px 20px 60px;display:flex;flex-direction:column;gap:24px;}
 
     @media(max-width:960px){
@@ -138,6 +142,11 @@
     <div class="wrap">
       <div class="card" id="vista-turno">
         <h2>Nuevo pedido de turno</h2>
+        <div class="aviso-horario">
+          ⚠️ TODOS LOS TURNOS DE INTERNADOS SE AUTORIZAN POR LOS MÉDICOS DE RESONANCIA
+          EN EL HORARIO DE 09 A 12HS DE LUNES A VIERNES. SÁBADOS Y DOMINGOS NO SE
+          AUTORIZAN TURNOS. TENER EN CUENTA PARA SOLICITAR LOS TURNOS.
+        </div>
         <div class="field-row">
           <div class="field"><label>Apellido *</label><input id="f-apellido" placeholder="García" /></div>
           <div class="field"><label>Nombre *</label><input id="f-nombre" placeholder="Juan" /></div>
@@ -396,6 +405,18 @@
       if (!data.solicitudDigital) {
         errorEl.textContent = 'Tenés que confirmar "Solicitud digital" para enviar el pedido.';
         return;
+      }
+      // Aviso extra (4/9/2026, a pedido): si se carga un sábado o domingo,
+      // el cartel de arriba puede pasar desapercibido — esto obliga a
+      // confirmarlo conscientemente antes de mandar el pedido.
+      const diaSemana = new Date().getDay(); // 0=domingo, 6=sábado
+      if (diaSemana === 0 || diaSemana === 6) {
+        const confirmar = confirm(
+          '⚠️ Hoy es fin de semana.\n\nLos turnos de internados se autorizan de ' +
+          'lunes a viernes de 09 a 12hs — sábados y domingos NO se autorizan.\n\n' +
+          '¿Confirmás que igual querés cargar este pedido?'
+        );
+        if (!confirmar) return;
       }
       errorEl.textContent = '';
       const btn = document.getElementById('btn-enviar');
