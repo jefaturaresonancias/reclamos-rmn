@@ -357,3 +357,21 @@ async function generarInformeDictado(texto, plantillaId) {
   if (!result.ok) throw new Error(result.error);
   return result.informe;
 }
+
+// Lista compartida de dictados pendientes entre dispositivos — se guarda
+// desde donde se graba, se busca/usa desde cualquier otro con el mismo PIN.
+async function guardarDictadoPendiente(nombre, texto) {
+  const result = await apiPost({ action: 'guardarDictadoPendiente', nombre, texto });
+  if (!result.ok) throw new Error(result.error);
+  return result.pendiente;
+}
+async function getDictadosPendientes() {
+  const result = await apiGet({ action: 'listarDictadosPendientes' });
+  if (!result.ok) throw new Error(result.error);
+  return result.pendientes;
+}
+async function borrarDictadoPendiente(id) {
+  const result = await apiPost({ action: 'borrarDictadoPendiente', id });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}

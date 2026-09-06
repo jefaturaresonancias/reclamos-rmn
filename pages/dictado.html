@@ -26,10 +26,17 @@
     .nav-back{font-size:.8rem;color:var(--text2);text-decoration:none;transition:color .2s;}
     .nav-back:hover{color:var(--text);}
 
-    .page{max-width:820px;margin:0 auto;padding:32px 24px;
-      display:flex;flex-direction:column;gap:24px;}
+    .layout{max-width:1180px;margin:0 auto;padding:32px 24px;
+      display:flex;gap:24px;align-items:flex-start;}
+    .page{flex:1;min-width:0;display:flex;flex-direction:column;gap:24px;}
 
     .section-title{font-family:'DM Serif Display',serif;font-size:1.3rem;font-weight:400;}
+
+    .nombre-select{display:flex;flex-direction:column;gap:8px;}
+    .input-nombre{width:100%;padding:10px 14px;background:var(--surface);
+      border:1px solid var(--border);border-radius:var(--r);color:var(--text);
+      font-family:'DM Sans',sans-serif;font-size:.9rem;outline:none;transition:border-color .2s;}
+    .input-nombre:focus{border-color:var(--dictado);}
 
     .plantilla-select{display:flex;flex-direction:column;gap:10px;}
     .label{font-size:.75rem;color:var(--text3);text-transform:uppercase;letter-spacing:.04em;font-weight:500;}
@@ -78,6 +85,33 @@
     .spinner{width:18px;height:18px;border:2.5px solid var(--border);border-top-color:var(--dictado);
       border-radius:50%;animation:spin .8s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px;}
     @keyframes spin{to{transform:rotate(360deg)}}
+
+    .panel-pendientes{width:300px;flex-shrink:0;background:var(--surface);
+      border:1px solid var(--border);border-radius:16px;padding:18px;
+      display:flex;flex-direction:column;gap:12px;position:sticky;top:88px;
+      max-height:calc(100vh - 108px);overflow-y:auto;}
+    .panel-header{display:flex;align-items:center;justify-content:space-between;}
+    .btn-actualizar{background:none;border:1px solid var(--border);color:var(--text2);
+      border-radius:8px;padding:5px 9px;cursor:pointer;font-size:.85rem;transition:all .2s;}
+    .btn-actualizar:hover{border-color:var(--dictado);color:var(--text);}
+    .pendiente-item{background:var(--surface2);border:1px solid var(--border);
+      border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;}
+    .pendiente-nombre{font-weight:600;font-size:.85rem;}
+    .pendiente-preview{font-size:.78rem;color:var(--text2);line-height:1.4;}
+    .pendiente-tiempo{font-size:.72rem;color:var(--text3);}
+    .pendiente-tiempo.aviso{color:#f59e0b;font-weight:600;}
+    .pendiente-acciones{display:flex;gap:6px;margin-top:2px;}
+    .pendiente-acciones button{flex:1;padding:6px 8px;border-radius:8px;border:none;
+      cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.75rem;font-weight:600;transition:all .2s;}
+    .btn-usar{background:rgba(168,85,247,.14);color:var(--dictado);}
+    .btn-usar:hover{background:var(--dictado);color:#fff;}
+    .btn-descartar{background:transparent;border:1px solid var(--border) !important;color:var(--text3);flex:0 0 auto !important;}
+    .btn-descartar:hover{border-color:var(--danger) !important;color:var(--danger);}
+
+    @media(max-width:900px){
+      .layout{flex-direction:column;}
+      .panel-pendientes{width:100%;position:static;max-height:none;}
+    }
   </style>
 </head>
 <body>
@@ -89,7 +123,14 @@
     <a href="../index.html" class="nav-back">← Volver</a>
   </nav>
 
+  <div class="layout">
   <div class="page">
+    <div class="nombre-select">
+      <div class="label">Tu nombre (opcional)</div>
+      <input type="text" id="input-nombre" class="input-nombre"
+        placeholder="Ej: Mauricio — para buscar este dictado después desde otra pantalla" />
+    </div>
+
     <div class="plantilla-select">
       <div class="section-title">1. Elegí la plantilla</div>
       <div class="label">Neuro, cuerpo y MSK — elegí la región del estudio</div>
@@ -131,6 +172,17 @@
     </div>
   </div>
 
+  <aside class="panel-pendientes">
+    <div class="panel-header">
+      <span class="section-title" style="font-size:1rem;">📋 Pendientes</span>
+      <button class="btn-actualizar" id="btn-actualizar-pendientes" title="Actualizar">🔄</button>
+    </div>
+    <div id="lista-pendientes">
+      <div class="label">Cargando…</div>
+    </div>
+  </aside>
+  </div>
+
   <script src="../js/api.js"></script>
   <script>
     let plantillaSeleccionada = null;
@@ -149,6 +201,9 @@
     const txtTranscripto = document.getElementById('txt-transcripto');
     const txtInforme = document.getElementById('txt-informe');
     const btnCopiar = document.getElementById('btn-copiar');
+    const inputNombre = document.getElementById('input-nombre');
+    const listaPendientes = document.getElementById('lista-pendientes');
+    let _pendientesCache = [];
 
     async function cargarPlantillas() {
       try {
@@ -363,6 +418,77 @@
       btnPausa.textContent = '⏸️';
       btnPausa.classList.remove('activo');
       recStatus.textContent = '✅ Grabación terminada. Revisá/corregí el transcripto y, si querés, generá el informe.';
+      guardarPendienteSiCorresponde();
+    }
+
+    // ── Lista compartida de dictados pendientes ─────────────────────
+    // Si se cargó un nombre, el transcripto terminado se guarda además acá
+    // (server-side) para poder buscarlo desde otro dispositivo — el cuadro
+    // de revisión de este mismo dispositivo sigue funcionando igual.
+    async function guardarPendienteSiCorresponde() {
+      const nombre = inputNombre.value.trim();
+      const texto = txtTranscripto.value.trim();
+      if (!nombre || !texto) return;
+      try {
+        await guardarDictadoPendiente(nombre, texto);
+        recStatus.textContent += ' 📋 Guardado en la lista de pendientes.';
+        await cargarPendientes();
+      } catch (err) {
+        recStatus.textContent += ' ⚠️ No se pudo guardar en la lista: ' + err.message;
+      }
+    }
+
+    async function cargarPendientes() {
+      try {
+        _pendientesCache = await getDictadosPendientes();
+        renderPendientes();
+      } catch (err) {
+        listaPendientes.innerHTML = `<div class="label" style="color:var(--danger)">${err.message || 'Error al cargar.'}</div>`;
+      }
+    }
+
+    function renderPendientes() {
+      if (!_pendientesCache.length) {
+        listaPendientes.innerHTML = '<div class="label">Sin dictados pendientes.</div>';
+        return;
+      }
+      listaPendientes.innerHTML = _pendientesCache.map(p => `
+        <div class="pendiente-item">
+          <div class="pendiente-nombre">${p.nombre}</div>
+          <div class="pendiente-preview">${p.texto.slice(0, 80)}${p.texto.length > 80 ? '…' : ''}</div>
+          <div class="pendiente-tiempo${p.avisoVencimiento ? ' aviso' : ''}">
+            ${p.avisoVencimiento ? '⚠️ se borra en ' + p.horasRestantes + 'h' : '⏳ ' + p.horasRestantes + 'h'}
+          </div>
+          <div class="pendiente-acciones">
+            <button class="btn-usar" data-id="${p.id}">📋 Usar</button>
+            <button class="btn-descartar" data-id="${p.id}" title="Descartar">🗑</button>
+          </div>
+        </div>`).join('');
+      listaPendientes.querySelectorAll('.btn-usar').forEach(btn => {
+        btn.addEventListener('click', () => usarPendiente(btn.dataset.id));
+      });
+      listaPendientes.querySelectorAll('.btn-descartar').forEach(btn => {
+        btn.addEventListener('click', () => descartarPendiente(btn.dataset.id));
+      });
+    }
+
+    function usarPendiente(id) {
+      const item = _pendientesCache.find(p => String(p.id) === String(id));
+      if (!item) return;
+      txtTranscripto.value = item.texto;
+      document.getElementById('box-informe').style.display = 'none';
+      resultado.style.display = 'flex';
+      txtTranscripto.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      recStatus.textContent = `📋 Cargado el dictado de "${item.nombre}". Revisalo antes de generar el informe.`;
+    }
+
+    async function descartarPendiente(id) {
+      try {
+        await borrarDictadoPendiente(id);
+        await cargarPendientes();
+      } catch (err) {
+        alert('Error al descartar: ' + err.message);
+      }
     }
 
     async function generarInforme() {
@@ -407,8 +533,9 @@
     });
 
     document.getElementById('btn-generar').addEventListener('click', generarInforme);
+    document.getElementById('btn-actualizar-pendientes').addEventListener('click', cargarPendientes);
 
-    verificarConfig(() => verificarPin(cargarPlantillas));
+    verificarConfig(() => verificarPin(() => { cargarPlantillas(); cargarPendientes(); }));
   </script>
 </body>
 </html>
