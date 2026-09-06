@@ -339,3 +339,21 @@ async function getOrdenes(fecha, categoria) {
   if (!result.ok) throw new Error(result.error);
   return result.ordenes;
 }
+
+// ── Dictado de informes (pages/dictado.html) — transcripción y reformateo
+// vía Gemini API en el backend, reemplaza al prototipo local Whisper+Ollama.
+async function getPlantillasDictado() {
+  const result = await apiGet({ action: 'plantillasDictado' });
+  if (!result.ok) throw new Error(result.error);
+  return result.plantillas;
+}
+async function transcribirAudio(audioBase64, mimeType) {
+  const result = await apiPost({ action: 'transcribirAudio', audioBase64, mimeType });
+  if (!result.ok) throw new Error(result.error);
+  return result.texto;
+}
+async function generarInformeDictado(texto, plantillaId) {
+  const result = await apiPost({ action: 'formatearDictado', texto, plantilla: plantillaId });
+  if (!result.ok) throw new Error(result.error);
+  return result.informe;
+}
