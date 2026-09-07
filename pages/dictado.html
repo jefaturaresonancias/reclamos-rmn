@@ -126,9 +126,9 @@
   <div class="layout">
   <div class="page">
     <div class="nombre-select">
-      <div class="label">Tu nombre (opcional)</div>
+      <div class="label">Nombre del paciente *</div>
       <input type="text" id="input-nombre" class="input-nombre"
-        placeholder="Ej: Mauricio — para buscar este dictado después desde otra pantalla" />
+        placeholder="Ej: García, Juan — para identificar este dictado en el panel" />
     </div>
 
     <div class="plantilla-select">
@@ -146,7 +146,7 @@
         <button class="pausa-btn" id="btn-pausa" disabled title="Pausar / reanudar (barra espaciadora)">⏸️</button>
       </div>
       <div class="rec-timer" id="rec-timer"></div>
-      <div class="rec-status" id="rec-status">Elegí un estudio y presioná el micrófono para empezar a dictar.</div>
+      <div class="rec-status" id="rec-status">Completá el nombre del paciente, elegí un estudio y presioná el micrófono para empezar a dictar.</div>
     </div>
 
     <div class="resultado" id="resultado" style="display:none;">
@@ -285,6 +285,10 @@
     }
 
     async function iniciarGrabacion() {
+      if (!inputNombre.value.trim()) {
+        recStatus.textContent = 'Completá el nombre del paciente primero.';
+        return;
+      }
       if (!plantillaSeleccionada) {
         recStatus.textContent = 'Elegí un estudio primero.';
         return;
@@ -414,9 +418,10 @@
     }
 
     // ── Lista compartida de dictados pendientes ─────────────────────
-    // Si se cargó un nombre, el transcripto terminado se guarda además acá
-    // (server-side) para poder buscarlo desde otro dispositivo — el cuadro
-    // de revisión de este mismo dispositivo sigue funcionando igual.
+    // El transcripto terminado se guarda además acá (server-side) para
+    // poder buscarlo desde otro dispositivo por nombre de paciente — el
+    // cuadro de revisión de este mismo dispositivo sigue funcionando
+    // igual. Si no se llegó a dictar nada (texto vacío), no se guarda.
     async function guardarPendienteSiCorresponde() {
       const nombre = inputNombre.value.trim();
       const texto = txtTranscripto.value.trim();
@@ -424,6 +429,7 @@
       try {
         await guardarDictadoPendiente(nombre, texto, plantillaSeleccionadaNombre);
         recStatus.textContent += ' 📋 Guardado en la lista de pendientes.';
+        inputNombre.value = ''; // listo para el próximo paciente
         await cargarPendientes();
       } catch (err) {
         recStatus.textContent += ' ⚠️ No se pudo guardar en la lista: ' + err.message;
