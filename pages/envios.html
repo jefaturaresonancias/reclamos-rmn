@@ -38,8 +38,13 @@
     .card-head{padding:16px 20px;display:flex;justify-content:space-between;align-items:flex-start;
       gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--border);}
     .card-head h3{font-family:'DM Serif Display',serif;font-weight:400;font-size:1.05rem;}
-    .card-meta{font-size:.78rem;color:var(--text2);margin-top:4px;display:flex;gap:14px;flex-wrap:wrap;}
+    .card-meta{font-size:.78rem;color:var(--text2);margin-top:4px;display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
     .card-meta b{color:var(--text);font-weight:500;}
+    .btn-copy-dni{background:transparent;border:1px solid var(--border);color:var(--text2);
+      border-radius:6px;padding:1px 6px;font-size:.72rem;cursor:pointer;line-height:1.6;
+      transition:all .15s;}
+    .btn-copy-dni:hover{border-color:var(--accent);color:var(--accent);}
+    .btn-copy-dni.copied{border-color:var(--success);color:var(--success);}
     .badge-warn{font-size:.7rem;background:rgba(245,158,11,.15);color:var(--warn);
       padding:4px 10px;border-radius:100px;white-space:nowrap;font-weight:600;}
     .card-body{display:flex;gap:0;}
@@ -177,6 +182,21 @@
       window._toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
     }
 
+    async function copiarDni(dni, btn) {
+      try {
+        await navigator.clipboard.writeText(dni);
+        toast('DNI copiado', 'ok');
+        if (btn) {
+          const original = btn.textContent;
+          btn.textContent = '✓';
+          btn.classList.add('copied');
+          setTimeout(() => { btn.textContent = original; btn.classList.remove('copied'); }, 1200);
+        }
+      } catch (err) {
+        toast('No se pudo copiar el DNI', 'error');
+      }
+    }
+
     // El PDF ya no vive en Drive con link público — sale de la propia API,
     // atrás del mismo PIN que protege todo lo demás (ver /reclamos/:id/informe
     // en reclamos-rmn-backend).
@@ -204,7 +224,7 @@
             <div>
               <h3>${r.apellido}, ${r.nombre}</h3>
               <div class="card-meta">
-                <span>DNI <b>${r.dni}</b></span>
+                <span>DNI <b>${r.dni}</b> <button type="button" class="btn-copy-dni" data-copiar-dni="${r.dni}" title="Copiar DNI">📋</button></span>
                 <span>Estudio <b>${r.estudio}</b></span>
                 <span>Fecha <b>${r.fechaEstudio}</b></span>
               </div>
@@ -243,6 +263,9 @@
       });
       wrap.querySelectorAll('[data-email-val]').forEach(el => {
         el.addEventListener('click', () => onEditarEmail(el.dataset.emailVal));
+      });
+      wrap.querySelectorAll('[data-copiar-dni]').forEach(btn => {
+        btn.addEventListener('click', () => copiarDni(btn.dataset.copiarDni, btn));
       });
     }
 
