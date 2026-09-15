@@ -710,7 +710,11 @@
       const porEstado = {
         pendiente: pedidosTurnoData.filter(p => p.estado === 'pendiente'),
         autorizado: pedidosTurnoData.filter(p => p.estado === 'autorizado'),
-        turno_asignado: pedidosTurnoData.filter(p => p.estado === 'turno_asignado'),
+        // Una vez que el informe ya se entregó (p.informado — expuesto por
+        // listarPedidosTurno() en el backend, 15/9/2026 a pedido), el
+        // circuito del pedido terminó: desaparece de "con turno asignado"
+        // en vez de quedar ahí para siempre.
+        turno_asignado: pedidosTurnoData.filter(p => p.estado === 'turno_asignado' && !p.informado),
         rechazado: pedidosTurnoData.filter(p => p.estado === 'rechazado'),
       };
 

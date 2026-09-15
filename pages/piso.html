@@ -285,7 +285,11 @@
     // — no pide nada nuevo al backend.
     function renderTurnosLaterales() {
       const cont = document.getElementById('listaTurnosLaterales');
-      const relevantes = _pedidos.filter(p => p.estado === 'autorizado' || p.estado === 'turno_asignado');
+      // Una vez que el informe ya se entregó (p.informado, 15/9/2026 a
+      // pedido) el circuito terminó — desaparece de acá en vez de quedar
+      // para siempre como "turno asignado".
+      const relevantes = _pedidos.filter(p =>
+        p.estado === 'autorizado' || (p.estado === 'turno_asignado' && !p.informado));
       if (!relevantes.length) {
         cont.innerHTML = `<div class="side-empty">Sin turnos autorizados o asignados todavía</div>`;
         return;
