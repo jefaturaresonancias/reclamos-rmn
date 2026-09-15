@@ -236,33 +236,41 @@ async function getInternadosPiso() {
   return result.internados;
 }
 
-// ── Integración directa con resonancia-pwa (agenda real) ────────────
-// Mismo Apps Script que ya usa esa PWA — hablamos con él tal cual desde
-// acá para no duplicar la agenda ni reimplementar disponibilidad. Ambos
-// van por GET (incluso "asignar", que muta datos): así lo hace la propia
-// resonancia-pwa (js/api.js de ese repo) para evitar el preflight CORS
-// que dispara un POST con Content-Type JSON contra un Apps Script — este
-// no responde OPTIONS, así que ese preflight rompería la request.
-const RESONANCIA_PWA_URL = 'https://script.google.com/macros/s/AKfycbz-fzW9c4tVFfE1gmmzA4G3hJtEXHgaF35xGThLbOR2ZuIOXGDh_Ru-6UkWlZfS1WRv/exec';
+// ── Integración directa con la agenda real (jefatura-rmn-sistema2) ──
+// Hasta el 15/9/2026 esto le pegaba al Apps Script viejo de resonancia-pwa
+// — el turno tardaba en aparecer (o no aparecía) en la agenda real, porque
+// esa PWA ya lee directo de Railway/Postgres, no del Sheet. Ahora habla
+// directo con la API de Railway, mismo patrón que ncx.html/neurologia.html
+// (páginas sin login de Railway): un PIN de rol ('tecnicos', pin_roles en
+// jefatura-rmn-sistema2) reemplaza al token de sesión, validado del lado
+// del servidor — ver rpc/tecnicosPublico.js en ese repo. El PIN es un
+// secreto compartido interno (no de paciente), mismo nivel de exposición
+// que ya tenía la URL del Apps Script acá mismo.
+const JEFATURA_API_URL = 'https://jefatura-rmn-sistema2-production.up.railway.app/api/rpc/';
+const TECNICOS_PIN = 'nNY-V7LCaUEx';
 
-async function _resonanciaPwaGet(params) {
-  const qs = new URLSearchParams({ ...params, _ts: Date.now() }).toString();
-  const res = await fetch(`${RESONANCIA_PWA_URL}?${qs}`, { method: 'GET' });
+async function _jefaturaRpc(fn, args) {
+  const res = await fetch(`${JEFATURA_API_URL}${fn}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ args })
+  });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
-  if (!json.ok) throw new Error(json.error || 'Error de resonancia-pwa');
-  return json.data;
+  if (!json.ok) throw new Error(json.error || 'Error de la agenda');
+  return json;
 }
 
 async function resonanciaPwaConfig() {
-  return _resonanciaPwaGet({ action: 'config' });
+  const json = await _jefaturaRpc('api_tecnicos_leerEstudiosPublico', [{ pin: TECNICOS_PIN }]);
+  return { estudios: json.estudios };
 }
 // fecha: dd/MM/yyyy
 async function resonanciaPwaSlots(fecha, estudio, origen) {
-  return _resonanciaPwaGet({ action: 'slots', fecha, estudio, origen: origen || 'AMBULATORIO' });
+  return _jefaturaRpc('api_tecnicos_slotsPublico', [{ pin: TECNICOS_PIN, fecha, estudio, origen: origen || 'AMBULATORIO' }]);
 }
 async function resonanciaPwaAsignar(datos) {
-  return _resonanciaPwaGet({ action: 'asignar', ...datos });
+  return _jefaturaRpc('api_tecnicos_asignarPublico', [{ pin: TECNICOS_PIN, ...datos }]);
 }
 async function entregarReclamo(id) {
   const result = await apiPost({ action: 'entregar', id });

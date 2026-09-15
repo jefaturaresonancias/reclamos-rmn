@@ -68,6 +68,21 @@
     .slot-chip.selected{background:var(--accent);color:#2a1a00;border-color:var(--accent);font-weight:700;}
     .slots-msg{font-size:.8rem;color:var(--text3);}
 
+    /* Franja de internado — guía visual de dónde cae 20-22hs en el día,
+       mismo color que usa la agenda real de resonancia-pwa para
+       "INTERNACIÓN" (#ffd966), para que se ubiquen de un vistazo sin
+       tener que ir a mirar la agenda aparte. */
+    .franja-guia{margin-top:2px;}
+    .franja-guia-label{font-size:.7rem;color:var(--text3);text-transform:uppercase;
+      letter-spacing:.03em;margin-bottom:5px;}
+    .franja-guia-bar{position:relative;height:22px;border-radius:6px;
+      background:var(--surface2);border:1px solid var(--border);overflow:hidden;}
+    .franja-guia-fill{position:absolute;top:0;bottom:0;background:#ffd966;
+      display:flex;align-items:center;justify-content:center;
+      font-size:.68rem;font-weight:700;color:#2a1a00;white-space:nowrap;}
+    .franja-guia-horas{display:flex;justify-content:space-between;
+      font-size:.62rem;color:var(--text3);margin-top:3px;}
+
     .btn-confirmar{background:var(--success);color:#04140e;width:100%;padding:12px;font-size:.9rem;}
     .btn-confirmar:disabled{opacity:.5;cursor:not-allowed;}
     .btn-toggle{background:transparent;border:1px solid rgba(245,158,11,.3);color:var(--accent);
@@ -184,6 +199,13 @@
               </div>
             </div>
             <div class="slots-msg">🕗 Internados van siempre de 20:00 a 22:00 — solo se muestran horarios de esa franja.</div>
+            <div class="franja-guia">
+              <div class="franja-guia-label">Franja de internado en la agenda</div>
+              <div class="franja-guia-bar">
+                <div class="franja-guia-fill" style="left:83.33%;width:8.33%">20–22</div>
+              </div>
+              <div class="franja-guia-horas"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+            </div>
             <div id="slots-${p.id}"></div>
             <button class="btn btn-confirmar" id="btn-confirmar-${p.id}" disabled
               onclick="confirmarAsignacion('${p.id}')">Confirmar turno</button>
