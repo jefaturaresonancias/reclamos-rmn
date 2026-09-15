@@ -68,25 +68,33 @@
     .slot-chip.selected{background:var(--accent);color:#2a1a00;border-color:var(--accent);font-weight:700;}
     .slots-msg{font-size:.8rem;color:var(--text3);}
 
-    /* Franja de internado — zoom de la agenda real a la ventana 20-22hs
-       de la fecha elegida, con los pacientes que ya la ocupan (cualquier
-       origen — el resonador es uno solo), para ubicarse antes de elegir
-       horario. Fondo #ffd966 = mismo amarillo "INTERNACIÓN" de la agenda
-       de resonancia-pwa; los bloques ocupados van encima en un tono más
+    /* Franja de internado — zoom de la agenda real a la ventana 20-22hs,
+       un día por fila (rango elegible), con los pacientes que ya la
+       ocupan (cualquier origen — el resonador es uno solo). Tocar una
+       fila elige ese día y dispara la búsqueda de horarios — mismo
+       amarillo #ffd966 que usa la agenda de resonancia-pwa para
+       "INTERNACIÓN"; los bloques ocupados van encima en un tono más
        oscuro con el nombre del paciente. */
-    .franja-guia{margin-top:2px;}
-    .franja-guia-label{font-size:.7rem;color:var(--text3);text-transform:uppercase;
-      letter-spacing:.03em;margin-bottom:5px;display:flex;justify-content:space-between;align-items:center;}
-    .franja-guia-bar{position:relative;height:40px;border-radius:6px;
+    .franja-guia{margin-top:2px;display:flex;flex-direction:column;gap:3px;}
+    .franja-guia-titulo{font-size:.7rem;color:var(--text3);text-transform:uppercase;
+      letter-spacing:.03em;margin-bottom:2px;}
+    .franja-dia-row{display:flex;align-items:center;gap:8px;padding:3px 4px;border-radius:6px;}
+    .franja-dia-row.clickable{cursor:pointer;border:1px solid transparent;}
+    .franja-dia-row.clickable:hover .franja-dia-bar{border-color:var(--accent);}
+    .franja-dia-row.selected{background:rgba(245,158,11,.1);}
+    .franja-dia-row.selected .franja-dia-bar{border-color:var(--accent);border-width:2px;}
+    .franja-dia-label{width:64px;flex-shrink:0;font-size:.66rem;color:var(--text2);line-height:1.3;}
+    .franja-dia-label b{display:block;color:var(--text);font-size:.74rem;}
+    .franja-dia-bar{position:relative;flex:1;height:26px;border-radius:5px;
       background:#ffd96633;border:1px solid #ffd96655;overflow:hidden;}
-    .franja-guia-ocupado{position:absolute;top:2px;bottom:2px;border-radius:4px;
+    .franja-guia-ocupado{position:absolute;top:1px;bottom:1px;border-radius:4px;
       background:#7a5a00;border:1px solid #a37c00;color:#fff2cc;
       display:flex;flex-direction:column;align-items:flex-start;justify-content:center;
-      padding:0 6px;font-size:.62rem;line-height:1.15;overflow:hidden;white-space:nowrap;}
-    .franja-guia-ocupado b{font-weight:700;font-size:.66rem;}
-    .franja-guia-horas{display:flex;justify-content:space-between;
-      font-size:.62rem;color:var(--text3);margin-top:3px;}
-    .franja-guia-vacio{font-size:.68rem;color:var(--text3);padding:2px 0;}
+      padding:0 5px;font-size:.58rem;line-height:1.1;overflow:hidden;white-space:nowrap;}
+    .franja-guia-ocupado b{font-weight:700;font-size:.62rem;}
+    .franja-guia-horas{flex:1;display:flex;justify-content:space-between;
+      font-size:.6rem;color:var(--text3);}
+    .franja-guia-vacio{font-size:.68rem;color:var(--text3);padding:6px 0;}
 
     .btn-confirmar{background:var(--success);color:#04140e;width:100%;padding:12px;font-size:.9rem;}
     .btn-confirmar:disabled{opacity:.5;cursor:not-allowed;}
@@ -123,6 +131,7 @@
     let _pedidos = [];
     let _estudiosConfig = {};
     let _horaSeleccionada = {}; // pedidoId -> { mins, hora }
+    let _fechaSeleccionada = {}; // pedidoId -> 'dd/MM/yyyy', elegida en la franja de guía
 
     function toast(msg, tipo) {
       const el = document.getElementById('toast');
@@ -173,6 +182,11 @@
           const d = new Date();
           return d.toISOString().slice(0, 10);
         })();
+        const inputDateHastaDefault = (() => {
+          const d = new Date();
+          d.setDate(d.getDate() + 7);
+          return d.toISOString().slice(0, 10);
+        })();
         return `
         <div class="card" data-id="${p.id}">
           <div class="card-head">
@@ -196,18 +210,22 @@
             </div>
             <div class="field-row">
               <div class="field">
-                <label>Fecha</label>
-                <input type="date" id="fecha-${p.id}" value="${inputDateDefault}" onchange="cargarFranjaGuia('${p.id}')" />
+                <label>Ver franja desde</label>
+                <input type="date" id="rango-desde-${p.id}" value="${inputDateDefault}" onchange="cargarFranjaGuia('${p.id}')" />
               </div>
-              <div class="field" style="justify-content:flex-end;">
-                <button class="btn btn-ver" id="btn-ver-${p.id}" onclick="verHorarios('${p.id}')">🔍 Ver horarios disponibles</button>
+              <div class="field">
+                <label>Hasta</label>
+                <input type="date" id="rango-hasta-${p.id}" value="${inputDateHastaDefault}" onchange="cargarFranjaGuia('${p.id}')" />
               </div>
             </div>
-            <div class="slots-msg">🕗 Internados van siempre de 20:00 a 22:00 — solo se muestran horarios de esa franja.</div>
+            <div class="slots-msg">🕗 Internados van siempre de 20:00 a 22:00 — tocá un día de la franja para elegirlo.</div>
             <div class="franja-guia">
-              <div class="franja-guia-label"><span>Franja de internado — quién ya está en esa fecha</span></div>
-              <div class="franja-guia-bar" id="franja-bar-${p.id}"></div>
-              <div class="franja-guia-horas"><span>20:00</span><span>20:30</span><span>21:00</span><span>21:30</span><span>22:00</span></div>
+              <div class="franja-guia-titulo">Franja de internado — quién ya está asignado</div>
+              <div class="franja-dia-row">
+                <div class="franja-dia-label"></div>
+                <div class="franja-guia-horas"><span>20:00</span><span>20:30</span><span>21:00</span><span>21:30</span><span>22:00</span></div>
+              </div>
+              <div id="franja-dias-${p.id}"></div>
             </div>
             <div id="slots-${p.id}"></div>
             <button class="btn btn-confirmar" id="btn-confirmar-${p.id}" disabled
@@ -225,6 +243,7 @@
         const sugerido = _sugerirEstudio(p.estudio);
         sel.innerHTML = `<option value="">— Elegir estudio —</option>` +
           nombres.map(n => `<option value="${n}" ${n === sugerido ? 'selected' : ''}>${n}</option>`).join('');
+        sel.addEventListener('change', () => { if (_fechaSeleccionada[p.id]) verHorarios(p.id); });
       });
     }
 
@@ -245,62 +264,90 @@
     const VENTANA_INTERNADOS_DESDE = 20 * 60; // 1200
     const VENTANA_INTERNADOS_HASTA = 22 * 60; // 1320
 
-    // Dibuja quién ya está ocupando la franja 20-22hs de la fecha elegida
-    // — mismo dato que ve la agenda real, para ubicarse antes de buscar
-    // horario (15/9/2026, a pedido: "que me muestre la agenda solo en la
-    // franja de internados").
-    function _renderFranjaGuia(id, ocupados) {
-      const bar = document.getElementById(`franja-bar-${id}`);
-      if (!bar) return;
-      if (!ocupados.length) {
-        bar.innerHTML = `<div class="franja-guia-vacio" style="padding-left:6px">✅ Libre — nadie asignado todavía en 20:00–22:00</div>`;
+    const DIAS_CORTOS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+    // Dibuja, un día por fila, quién ya está ocupando la franja 20-22hs —
+    // mismo dato que ve la agenda real, para ubicarse antes de elegir
+    // horario (15/9/2026, a pedido: primero "que me muestre la agenda
+    // solo en la franja de internados", después "que el rango de fechas
+    // se vea uno debajo del otro"). Tocar una fila elige ese día.
+    function _renderFranjaGuia(id, dias) {
+      const cont = document.getElementById(`franja-dias-${id}`);
+      if (!cont) return;
+      if (!dias.length) {
+        cont.innerHTML = `<div class="franja-guia-vacio">Elegí un rango de fechas</div>`;
         return;
       }
       const rango = VENTANA_INTERNADOS_HASTA - VENTANA_INTERNADOS_DESDE;
-      bar.innerHTML = ocupados.map(o => {
-        const desde = Math.max(o.mins, VENTANA_INTERNADOS_DESDE);
-        const hasta = Math.min(o.finMin, VENTANA_INTERNADOS_HASTA);
-        const left = ((desde - VENTANA_INTERNADOS_DESDE) / rango) * 100;
-        const width = Math.max(((hasta - desde) / rango) * 100, 3);
-        const hora = String(Math.floor(o.mins/60)).padStart(2,'0') + ':' + String(o.mins%60).padStart(2,'0');
-        const nombre = `${o.apellido}, ${o.nombre}`;
-        return `<div class="franja-guia-ocupado" style="left:${left}%;width:${width}%" title="${nombre} — ${hora} — ${o.estudio}">
-          <b>${hora}</b><span>${nombre}</span>
+      cont.innerHTML = dias.map(dia => {
+        const [dd, mm, yyyy] = dia.fecha.split('/').map(Number);
+        const diaSemana = DIAS_CORTOS[new Date(yyyy, mm - 1, dd).getDay()];
+        const seleccionado = _fechaSeleccionada[id] === dia.fecha;
+        const barraHtml = !dia.ocupados.length
+          ? `<div class="franja-guia-vacio" style="padding-left:6px">Libre</div>`
+          : dia.ocupados.map(o => {
+              const desde = Math.max(o.mins, VENTANA_INTERNADOS_DESDE);
+              const hasta = Math.min(o.finMin, VENTANA_INTERNADOS_HASTA);
+              const left = ((desde - VENTANA_INTERNADOS_DESDE) / rango) * 100;
+              const width = Math.max(((hasta - desde) / rango) * 100, 3);
+              const hora = String(Math.floor(o.mins/60)).padStart(2,'0') + ':' + String(o.mins%60).padStart(2,'0');
+              const nombre = `${o.apellido}, ${o.nombre}`;
+              return `<div class="franja-guia-ocupado" style="left:${left}%;width:${width}%" title="${nombre} — ${hora} — ${o.estudio}">
+                <b>${hora}</b><span>${nombre}</span>
+              </div>`;
+            }).join('');
+        return `<div class="franja-dia-row clickable${seleccionado ? ' selected' : ''}" data-fecha="${dia.fecha}"
+          onclick="seleccionarDia('${id}','${dia.fecha}')">
+          <div class="franja-dia-label"><b>${diaSemana}</b>${String(dd).padStart(2,'0')}/${String(mm).padStart(2,'0')}</div>
+          <div class="franja-dia-bar">${barraHtml}</div>
         </div>`;
       }).join('');
     }
 
     async function cargarFranjaGuia(id) {
-      const bar = document.getElementById(`franja-bar-${id}`);
-      const fechaInput = document.getElementById(`fecha-${id}`).value;
-      if (!bar || !fechaInput) return;
-      bar.innerHTML = `<div class="franja-guia-vacio" style="padding-left:6px">Cargando…</div>`;
+      const cont = document.getElementById(`franja-dias-${id}`);
+      const desdeInput = document.getElementById(`rango-desde-${id}`).value;
+      const hastaInput = document.getElementById(`rango-hasta-${id}`).value;
+      if (!cont || !desdeInput || !hastaInput) return;
+      cont.innerHTML = `<div class="franja-guia-vacio">Cargando…</div>`;
       try {
-        const fecha = ddmmyyyyDesdeInputDate(fechaInput);
-        const data = await resonanciaPwaAgendaInternacion(fecha);
-        _renderFranjaGuia(id, data.ocupados || []);
+        const fechaDesde = ddmmyyyyDesdeInputDate(desdeInput);
+        const fechaHasta = ddmmyyyyDesdeInputDate(hastaInput);
+        const data = await resonanciaPwaAgendaInternacion(fechaDesde, fechaHasta);
+        const dias = data.dias || [];
+        // Si el día elegido quedó fuera del rango nuevo (o todavía no
+        // eligió ninguno), por defecto el primero del rango.
+        if (!dias.some(d => d.fecha === _fechaSeleccionada[id])) {
+          _fechaSeleccionada[id] = dias.length ? dias[0].fecha : null;
+        }
+        _renderFranjaGuia(id, dias);
       } catch (err) {
-        bar.innerHTML = `<div class="franja-guia-vacio" style="padding-left:6px">❌ ${err.message}</div>`;
+        cont.innerHTML = `<div class="franja-guia-vacio">❌ ${err.message}</div>`;
       }
+    }
+
+    // Elegir un día de la franja de guía dispara directo la búsqueda de
+    // horarios de ese día — no hace falta un botón aparte.
+    function seleccionarDia(id, fecha) {
+      _fechaSeleccionada[id] = fecha;
+      document.querySelectorAll(`#franja-dias-${id} .franja-dia-row`).forEach(row => {
+        row.classList.toggle('selected', row.dataset.fecha === fecha);
+      });
+      verHorarios(id);
     }
 
     async function verHorarios(id) {
       const estudio = document.getElementById(`estudio-${id}`).value;
-      const fechaInput = document.getElementById(`fecha-${id}`).value;
+      const fecha = _fechaSeleccionada[id];
       const slotsWrap = document.getElementById(`slots-${id}`);
       if (!estudio) { toast('⚠️ Elegí el estudio real primero', 'warn'); return; }
-      if (!fechaInput) { toast('⚠️ Elegí una fecha', 'warn'); return; }
+      if (!fecha) { toast('⚠️ Elegí un día en la franja de arriba', 'warn'); return; }
 
-      const btn = document.getElementById(`btn-ver-${id}`);
-      btn.disabled = true;
-      btn.textContent = 'Buscando...';
-      slotsWrap.innerHTML = '';
+      slotsWrap.innerHTML = `<div class="slots-msg">Buscando horarios…</div>`;
       _horaSeleccionada[id] = null;
       document.getElementById(`btn-confirmar-${id}`).disabled = true;
-      cargarFranjaGuia(id);
 
       try {
-        const fecha = ddmmyyyyDesdeInputDate(fechaInput);
         const data = await resonanciaPwaSlots(fecha, estudio, 'INTERNACIÓN');
         const libres = (data.libres || []).filter(
           s => s.mins >= VENTANA_INTERNADOS_DESDE && s.mins < VENTANA_INTERNADOS_HASTA);
@@ -316,9 +363,6 @@
         }
       } catch (err) {
         slotsWrap.innerHTML = `<div class="slots-msg">❌ ${err.message}</div>`;
-      } finally {
-        btn.disabled = false;
-        btn.textContent = '🔍 Ver horarios disponibles';
       }
     }
 
@@ -332,11 +376,10 @@
     async function confirmarAsignacion(id) {
       const pedido = _pedidos.find(p => p.id === id);
       const estudio = document.getElementById(`estudio-${id}`).value;
-      const fechaInput = document.getElementById(`fecha-${id}`).value;
+      const fecha = _fechaSeleccionada[id];
       const seleccion = _horaSeleccionada[id];
-      if (!pedido || !estudio || !fechaInput || !seleccion) return;
+      if (!pedido || !estudio || !fecha || !seleccion) return;
 
-      const fecha = ddmmyyyyDesdeInputDate(fechaInput);
       if (!confirm(`¿Confirmar turno de ${pedido.apellido}, ${pedido.nombre} — ${estudio} — ${fecha} ${seleccion.hora}?`)) return;
 
       const btn = document.getElementById(`btn-confirmar-${id}`);

@@ -272,10 +272,11 @@ async function resonanciaPwaSlots(fecha, estudio, origen) {
 async function resonanciaPwaAsignar(datos) {
   return _jefaturaRpc('api_tecnicos_asignarPublico', [{ pin: TECNICOS_PIN, ...datos }]);
 }
-// fecha: dd/MM/yyyy — turnos ya ocupando la franja de internados (20-22hs)
-// ese día, para mostrarlos en la franja de guía antes de elegir horario.
-async function resonanciaPwaAgendaInternacion(fecha) {
-  return _jefaturaRpc('api_tecnicos_agendaInternacionPublico', [{ pin: TECNICOS_PIN, fecha }]);
+// fechaDesde/fechaHasta: dd/MM/yyyy — turnos ya ocupando la franja de
+// internados (20-22hs) en cada día del rango, un día por fila en la
+// franja de guía antes de elegir horario.
+async function resonanciaPwaAgendaInternacion(fechaDesde, fechaHasta) {
+  return _jefaturaRpc('api_tecnicos_agendaInternacionPublico', [{ pin: TECNICOS_PIN, fechaDesde, fechaHasta }]);
 }
 async function entregarReclamo(id) {
   const result = await apiPost({ action: 'entregar', id });
