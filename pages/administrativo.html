@@ -8,7 +8,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="../icon-180.png" />
   <link rel="manifest" href="../manifest.json" />
   <meta name="theme-color" content="#4f7cff" />
-  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
   <style>
     :root{--bg:#0d0f14;--surface:#13161e;--surface2:#1a1e29;--border:#252a38;
       --accent:#4f7cff;--warn:#f59e0b;--danger:#ef4444;--success:#10b981;
@@ -289,31 +289,38 @@
       transition:all .2s;}
     .anuncio-close:hover{background:#3a68f0;}
 
-    /* Hoja de reclamo para imprimir (17/9/2026, a pedido) — pensada para
-       quedar en el legajo de papel del paciente. Oculta en pantalla; al
-       imprimir, @media print tapa el resto de la app y deja ver solo esto
-       — fondo blanco/texto negro a propósito, para no gastar tinta de
-       color imprimiendo el tema oscuro de la app. */
+    /* Comprobante de reclamo para imprimir — mismo diseño que el de
+       turnos-informes (lib/htmlReclamo.js) para que el paciente reciba
+       siempre la misma hoja. Oculto en pantalla; al imprimir, @media print
+       tapa el resto de la app y deja ver solo esto. */
     #hoja-print{display:none;}
     @media print {
+      @page{size:A4 portrait;margin:0;}
+      html,body{background:#fff!important;}
       body > *:not(#hoja-print){display:none!important;}
-      #hoja-print{display:block!important;background:#fff;color:#000;
-        font-family:'DM Sans',sans-serif;padding:24px;max-width:720px;margin:0 auto;}
-      .hp-titulo{font-family:'DM Serif Display',serif;font-size:1.4rem;margin-bottom:2px;}
-      .hp-sub{font-size:.85rem;color:#555;margin-bottom:18px;}
-      .hp-seccion{margin-bottom:16px;}
-      .hp-seccion-titulo{font-size:.72rem;text-transform:uppercase;letter-spacing:.04em;
-        color:#555;border-bottom:1px solid #ccc;padding-bottom:3px;margin-bottom:8px;}
-      .hp-fila{display:flex;gap:8px;font-size:.92rem;margin-bottom:5px;}
-      .hp-label{font-weight:600;min-width:150px;flex-shrink:0;}
-      .hp-tipo-item{font-size:.9rem;margin-bottom:4px;}
-      .hp-obs{font-size:.9rem;white-space:pre-wrap;border:1px solid #ccc;border-radius:6px;
-        padding:10px;min-height:40px;}
-      .hp-internado{display:inline-block;font-size:.78rem;font-weight:600;
-        border:1px solid #000;border-radius:100px;padding:2px 10px;margin-top:4px;}
-      .hp-firma{margin-top:40px;display:flex;justify-content:space-between;gap:40px;}
-      .hp-firma-linea{flex:1;border-top:1px solid #000;padding-top:4px;font-size:.78rem;
-        text-align:center;color:#555;}
+      #hoja-print{display:block!important;background:#fff;color:#111;
+        font-family:'Nunito',Arial,sans-serif;width:210mm;min-height:297mm;
+        padding:16mm 22mm;margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+      #hoja-print .hc-header{border-bottom:2.5px solid #1c2b3a;padding-bottom:8px;margin-bottom:14px;}
+      #hoja-print .hc-header h1{font-size:14pt;font-weight:900;color:#1c2b3a;}
+      #hoja-print .hc-header h2{font-size:11pt;font-weight:600;color:#3a5070;margin-top:2px;}
+      #hoja-print .hc-titulo{font-size:17pt;font-weight:900;color:#b91c1c;text-align:center;margin-bottom:4px;letter-spacing:.3px;}
+      #hoja-print .hc-nro{font-size:12pt;font-weight:700;color:#2563a8;text-align:center;margin-bottom:18px;}
+      #hoja-print .hc-seccion{margin-bottom:14px;}
+      #hoja-print .hc-seccion-titulo{font-weight:800;font-size:10pt;padding:5px 10px;margin-bottom:7px;
+        text-transform:uppercase;background:#eaf0f8;color:#1c2b3a;border-left:4px solid #2563a8;}
+      #hoja-print table.hc-datos{width:100%;border-collapse:collapse;margin-bottom:4px;}
+      #hoja-print table.hc-datos td{padding:6px 10px;font-size:11pt;border-bottom:1px solid #e8edf5;vertical-align:top;}
+      #hoja-print table.hc-datos td.hc-lbl{font-weight:700;color:#2563a8;font-size:9.5pt;
+        text-transform:uppercase;width:150px;white-space:nowrap;}
+      #hoja-print .hc-aviso{background:#fffbea;border:1.5px solid #f59e0b;border-radius:7px;padding:12px 14px;margin-bottom:14px;}
+      #hoja-print .hc-aviso-titulo{font-size:11pt;font-weight:800;color:#92400e;margin-bottom:5px;}
+      #hoja-print .hc-aviso p{font-size:10.5pt;color:#78350f;line-height:1.55;margin-bottom:4px;}
+      #hoja-print .hc-aviso p:last-child{margin-bottom:0;}
+      #hoja-print .hc-retiro{background:#f0fdf4;border:1.5px solid #86efac;border-radius:7px;padding:12px 14px;margin-bottom:14px;}
+      #hoja-print .hc-retiro-titulo{font-size:11pt;font-weight:800;color:#15803d;margin-bottom:5px;}
+      #hoja-print .hc-retiro p{font-size:10.5pt;color:#166534;line-height:1.55;}
+      #hoja-print .hc-footer{margin-top:18px;text-align:right;color:#aaa;font-size:9pt;border-top:1px solid #e0e0e0;padding-top:5px;}
     }
   </style>
 </head>
@@ -1152,64 +1159,73 @@ function filtrarPorStat(tipo) {
   document.getElementById('panelReclamos').scrollIntoView({ behavior: 'smooth' });
 }
 
-    // ── Hoja de reclamo para imprimir (17/9/2026, a pedido) ─────────
-    // Se arma con los mismos datos que se acaban de guardar (no hace
-    // falta pedirle nada de vuelta al servidor) y dispara el print nativo
-    // del navegador — @media print (arriba) se encarga de tapar el resto
-    // de la app y mostrar solo esto.
-    function _tiposHojaImprimir(tipos) {
-      const items = [];
-      if (tipos.reclamoInformado) items.push('📄 Sin informe / fuera de fecha');
-      if (tipos.reclamoDiagnostico) items.push('🔬 Reclamo de diagnóstico');
-      if (tipos.reclamoTurno) {
-        items.push('🚨 Turno médico próximo' + (tipos.reclamoTurno !== 'Si' ? ` — ${tipos.reclamoTurno}` : ''));
+    // ── Comprobante de reclamo para imprimir ────────────────────────
+    // Mismo diseño que el comprobante de turnos-informes (lib/htmlReclamo.js).
+    // Se arma con los datos recién guardados y dispara el print nativo —
+    // @media print (arriba) tapa el resto de la app y deja ver solo esto.
+    const _DIAS_HOJA = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+    const _escHoja = v => String(v == null ? '' : v)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    function _isoADmy(iso) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+      return m ? m[3] + '/' + m[2] + '/' + m[1] : (iso || '');
+    }
+    function _fechaHojaDisplay(iso) {
+      const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
+      if (!m) return '—';
+      const d = new Date(+m[1], +m[2] - 1, +m[3]);
+      return _DIAS_HOJA[d.getDay()] + ', ' + m[3] + '/' + m[2];
+    }
+    function _sumarDiasHabiles(fecha, dias) {
+      const d = new Date(fecha.getTime());
+      let n = 0;
+      while (n < dias) {
+        d.setDate(d.getDate() + 1);
+        if (d.getDay() !== 0 && d.getDay() !== 6) n++;
       }
-      if (tipos.reclamoPlacas) {
-        items.push('🩻 Placas viejas (reimpresión)' + (tipos.placasDetalle ? ` — ${tipos.placasDetalle}` : ''));
-      }
-      return items;
+      return _DIAS_HOJA[d.getDay()] + ' ' + String(d.getDate()).padStart(2,'0') + '/' +
+        String(d.getMonth() + 1).padStart(2,'0') + '/' + d.getFullYear();
     }
 
     function imprimirHojaReclamo(datos) {
-      const hoy = new Date().toLocaleDateString('es-AR');
-      const tipos = _tiposHojaImprimir(datos.tipos);
-      document.getElementById('hoja-print').innerHTML = `
-        <div class="hp-titulo">Hoja de Reclamo — RMN</div>
-        <div class="hp-sub">Reclamo #${datos.nroReclamo} · Registrado el ${hoy}</div>
-
-        <div class="hp-seccion">
-          <div class="hp-seccion-titulo">Datos del paciente</div>
-          <div class="hp-fila"><span class="hp-label">Apellido y nombre</span><span>${datos.apellido}, ${datos.nombre}</span></div>
-          <div class="hp-fila"><span class="hp-label">DNI</span><span>${datos.dni}</span></div>
-          ${datos.email ? `<div class="hp-fila"><span class="hp-label">Email de contacto</span><span>${datos.email}</span></div>` : ''}
-          ${datos.esInternado ? '<div class="hp-internado">🏥 Paciente internado</div>' : ''}
-        </div>
-
-        <div class="hp-seccion">
-          <div class="hp-seccion-titulo">Estudio</div>
-          <div class="hp-fila"><span class="hp-label">Estudio</span><span>${datos.estudio}</span></div>
-          <div class="hp-fila"><span class="hp-label">Fecha del estudio</span><span>${datos.fechaEstudio}</span></div>
-        </div>
-
-        <div class="hp-seccion">
-          <div class="hp-seccion-titulo">Tipo de reclamo</div>
-          ${tipos.map(t => `<div class="hp-tipo-item">${t}</div>`).join('')}
-        </div>
-
-        <div class="hp-seccion">
-          <div class="hp-seccion-titulo">Observaciones</div>
-          <div class="hp-obs">${datos.observaciones || '—'}</div>
-        </div>
-
-        <div class="hp-firma">
-          <div class="hp-firma-linea">Firma del paciente / familiar</div>
-          <div class="hp-firma-linea">Firma del administrativo</div>
-        </div>
-      `;
+      const hoy = new Date();
+      const hoyIso = hoy.getFullYear() + '-' + String(hoy.getMonth() + 1).padStart(2,'0') + '-' + String(hoy.getDate()).padStart(2,'0');
+      const t = datos.tipos || {};
+      const fila = (lbl, val) => '<tr><td class="hc-lbl">' + lbl + '</td><td>' + val + '</td></tr>';
+      const turno = t.reclamoTurno
+        ? (t.reclamoTurno === 'Si' ? 'Sí' : _escHoja(_fechaHojaDisplay(t.reclamoTurno)))
+        : '—';
+      const placas = t.reclamoPlacas
+        ? 'Sí' + (t.placasDetalle ? ' — ' + _escHoja(t.placasDetalle) : '')
+        : '';
+      document.getElementById('hoja-print').innerHTML =
+        '<div class="hc-header"><h1>Hospital Donación Francisco Santojanni</h1><h2>Servicio de Resonancia Magnética</h2></div>' +
+        '<div class="hc-titulo">COMPROBANTE DE RECLAMO</div>' +
+        '<div class="hc-nro">N° ' + _escHoja(datos.nroReclamo) + '</div>' +
+        '<div class="hc-seccion"><div class="hc-seccion-titulo">Datos del paciente</div><table class="hc-datos">' +
+          fila('Apellido y nombre', _escHoja(datos.apellido) + ', ' + _escHoja(datos.nombre)) +
+          fila('DNI', _escHoja(datos.dni) || '—') +
+          fila('Estudio', _escHoja(datos.estudio) || '—') +
+          fila('Fecha del estudio', _escHoja(_isoADmy(datos.fechaEstudio)) || '—') +
+        '</table></div>' +
+        '<div class="hc-seccion"><div class="hc-seccion-titulo">Datos del reclamo</div><table class="hc-datos">' +
+          fila('Fecha de reclamo', _escHoja(_fechaHojaDisplay(hoyIso))) +
+          fila('Diagnóstico', t.reclamoDiagnostico ? 'Sí' : '—') +
+          fila('Informado', t.reclamoInformado ? 'Sí' : '—') +
+          fila('Turno médico', turno) +
+          (placas ? fila('Placas viejas', placas) : '') +
+          (datos.observaciones ? fila('Observaciones', _escHoja(datos.observaciones)) : '') +
+        '</table></div>' +
+        '<div class="hc-aviso"><div class="hc-aviso-titulo">📅 Fecha estimada de resolución</div>' +
+          '<p>En base a la fecha de reclamo, le informamos que el plazo máximo de resolución es de <strong>10 días hábiles</strong>.</p>' +
+          '<p>Le sugerimos volver a consultar a partir del: <strong>' + _sumarDiasHabiles(hoy, 10) + '</strong></p></div>' +
+        '<div class="hc-retiro"><div class="hc-retiro-titulo">Retiro de estudios</div>' +
+          '<p>El retiro de estudios se realiza de Lunes a Viernes de 7:00 a 17:00 y Sábados, Domingos y Feriados de 10:00 a 18:00 hs.</p></div>' +
+        '<div class="hc-footer">Hospital Donación Francisco Santojanni — Resonancia Magnética — Pilar 950 C.A.B.A.</div>';
       document.getElementById('btnReimprimirHoja').style.display = '';
       // Doble rAF: fuerza a que el navegador termine de pintar el innerHTML
-      // recién inyectado antes de abrir el diálogo de impresión — sin esto,
-      // algunos navegadores abren el diálogo con la hoja todavía en blanco.
+      // recién inyectado antes de abrir el diálogo de impresión.
       requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
     }
 
