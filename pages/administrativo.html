@@ -294,7 +294,7 @@
        imprimir, @media print tapa el resto de la app y deja ver solo esto
        — fondo blanco/texto negro a propósito, para no gastar tinta de
        color imprimiendo el tema oscuro de la app. */
-    .hoja-print{display:none;}
+    #hoja-print{display:none;}
     @media print {
       body > *:not(#hoja-print){display:none!important;}
       #hoja-print{display:block!important;background:#fff;color:#000;
@@ -442,6 +442,7 @@
 
       <button class="btn btn-primary" id="btnNuevo" onclick="nuevoReclamo()">➕ Cargar Reclamo</button>
       <button class="btn btn-ghost" onclick="limpiarForm()">Limpiar</button>
+      <button class="btn btn-ghost" id="btnReimprimirHoja" style="display:none;" onclick="window.print()">🖨️ Volver a imprimir la hoja</button>
     </aside>
 
     <!-- ══ MAIN ══ -->
@@ -1205,7 +1206,11 @@ function filtrarPorStat(tipo) {
           <div class="hp-firma-linea">Firma del administrativo</div>
         </div>
       `;
-      window.print();
+      document.getElementById('btnReimprimirHoja').style.display = '';
+      // Doble rAF: fuerza a que el navegador termine de pintar el innerHTML
+      // recién inyectado antes de abrir el diálogo de impresión — sin esto,
+      // algunos navegadores abren el diálogo con la hoja todavía en blanco.
+      requestAnimationFrame(() => requestAnimationFrame(() => window.print()));
     }
 
     // ── Nuevo reclamo ─────────────────────────────────────────────
