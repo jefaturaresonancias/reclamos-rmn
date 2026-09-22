@@ -47,6 +47,14 @@
     .btn-copy-dni.copied{border-color:var(--success);color:var(--success);}
     .badge-warn{font-size:.7rem;background:rgba(245,158,11,.15);color:var(--warn);
       padding:4px 10px;border-radius:100px;white-space:nowrap;font-weight:600;}
+    .chequeo-row{padding:10px 20px;border-bottom:1px solid var(--border);
+      display:flex;gap:8px;flex-wrap:wrap;font-size:.76rem;}
+    .chequeo-row.loading{color:var(--text3);}
+    .chequeo-item{display:flex;align-items:center;gap:4px;padding:3px 9px;border-radius:100px;
+      background:var(--surface2);border:1px solid var(--border);}
+    .chequeo-item.ok{color:var(--success);border-color:rgba(16,185,129,.35);}
+    .chequeo-item.bad{color:var(--danger);border-color:rgba(239,68,68,.4);font-weight:600;}
+    .chequeo-item.unknown{color:var(--warn);border-color:rgba(245,158,11,.35);}
     .card-body{display:flex;gap:0;}
     .preview{flex:1;min-width:0;background:#000;}
     .preview iframe{width:100%;height:480px;border:none;display:block;}
@@ -231,6 +239,7 @@
             </div>
             <span class="badge-warn">⏳ Esperando revisión</span>
           </div>
+          <div class="chequeo-row loading" data-chequeo="${r.id}">⏳ Comparando contra el PDF…</div>
           <div class="card-body">
             <div class="preview">
               <iframe src="${previewUrl(r.id)}" loading="lazy" allow="autoplay"></iframe>
@@ -266,6 +275,44 @@
       });
       wrap.querySelectorAll('[data-copiar-dni]').forEach(btn => {
         btn.addEventListener('click', () => copiarDni(btn.dataset.copiarDni, btn));
+      });
+
+      cargarChequeos(lista);
+    }
+
+    // Mismo chequeo que antes solo se veía en el cartel al confirmar (PDF vs
+    // reclamo: DNI, nombre, fecha y estudio) — ahora también en la card, para
+    // verlo de entrada sin tener que apretar "Confirmar" (18/9/2026, a
+    // pedido). Se pide por separado por card (no bloquea el resto si una
+    // falla) y no reintenta si el usuario ya pasó a otra pantalla.
+    function _chequeoItemHtml(label, valor) {
+      const cls    = valor === true ? 'ok' : valor === false ? 'bad' : 'unknown';
+      const icono  = valor === true ? '✅' : valor === false ? '❌' : '⚠️';
+      return `<span class="chequeo-item ${cls}">${icono} ${label}</span>`;
+    }
+
+    function cargarChequeos(lista) {
+      lista.forEach(async (r) => {
+        try {
+          const v = await verificarInforme(r.id);
+          const el = document.querySelector(`[data-chequeo="${r.id}"]`);
+          if (!el) return; // la lista ya se volvió a renderizar
+          el.classList.remove('loading');
+          if (v.ok === false) {
+            el.innerHTML = `<span class="chequeo-item unknown">⚠️ ${v.error || 'No se pudo verificar'}</span>`;
+            return;
+          }
+          el.innerHTML =
+            _chequeoItemHtml('DNI', v.coincideDni) +
+            _chequeoItemHtml('Nombre', v.coincideNombre) +
+            _chequeoItemHtml('Fecha', v.coincideFecha) +
+            _chequeoItemHtml('Estudio', v.coincideEstudio);
+        } catch (err) {
+          const el = document.querySelector(`[data-chequeo="${r.id}"]`);
+          if (!el || err.message === 'PIN inválido') return;
+          el.classList.remove('loading');
+          el.innerHTML = `<span class="chequeo-item unknown">⚠️ No se pudo verificar (${err.message})</span>`;
+        }
       });
     }
 
@@ -474,13 +521,16 @@
 
     function mostrarVerificacionEnvio(v, email) {
       return new Promise((resolve) => {
-        const hayMismatch = v.coincideNombre === false || v.coincideDni === false || v.coincideFecha === false;
+        const hayMismatch = v.coincideNombre === false || v.coincideDni === false || v.coincideFecha === false || v.coincideEstudio === false;
         const motivos = [];
         if (v.coincideNombre === false || v.coincideDni === false) {
           motivos.push('el paciente del PDF no parece ser el mismo del reclamo');
         }
         if (v.coincideFecha === false) {
           motivos.push('la fecha del estudio en el PDF es ANTERIOR a la reclamada — puede ser el informe de un estudio viejo distinto');
+        }
+        if (v.coincideEstudio === false) {
+          motivos.push('el estudio del PDF no parece ser el mismo que se reclamó');
         }
         const overlay = document.createElement('div');
         overlay.className = 'modal-overlay';
@@ -490,17 +540,20 @@
             <div class="modal-row">
               <label>Reclamo cargado a nombre de</label>
               <div class="quien"><b>${v.nombreReclamo}</b> — DNI <b>${v.dniReclamo || '—'}</b></div>
-              <div class="quien" style="margin-top:4px">Estudio reclamado: <b>${v.fechaEstudioReclamo || '—'}</b></div>
+              <div class="quien" style="margin-top:4px">Fecha reclamada: <b>${v.fechaEstudioReclamo || '—'}</b></div>
+              <div class="quien" style="margin-top:4px">Estudio reclamado: <b>${v.estudioReclamo || '—'}</b></div>
             </div>
             <div class="modal-row">
               <label>Este informe (PDF) pertenece a</label>
               <div class="quien"><b>${v.nombrePdf || 'No se pudo leer el nombre del PDF'}</b> — DNI <b>${v.dniPdf || 'No se pudo leer'}</b></div>
               <div class="quien" style="margin-top:4px">Fecha del estudio en el PDF: <b>${v.fechaEstudioPdf || 'No se pudo leer'}</b></div>
+              <div class="quien" style="margin-top:4px">Práctica en el PDF: <b>${v.estudioPdf || 'No se pudo leer'}</b></div>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;">
               <div>Nombre: ${_iconoMatch(v.coincideNombre)}</div>
               <div>DNI: ${_iconoMatch(v.coincideDni)}</div>
               <div>Fecha del estudio: ${_iconoMatch(v.coincideFecha)}</div>
+              <div>Estudio: ${_iconoMatch(v.coincideEstudio)}</div>
             </div>
             ${hayMismatch ? `
               <div class="modal-warning">
