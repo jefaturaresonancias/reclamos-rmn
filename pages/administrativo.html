@@ -385,7 +385,8 @@
         <div id="estudios-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px"></div>
         <input type="hidden" id="f-estudio" />
       </div>
-      <div class="field"><label>Fecha del Estudio *</label><input type="date" id="f-fechaEstudio" /></div>
+      <div class="field"><label>Fecha del Estudio *</label>
+        <input type="text" id="f-fechaEstudio" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10" /></div>
       <div class="field"><label>Email de contacto (para enviarle el informe)</label>
         <input type="email" id="f-email" placeholder="paciente@ejemplo.com" /></div>
 
@@ -1167,6 +1168,36 @@ function filtrarPorStat(tipo) {
     const _escHoja = v => String(v == null ? '' : v)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
+    // Fecha con máscara DD/MM/AAAA en vez de <input type="date"> para
+    // f-fechaEstudio/e-fecha — el orden en que <input type="date"> espera
+    // que se tipeen los dígitos depende del idioma del SO/navegador, no de
+    // la app; si no coincide con el hábito de quien carga (día primero), el
+    // valor que termina guardándose queda con día y mes invertidos sin
+    // ningún aviso (18/9/2026, bug real reportado: reclamos guardados con
+    // la fecha del estudio invertida). Mismo patrón ya usado en
+    // turnos-informes-backend (turno.html/editar.html) — todo el tipeo lo
+    // controla este JS, nunca el navegador.
+    function _enmascararFecha(id) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', function() {
+        const digits = this.value.replace(/\D/g, '').slice(0, 8);
+        let f = digits;
+        if (digits.length > 4) f = digits.slice(0, 2) + '/' + digits.slice(2, 4) + '/' + digits.slice(4);
+        else if (digits.length > 2) f = digits.slice(0, 2) + '/' + digits.slice(2);
+        this.value = f;
+      });
+    }
+    function _dmyAIso(str) {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(str || '').trim());
+      if (!m) return null;
+      const dia = parseInt(m[1], 10), mes = parseInt(m[2], 10), anio = parseInt(m[3], 10);
+      if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+      const d = new Date(anio, mes - 1, dia);
+      if (d.getFullYear() !== anio || d.getMonth() !== mes - 1 || d.getDate() !== dia) return null;
+      return `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+    }
+
     function _isoADmy(iso) {
       const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso || '');
       return m ? m[3] + '/' + m[2] + '/' + m[1] : (iso || '');
@@ -1235,9 +1266,13 @@ function filtrarPorStat(tipo) {
       const nombre       = document.getElementById('f-nombre').value.trim();
       const dni          = document.getElementById('f-dni-buscar').value.trim();
       const estudio      = document.getElementById('f-estudio').value.trim();
-      const fechaEstudio = document.getElementById('f-fechaEstudio').value;
-      if (!apellido || !nombre || !dni || !estudio || !fechaEstudio) {
+      const fechaEstudioTexto = document.getElementById('f-fechaEstudio').value.trim();
+      if (!apellido || !nombre || !dni || !estudio || !fechaEstudioTexto) {
         toast('⚠️ Completá los campos obligatorios (*)', 'warn'); return;
+      }
+      const fechaEstudio = _dmyAIso(fechaEstudioTexto);
+      if (!fechaEstudio) {
+        toast('⚠️ Fecha del estudio inválida — usá el formato DD/MM/AAAA', 'warn'); return;
       }
       if (!hayAlgunTipoSeleccionado()) {
         toast('⚠️ Seleccioná al menos un tipo de reclamo', 'warn'); return;
@@ -1365,7 +1400,7 @@ function filtrarPorStat(tipo) {
             <div class="field"><label>DNI</label>
               <input id="e-dni" value="${r.dni}" /></div>
             <div class="field"><label>Fecha Estudio</label>
-              <input type="date" id="e-fecha" value="${r.fechaEstudio}" /></div>
+              <input type="text" id="e-fecha" placeholder="DD/MM/AAAA" inputmode="numeric" maxlength="10" value="${r.fechaEstudio}" /></div>
           </div>
           <div class="field"><label>Estudio</label>
             <input id="e-estudio" value="${r.estudio}" /></div>
@@ -1415,10 +1450,15 @@ function filtrarPorStat(tipo) {
           <button class="btn btn-primary" id="btnGuardar"
             onclick="guardarEdicion()">💾 Guardar cambios</button>
         </div>`;
+      _enmascararFecha('e-fecha');
       abrirModal();
     }
 
     async function guardarEdicion() {
+      const fechaEstudioEd = _dmyAIso(document.getElementById('e-fecha').value);
+      if (!fechaEstudioEd) {
+        toast('⚠️ Fecha del estudio inválida — usá el formato DD/MM/AAAA', 'warn'); return;
+      }
       const btn = document.getElementById('btnGuardar');
       btn.disabled = true; btn.textContent = '⏳ Guardando...';
       try {
@@ -1429,7 +1469,7 @@ function filtrarPorStat(tipo) {
           nombre:             document.getElementById('e-nombre').value.trim(),
           dni:                document.getElementById('e-dni').value.trim(),
           estudio:            document.getElementById('e-estudio').value.trim(),
-          fechaEstudio:       document.getElementById('e-fecha').value,
+          fechaEstudio:       fechaEstudioEd,
           reclamoDiagnostico: document.getElementById('e-diagnostico').checked ? 'Si' : '',
           reclamoTurno:       turnoChecked ? (turnoFecha || 'Si') : '',
           reclamoPlacas:      document.getElementById('e-placas').checked ? 'Si' : '',
@@ -1773,6 +1813,8 @@ function renderEstudiosChips() {
       // No se guarda nada en localStorage a propósito:
       // debe reaparecer en cada carga hasta que pasen los 3 días
     }
+
+    _enmascararFecha('f-fechaEstudio');
 
     verificarConfig(() => verificarPin(() => {
       recargar();
