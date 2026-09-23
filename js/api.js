@@ -216,6 +216,11 @@ async function rechazarPedidoTurno(id, motivo) {
   if (!result.ok) throw new Error(result.error);
   return result.pedido;
 }
+async function reabrirPedidoTurno(id) {
+  const result = await apiPost({ action: 'reabrirPedidoTurno', id });
+  if (!result.ok) throw new Error(result.error);
+  return result.pedido;
+}
 async function asignarTurnoPedido(id, turno) {
   const result = await apiPost({ action: 'asignarTurnoPedido', id, turno });
   if (!result.ok) throw new Error(result.error);

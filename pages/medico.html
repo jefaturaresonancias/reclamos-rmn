@@ -691,6 +691,9 @@
         return `<div class="pedido-turno-card rechazado">${cabecera}
           <div class="pedido-turno-diag" style="color:var(--danger);background:rgba(239,68,68,.08);">
             💬 <strong>Motivo del rechazo:</strong> ${p.motivoRechazo || '—'}</div>
+          <div class="pedido-turno-actions">
+            <button class="btn-autorizar" id="btn-reab-${p.id}" onclick="reabrirPedido('${p.id}')">↺ Volver a pendiente</button>
+          </div>
         </div>`;
       }
       if (p.estado === 'turno_asignado') {
@@ -749,6 +752,21 @@
       } catch (e) {
         toast('❌ Error: ' + e.message, 'error');
         if (btn) { btn.disabled = false; btn.textContent = '✔ Autorizar'; }
+      }
+    }
+
+    // Deshace un rechazo hecho por error (23/9/2026, a pedido) — vuelve a
+    // aparecer en "Pendientes de revisión" como si nunca se hubiera tocado.
+    async function reabrirPedido(id) {
+      const btn = document.getElementById(`btn-reab-${id}`);
+      if (btn) { btn.disabled = true; btn.textContent = 'Reabriendo...'; }
+      try {
+        await reabrirPedidoTurno(id);
+        toast('↺ Pedido vuelto a pendiente');
+        await recargar();
+      } catch (e) {
+        toast('❌ Error: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '↺ Volver a pendiente'; }
       }
     }
 
