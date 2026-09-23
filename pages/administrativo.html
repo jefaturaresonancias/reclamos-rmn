@@ -1080,6 +1080,10 @@ function cargarStats(s) {
                 ? `<button class="btn-sm btn-sm-blue"
                     onclick="marcarRevisadoAdmin('${r.id}')">👁 Revisado</button>`
                 : ''}
+              ${!r.informeEstado
+                ? `<button class="btn-sm btn-sm-gray"
+                    onclick="abrirCargaInformeManual('${r.id}', ${r.estado !== 'resuelto'})">📎 Informe</button>`
+                : ''}
               <button class="btn-sm btn-sm-gray"
                 onclick="editarReclamo('${r.id}')">✏ Editar</button>
             </div>
@@ -1864,6 +1868,41 @@ async function enviarTodo() {
   }
 }
 
+// Carga manual del informe (23/9/2026, a pedido) — para cuando el bot no
+// lo baja de PEL aunque esté FINALIZADO ahí (caso real: DNI/fecha
+// correctos, PEL lo muestra FINALIZADO, el bot corrió sin error y no lo
+// encontró igual — bug del lado del bot, sin forma de arreglarlo desde
+// acá). Administrativo baja el PDF a mano de SIGEHOS/PEL y lo carga acá;
+// usa el mismo subirInforme que ya usa el bot, así que el reclamo termina
+// exactamente igual (aparece en Envíos para revisar y mandar).
+let _cargaInformeManualId = null;
+let _cargaInformeManualResolver = null;
+function abrirCargaInformeManual(id, marcarResuelto) {
+  _cargaInformeManualId = id;
+  _cargaInformeManualResolver = marcarResuelto;
+  document.getElementById('inputCargaInformeManual').click();
+}
+async function onArchivoInformeManual(event) {
+  const archivo = event.target.files[0];
+  event.target.value = ''; // permite volver a elegir el mismo archivo si hace falta reintentar
+  if (!archivo) return;
+  const id = _cargaInformeManualId, marcarResuelto = _cargaInformeManualResolver;
+  if (!id) return;
+  try {
+    const base64 = await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result.split(',')[1]);
+      reader.onerror = () => reject(new Error('No se pudo leer el archivo'));
+      reader.readAsDataURL(archivo);
+    });
+    await subirInformeManual(id, base64, archivo.type || 'application/pdf', archivo.name, marcarResuelto);
+    toast('📎 Informe cargado — ya está en Envíos para revisar y mandar');
+    await recargar();
+  } catch (e) {
+    toast('❌ Error al cargar el informe: ' + e.message, 'error');
+  }
+}
+
 // Dispara bot-informes.js (pasada completa) desde el panel — inserta en
 // bot_commands, mismo mecanismo que el panel de bots externo.
 async function correrBotInformesTodos() {
@@ -1896,5 +1935,6 @@ async function correrBotInformesTodos() {
   </div>
 
   <div id="hoja-print"></div>
+  <input type="file" id="inputCargaInformeManual" accept="application/pdf" style="display:none" onchange="onArchivoInformeManual(event)" />
 </body>
 </html>

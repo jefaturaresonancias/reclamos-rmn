@@ -331,6 +331,20 @@ async function correrBotInformes(id) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+// Carga manual del informe (23/9/2026, a pedido) — para cuando el bot no
+// lo baja de PEL aunque esté FINALIZADO ahí (bug real encontrado con el
+// reclamo de Suarez, Yahir: DNI/fecha correctos, PEL lo muestra
+// FINALIZADO, el bot corrió sin error y no lo encontró igual). Misma
+// acción que ya usa el bot (subirInforme) — reclamos-rmn-backend ya la
+// acepta con PIN humano, no solo con el token de bot.
+async function subirInformeManual(id, archivoBase64, mimeType, nombreArchivo, marcarResuelto) {
+  const result = await apiPost({
+    action: 'subirInforme', id, archivoBase64, mimeType, nombreArchivo,
+    credencial: 'Cargado a mano', marcarResuelto,
+  });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
 async function rechazarInforme(id, motivo) {
   const result = await apiPost({ action: 'rechazarInforme', id, motivo });
   if (!result.ok) throw new Error(result.error);
