@@ -772,7 +772,7 @@ function cargarStats(s) {
             '<div class="empty"><span>✅</span>No hay pacientes pendientes de recitación.</div>';
           return;
         }
-        const hoy = new Date().toISOString().split('T')[0];
+        const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
         lista.innerHTML = recitadosData.map(r => `
           <div class="recitado-admin-card">
             <div class="recitado-admin-header">
@@ -995,7 +995,7 @@ function cargarStats(s) {
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
       a.href     = url;
-      a.download = 'reclamos_' + new Date().toISOString().split('T')[0] + '.csv';
+      a.download = 'reclamos_' + new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }) + '.csv';
       document.body.appendChild(a);
       a.click();
       a.remove();
