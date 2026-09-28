@@ -68,6 +68,18 @@
     .slot-chip.selected{background:var(--accent);color:#2a1a00;border-color:var(--accent);font-weight:700;}
     .slots-msg{font-size:.8rem;color:var(--text3);}
 
+    /* Estudios elegidos (varios por turno, como en la agenda de la PWA) */
+    .est-chips{display:flex;flex-wrap:wrap;gap:6px;min-height:4px;}
+    .est-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 6px 5px 12px;border-radius:100px;
+      background:rgba(245,158,11,.14);border:1px solid var(--accent);color:var(--text);font-size:.8rem;font-weight:600;}
+    .est-chip button{border:none;background:transparent;color:var(--text2);cursor:pointer;font-size:.9rem;
+      line-height:1;padding:2px 5px;border-radius:50%;}
+    .est-chip button:hover{background:rgba(0,0,0,.25);color:var(--text);}
+    .est-vacio{font-size:.75rem;color:var(--text3);}
+    .excepcion-toggle{display:flex;align-items:center;gap:8px;font-size:.8rem;color:var(--text2);cursor:pointer;
+      padding:8px 10px;border:1px dashed var(--border);border-radius:8px;}
+    .excepcion-toggle input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;}
+
     /* Franja de internado — zoom de la agenda real a la ventana 20-22hs,
        un día por fila (rango elegible), con los pacientes que ya la
        ocupan (cualquier origen — el resonador es uno solo). Tocar una
@@ -132,6 +144,7 @@
     let _estudiosConfig = {};
     let _horaSeleccionada = {}; // pedidoId -> { mins, hora }
     let _fechaSeleccionada = {}; // pedidoId -> 'dd/MM/yyyy', elegida en la franja de guía
+    let _estudiosElegidos = {};  // pedidoId -> [nombres de estudio de la agenda]
 
     function toast(msg, tipo) {
       const el = document.getElementById('toast');
@@ -178,14 +191,13 @@
       }
 
       wrap.innerHTML = _pedidos.map(p => {
-        const inputDateDefault = (() => {
-          const d = new Date();
-          return d.toISOString().slice(0, 10);
-        })();
+        // Fecha local, no toISOString (UTC): después de las 21 daba mañana.
+        const isoLocal = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+        const inputDateDefault = isoLocal(new Date());
         const inputDateHastaDefault = (() => {
           const d = new Date();
           d.setDate(d.getDate() + 7);
-          return d.toISOString().slice(0, 10);
+          return isoLocal(d);
         })();
         return `
         <div class="card" data-id="${p.id}">
@@ -205,7 +217,8 @@
 
           <div class="asignar-form" id="form-${p.id}">
             <div class="field">
-              <label>Estudio real (agenda)</label>
+              <label>Estudios reales (agenda)</label>
+              <div class="est-chips" id="chips-${p.id}"></div>
               <select id="estudio-${p.id}"></select>
             </div>
             <div class="field-row">
@@ -227,6 +240,10 @@
               </div>
               <div id="franja-dias-${p.id}"></div>
             </div>
+            <label class="excepcion-toggle">
+              <input type="checkbox" id="exc-${p.id}" onchange="if (_fechaSeleccionada['${p.id}']) verHorarios('${p.id}')">
+              Usar otro horario (excepción — fuera de la franja 20:00–22:00)
+            </label>
             <div id="slots-${p.id}"></div>
             <button class="btn btn-confirmar" id="btn-confirmar-${p.id}" disabled
               onclick="confirmarAsignacion('${p.id}')">Confirmar turno</button>
@@ -234,17 +251,56 @@
         </div>`;
       }).join('');
 
-      // Poblar los <select> de estudio con la config real, sugiriendo el
-      // que más se parezca al texto libre del pedido.
+      // Estudios como chips (28/9/2026, a pedido: un pedido de piso puede
+      // traer varios, ej. 3 regiones) — arranca con el que más se parezca
+      // al texto libre del pedido; el desplegable agrega más. Van a la
+      // agenda separados por coma, igual que en la PWA (suma duraciones).
       _pedidos.forEach(p => {
+        if (!_estudiosElegidos[p.id]) {
+          const sugerido = _sugerirEstudio(p.estudio);
+          _estudiosElegidos[p.id] = sugerido ? [sugerido] : [];
+        }
         const sel = document.getElementById(`estudio-${p.id}`);
         if (!sel) return;
-        const nombres = Object.keys(_estudiosConfig).sort();
-        const sugerido = _sugerirEstudio(p.estudio);
-        sel.innerHTML = `<option value="">— Elegir estudio —</option>` +
-          nombres.map(n => `<option value="${n}" ${n === sugerido ? 'selected' : ''}>${n}</option>`).join('');
-        sel.addEventListener('change', () => { if (_fechaSeleccionada[p.id]) verHorarios(p.id); });
+        sel.addEventListener('change', () => {
+          if (sel.value) agregarEstudio(p.id, sel.value);
+        });
+        _renderEstudios(p.id);
       });
+    }
+
+    function _renderEstudios(id) {
+      const elegidos = _estudiosElegidos[id] || [];
+      const chips = document.getElementById(`chips-${id}`);
+      if (chips) {
+        chips.innerHTML = elegidos.length
+          ? elegidos.map((n, i) => `<span class="est-chip">${n}<button type="button" title="Quitar"
+              onclick="quitarEstudio('${id}', ${i})">×</button></span>`).join('')
+          : `<span class="est-vacio">Todavía no elegiste ningún estudio</span>`;
+      }
+      const sel = document.getElementById(`estudio-${id}`);
+      if (sel) {
+        const nombres = Object.keys(_estudiosConfig).sort().filter(n => !elegidos.includes(n));
+        sel.innerHTML = `<option value="">${elegidos.length ? '+ Agregar otro estudio' : '— Elegir estudio —'}</option>` +
+          nombres.map(n => `<option value="${n}">${n}</option>`).join('');
+      }
+    }
+
+    function agregarEstudio(id, nombre) {
+      const lista = _estudiosElegidos[id] || (_estudiosElegidos[id] = []);
+      if (!lista.includes(nombre)) lista.push(nombre);
+      _renderEstudios(id);
+      if (_fechaSeleccionada[id]) verHorarios(id);
+    }
+
+    function quitarEstudio(id, i) {
+      (_estudiosElegidos[id] || []).splice(i, 1);
+      _renderEstudios(id);
+      if (_fechaSeleccionada[id]) verHorarios(id);
+    }
+
+    function _estudioStr(id) {
+      return (_estudiosElegidos[id] || []).join(', ');
     }
 
     function toggleForm(id) {
@@ -337,10 +393,11 @@
     }
 
     async function verHorarios(id) {
-      const estudio = document.getElementById(`estudio-${id}`).value;
+      const estudio = _estudioStr(id);
       const fecha = _fechaSeleccionada[id];
       const slotsWrap = document.getElementById(`slots-${id}`);
-      if (!estudio) { toast('⚠️ Elegí el estudio real primero', 'warn'); return; }
+      const excepcion = document.getElementById(`exc-${id}`).checked;
+      if (!estudio) { toast('⚠️ Elegí al menos un estudio', 'warn'); return; }
       if (!fecha) { toast('⚠️ Elegí un día en la franja de arriba', 'warn'); return; }
 
       slotsWrap.innerHTML = `<div class="slots-msg">Buscando horarios…</div>`;
@@ -349,14 +406,22 @@
 
       try {
         const data = await resonanciaPwaSlots(fecha, estudio, 'INTERNACIÓN');
-        const libres = (data.libres || []).filter(
+        // Con la excepción tildada se ofrecen todos los libres del día (el
+        // servidor igual aplica sus reglas: equipo parado, franjas
+        // reservadas, superposición); si no, solo la franja 20-22.
+        const libres = excepcion ? (data.libres || []) : (data.libres || []).filter(
           s => s.mins >= VENTANA_INTERNADOS_DESDE && s.mins < VENTANA_INTERNADOS_HASTA);
+        const duracion = data.duracion ? ` · ${data.duracion} min en total` : '';
         if (data.esFeriado) {
           slotsWrap.innerHTML = `<div class="slots-msg">📅 Feriado: ${data.feriado}</div>`;
         } else if (!libres.length) {
-          slotsWrap.innerHTML = `<div class="slots-msg">Sin horarios libres entre 20:00 y 22:00 ese día (internados van siempre en esa franja).</div>`;
+          slotsWrap.innerHTML = excepcion
+            ? `<div class="slots-msg">Sin horarios libres ese día para estos estudios${duracion}.</div>`
+            : `<div class="slots-msg">Sin horarios libres entre 20:00 y 22:00 ese día${duracion}. Si hace falta, tildá "Usar otro horario (excepción)".</div>`;
         } else {
-          slotsWrap.innerHTML = `<div class="slots-wrap">` +
+          slotsWrap.innerHTML =
+            `<div class="slots-msg" style="margin-bottom:6px">${excepcion ? '⚠️ Excepción: todos los horarios libres del día' : 'Franja de internados'}${duracion}</div>` +
+            `<div class="slots-wrap">` +
             libres.map(s => `<button type="button" class="slot-chip" data-mins="${s.mins}"
               onclick="elegirHora('${id}', ${s.mins}, '${s.hora}', this)">${s.hora}</button>`).join('') +
             `</div>`;
@@ -375,12 +440,14 @@
 
     async function confirmarAsignacion(id) {
       const pedido = _pedidos.find(p => p.id === id);
-      const estudio = document.getElementById(`estudio-${id}`).value;
+      const estudio = _estudioStr(id);
       const fecha = _fechaSeleccionada[id];
       const seleccion = _horaSeleccionada[id];
       if (!pedido || !estudio || !fecha || !seleccion) return;
+      const fueraDeFranja = seleccion.mins < VENTANA_INTERNADOS_DESDE || seleccion.mins >= VENTANA_INTERNADOS_HASTA;
 
-      if (!confirm(`¿Confirmar turno de ${pedido.apellido}, ${pedido.nombre} — ${estudio} — ${fecha} ${seleccion.hora}?`)) return;
+      if (!confirm(`¿Confirmar turno de ${pedido.apellido}, ${pedido.nombre} — ${estudio} — ${fecha} ${seleccion.hora}?` +
+        (fueraDeFranja ? '\n\n⚠️ Queda FUERA de la franja de internados (20:00–22:00), como excepción.' : ''))) return;
 
       const btn = document.getElementById(`btn-confirmar-${id}`);
       btn.disabled = true;
@@ -394,7 +461,8 @@
           origen: 'INTERNACIÓN',
           fecha,
           hora: seleccion.hora,
-          observaciones: `Pedido de piso — Cama ${pedido.cama}, ${pedido.sectorInternacion}. Dx presuntivo: ${pedido.diagnosticoPresuntivo}`,
+          observaciones: `Pedido de piso — Cama ${pedido.cama}, ${pedido.sectorInternacion}. Dx presuntivo: ${pedido.diagnosticoPresuntivo}` +
+            (fueraDeFranja ? ' — Turno fuera de la franja de internados (excepción).' : ''),
         });
         await asignarTurnoPedido(id, { turnoId: res.turnoId, fecha, hora: seleccion.hora });
         toast('✅ Turno asignado', 'ok');
