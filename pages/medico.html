@@ -874,7 +874,7 @@
     }
 
     function actualizarPendingBadge() {
-      const pend = todosLosReclamos.filter(r => r.estado === 'pendiente').length;
+      const pend = todosLosReclamos.filter(r => r.estado === 'pendiente' && !r.enRevision).length;
       const el   = document.getElementById('pendingCount');
       el.textContent = pend ? `${pend} pendientes` : '';
       actualizarInternadosBadge();
@@ -889,11 +889,13 @@
     // sin turno todavía o no realizados no cuentan. Sin ese dato (falló la
     // consulta a RIS) se cuenta como antes.
     const RIS_NO_ATRASADO = ['no_realizado', 'proximo', 'sin_turno'];
+    // En revisión con técnicos ("No está en PEL") = fuera del radar del
+    // médico hasta que respondan (1/10/2026, a pedido).
     function esInternadoAtrasado(r) {
-      return !!r.esInternado && r.estado === 'pendiente' && !RIS_NO_ATRASADO.includes(r.internadoRis);
+      return !!r.esInternado && r.estado === 'pendiente' && !r.enRevision && !RIS_NO_ATRASADO.includes(r.internadoRis);
     }
     function esInternadoNoRealizado(r) {
-      return !!r.esInternado && r.estado === 'pendiente' && r.internadoRis === 'no_realizado';
+      return !!r.esInternado && r.estado === 'pendiente' && !r.enRevision && r.internadoRis === 'no_realizado';
     }
 
     function actualizarInternadosBadge() {
@@ -911,30 +913,33 @@
     }
 
     // Debajo del contador (1/10/2026, a pedido): los próximos (turno hoy o
-    // más adelante, o autorizados sin turno todavía) por fecha, y avisos de
-    // no realizados / en revisión. Tocar uno lo busca por N° de reclamo.
+    // más adelante, o autorizados sin turno todavía) por fecha, los que
+    // están en revisión con técnicos (fuera de las listas hasta que
+    // respondan) y el aviso de no realizados. Tocar uno lo busca por N°.
     function renderInternadosExtra() {
-      const pendientes = todosLosReclamos.filter(r => r.esInternado && r.estado === 'pendiente');
+      const pendientes = todosLosReclamos.filter(r => r.esInternado && r.estado === 'pendiente' && !r.enRevision);
       const clave = r => r.fechaEstudio ? r.fechaEstudio.split('/').reverse().join('') : '99999999';
       const proximos = pendientes
         .filter(r => r.internadoRis === 'proximo' || r.internadoRis === 'sin_turno')
         .sort((a, b) => clave(a).localeCompare(clave(b)));
+      const enRevision = todosLosReclamos.filter(r => r.enRevision);
       const noRealizados = pendientes.filter(esInternadoNoRealizado).length;
-      const enRevision = pendientes.filter(r => r.enRevision).length;
 
-      const bloques = [];
-      if (proximos.length) {
-        bloques.push(`<div>
-          <div class="ie-titulo"><span>📅 Próximos</span><span>${proximos.length}</span></div>
-          ${proximos.map(r => `<button type="button" class="ie-fila" onclick="buscarReclamo(${Number(r.nroReclamo)})"
+      const lista = (titulo, items, fecha) => `<div>
+          <div class="ie-titulo"><span>${titulo}</span><span>${items.length}</span></div>
+          ${items.map(r => `<button type="button" class="ie-fila" onclick="buscarReclamo(${Number(r.nroReclamo)})"
               title="#${escHtml(r.nroReclamo)} · ${escHtml(r.estudio)}">
-            <span class="ie-fecha">${r.fechaEstudio ? escHtml(r.fechaEstudio.slice(0, 5)) : 'sin turno'}</span>
+            <span class="ie-fecha">${escHtml(fecha(r))}</span>
             <span class="ie-nombre">${escHtml(r.apellido)}, ${escHtml(r.nombre)}</span>
           </button>`).join('')}
-        </div>`);
-      }
+        </div>`;
+
+      const bloques = [];
+      if (proximos.length) bloques.push(lista('📅 Próximos', proximos,
+        r => r.fechaEstudio ? r.fechaEstudio.slice(0, 5) : 'sin turno'));
+      if (enRevision.length) bloques.push(lista('🔎 En revisión (técnicos)', enRevision,
+        r => r.revisionPedidaEn ? r.revisionPedidaEn.slice(0, 5) : ''));
       if (noRealizados) bloques.push(`<div class="ie-nota">⚠️ ${noRealizados} no realizado${noRealizados === 1 ? '' : 's'} según RIS</div>`);
-      if (enRevision) bloques.push(`<div class="ie-nota">🔎 ${enRevision} en revisión por técnicos</div>`);
       document.getElementById('internadosExtra').innerHTML = bloques.join('');
     }
 
@@ -990,6 +995,9 @@
       // ni la región elegidas (si no, sigue buscando por DNI como siempre).
       const nroBuscado = /^#?\d+$/.test(busq.trim()) ? busq.trim().replace('#', '') : '';
       const porNro = nroBuscado ? todosLosReclamos.filter(r => String(r.nroReclamo) === nroBuscado) : [];
+      // Los que están en revisión con técnicos no aparecen en ninguna lista
+      // hasta que respondan — sí si se los busca por N° (barra lateral).
+      data = data.filter(r => !r.enRevision);
       if (porNro.length) data = porNro;
 
       data.sort((a, b) => {
@@ -1278,7 +1286,7 @@
       try {
         await pedirRevision(id, motivo);
         await recargar();
-        toast('🔎 Enviado a técnicos para revisar.');
+        toast('🔎 Enviado a técnicos — sale de tu lista hasta que respondan.');
       } catch(e) {
         toast('❌ Error: ' + e.message, 'error');
         if (btn) { btn.disabled = false; btn.textContent = '🔎 No está en PEL → revisar'; }
