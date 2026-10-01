@@ -63,6 +63,17 @@
       font-size:.82rem;font-weight:600;cursor:pointer;transition:all .2s;width:100%;}
     .internados-link:hover{background:var(--internado);color:#fff;}
     .internados-link:disabled{opacity:.4;cursor:not-allowed;}
+    .internados-extra{width:100%;margin-top:22px;text-align:left;display:flex;flex-direction:column;gap:14px;}
+    .internados-extra:empty{display:none;}
+    .ie-titulo{display:flex;justify-content:space-between;font-size:.7rem;font-weight:600;color:var(--text2);
+      text-transform:uppercase;letter-spacing:.06em;padding-bottom:6px;border-bottom:1px solid var(--border);}
+    .ie-fila{display:flex;gap:10px;align-items:baseline;width:100%;padding:6px 2px;font-size:.78rem;
+      background:none;border:none;border-bottom:1px solid rgba(37,42,56,.6);color:var(--text2);
+      font-family:'DM Sans',sans-serif;text-align:left;cursor:pointer;}
+    .ie-fila:hover{color:var(--text);}
+    .ie-fecha{flex-shrink:0;width:58px;font-variant-numeric:tabular-nums;color:var(--text);}
+    .ie-nombre{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .ie-nota{font-size:.76rem;color:var(--text2);}
 
     .page{max-width:960px;margin:0 auto;padding:32px 24px;
       display:flex;flex-direction:column;gap:20px;}
@@ -124,6 +135,8 @@
     .tipo-chip.internado{background:rgba(236,72,153,.12);border:1px solid rgba(236,72,153,.3);color:var(--internado);}
     .tipo-chip.internado-no{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--warn);}
     .tipo-chip.internado-prox{background:rgba(136,146,170,.1);border:1px solid rgba(136,146,170,.25);color:var(--text2);}
+    .tipo-chip.revision{background:rgba(79,124,255,.12);border:1px solid rgba(79,124,255,.35);color:var(--accent);}
+    .tipo-chip.revision-ok{background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);color:var(--success);}
 
     .card-detail{background:var(--surface2);border-radius:10px;padding:14px;
       display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
@@ -195,6 +208,12 @@
       font-size:.8rem;font-weight:500;transition:all .2s;text-align:left;}
     .btn-no-realizado:hover{background:rgba(245,158,11,.16);}
     .btn-no-realizado:disabled{opacity:.5;cursor:wait;}
+    .btn-revision{padding:8px 14px;border-radius:var(--r);width:100%;margin-top:8px;
+      background:rgba(79,124,255,.08);border:1px solid rgba(79,124,255,.3);
+      color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;
+      font-size:.8rem;font-weight:500;transition:all .2s;text-align:left;}
+    .btn-revision:hover{background:rgba(79,124,255,.16);}
+    .btn-revision:disabled{opacity:.5;cursor:wait;}
     .recitar-form{background:rgba(6,182,212,.05);border:1px solid rgba(6,182,212,.2);
       border-radius:var(--r);padding:10px;display:none;flex-direction:column;gap:8px;
       margin-top:4px;}
@@ -421,7 +440,7 @@
     <div class="search-wrap" style="display:flex;gap:10px;align-items:center;">
       <div style="flex:1;position:relative;">
         <span class="search-icon">🔍</span>
-        <input id="buscar" placeholder="Buscar por apellido o DNI..." oninput="renderLista()" />
+        <input id="buscar" placeholder="Buscar por apellido, DNI o N° de reclamo..." oninput="renderLista()" />
       </div>
       <button onclick="abrirSolicitarRecitado()"
         style="flex-shrink:0;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);
@@ -471,6 +490,7 @@
       <div class="internados-count" id="internadosCount">0</div>
       <div class="internados-label">atrasados para informar</div>
       <button class="internados-link" id="internadosLinkBtn" onclick="verInternadosAtrasados()">Ver listado →</button>
+      <div class="internados-extra" id="internadosExtra"></div>
     </div>
   </aside>
   </div>
@@ -882,6 +902,47 @@
       const btn = document.getElementById('internadosLinkBtn');
       btn.disabled = count === 0;
       btn.textContent = count === 0 ? 'Sin pendientes' : 'Ver listado →';
+      renderInternadosExtra();
+    }
+
+    function escHtml(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Debajo del contador (1/10/2026, a pedido): los próximos (turno hoy o
+    // más adelante, o autorizados sin turno todavía) por fecha, y avisos de
+    // no realizados / en revisión. Tocar uno lo busca por N° de reclamo.
+    function renderInternadosExtra() {
+      const pendientes = todosLosReclamos.filter(r => r.esInternado && r.estado === 'pendiente');
+      const clave = r => r.fechaEstudio ? r.fechaEstudio.split('/').reverse().join('') : '99999999';
+      const proximos = pendientes
+        .filter(r => r.internadoRis === 'proximo' || r.internadoRis === 'sin_turno')
+        .sort((a, b) => clave(a).localeCompare(clave(b)));
+      const noRealizados = pendientes.filter(esInternadoNoRealizado).length;
+      const enRevision = pendientes.filter(r => r.enRevision).length;
+
+      const bloques = [];
+      if (proximos.length) {
+        bloques.push(`<div>
+          <div class="ie-titulo"><span>📅 Próximos</span><span>${proximos.length}</span></div>
+          ${proximos.map(r => `<button type="button" class="ie-fila" onclick="buscarReclamo(${Number(r.nroReclamo)})"
+              title="#${escHtml(r.nroReclamo)} · ${escHtml(r.estudio)}">
+            <span class="ie-fecha">${r.fechaEstudio ? escHtml(r.fechaEstudio.slice(0, 5)) : 'sin turno'}</span>
+            <span class="ie-nombre">${escHtml(r.apellido)}, ${escHtml(r.nombre)}</span>
+          </button>`).join('')}
+        </div>`);
+      }
+      if (noRealizados) bloques.push(`<div class="ie-nota">⚠️ ${noRealizados} no realizado${noRealizados === 1 ? '' : 's'} según RIS</div>`);
+      if (enRevision) bloques.push(`<div class="ie-nota">🔎 ${enRevision} en revisión por técnicos</div>`);
+      document.getElementById('internadosExtra').innerHTML = bloques.join('');
+    }
+
+    function buscarReclamo(nro) {
+      const input = document.getElementById('buscar');
+      input.value = '#' + nro;
+      renderLista();
+      document.getElementById('lista').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
     function formatObservacion(text){
@@ -923,6 +984,13 @@
       // los recitados sin confirmar — si no, quedarían accionables acá
       // aunque el paciente ni se haya presentado al turno nuevo.
       data = data.filter(r => r.estado !== 'recitado' || esRecitadoInformable(r));
+
+      // N° de reclamo (1/10/2026, a pedido): "519" o "#519". Si coincide
+      // exacto con un reclamo activo, se muestra ese sin importar la pestaña
+      // ni la región elegidas (si no, sigue buscando por DNI como siempre).
+      const nroBuscado = /^#?\d+$/.test(busq.trim()) ? busq.trim().replace('#', '') : '';
+      const porNro = nroBuscado ? todosLosReclamos.filter(r => String(r.nroReclamo) === nroBuscado) : [];
+      if (porNro.length) data = porNro;
 
       data.sort((a, b) => {
         const pa = prioridad(a), pb = prioridad(b);
@@ -1065,9 +1133,18 @@
         <button class="btn-no-realizado" id="btn-nr-${r.id}"
           onclick="cerrarNoRealizado('${r.id}')">⚠️ No se realizó → cerrar</button>` : '';
 
+      // "No está en PEL → revisar" (1/10/2026): internado pendiente con el
+      // estudio ya hecho o dudoso — no para próximos/sin turno (todavía no
+      // hay nada que buscar en PEL) ni si ya está en revisión.
+      const revisionHtml = r.esInternado && r.estado === 'pendiente' && !r.enRevision &&
+        !['proximo', 'sin_turno'].includes(r.internadoRis) ? `
+        <button class="btn-revision" id="btn-rev-${r.id}"
+          onclick="pedirRevisionPel('${r.id}')">🔎 No está en PEL → revisar</button>` : '';
+
       return `<div class="resolve-area">
         ${comentario}
         ${resolveButtons}
+        ${revisionHtml}
         ${noRealizadoHtml}
         ${recitarHtml}
       </div>`;
@@ -1093,6 +1170,9 @@
 
       const tiposHtml = [
         r.esInternado ? chipInternado(r) : '',
+        r.enRevision
+          ? `<div class="tipo-chip revision">🔎 En revisión por técnicos</div>`
+          : r.revisionRespuesta ? `<div class="tipo-chip revision-ok">✅ Revisado por técnicos</div>` : '',
         r.reclamoTurno
           ? `<div class="tipo-chip turno">🚨 Turno médico${r.reclamoTurno !== 'Si' ? ': ' + r.reclamoTurno : ' próximo'}</div>` : '',
         r.reclamoDiagnostico
@@ -1143,6 +1223,13 @@
                 <div class="detail-label">Observaciones</div>
                 <div class="detail-value" style="color:var(--text2)">${formatObservacion(r.observaciones)}</div>
                 </div>` : ''}
+              ${r.enRevision || r.revisionRespuesta ? `<div class="detail-full">
+                <div class="detail-label">🔎 Revisión (técnicos)</div>
+                <div class="detail-value" style="color:var(--text2)">
+                  Pedido${r.revisionPedidaEn ? ' el ' + escHtml(r.revisionPedidaEn) : ''}: ${escHtml(r.revisionMotivo)}
+                  ${r.revisionRespuesta ? `<br><span style="color:var(--success)">Respuesta${r.revisionResueltaEn ? ' del ' + escHtml(r.revisionResueltaEn) : ''}: ${escHtml(r.revisionRespuesta)}</span>` : ''}
+                </div>
+                </div>` : ''}
               ${r.placasDetalle ? `<div class="detail-full">
                 <div class="detail-label">🩻 Placas a reimprimir</div>
                 <div class="detail-value" style="color:var(--text2)">${r.placasDetalle}</div>
@@ -1178,6 +1265,23 @@
       } catch(e) {
         toast('❌ Error: ' + e.message, 'error');
         if (btn) { btn.disabled = false; btn.textContent = '🩻 Marcar placas reimpresas'; }
+      }
+    }
+
+    // El médico no encuentra el estudio en PEL: pasa a tecnicos.html
+    // (apartado Revisión) hasta que un técnico responde.
+    async function pedirRevisionPel(id) {
+      const motivo = prompt('¿Qué hay que revisar? (lo ven los técnicos)', 'No se encuentra en PEL');
+      if (motivo === null) return;
+      const btn = document.getElementById(`btn-rev-${id}`);
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando...'; }
+      try {
+        await pedirRevision(id, motivo);
+        await recargar();
+        toast('🔎 Enviado a técnicos para revisar.');
+      } catch(e) {
+        toast('❌ Error: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '🔎 No está en PEL → revisar'; }
       }
     }
 

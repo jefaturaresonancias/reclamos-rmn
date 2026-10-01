@@ -467,7 +467,7 @@
         <div class="top-bar">
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
-            <input id="buscar" placeholder="Buscar por paciente, estudio o DNI..."
+            <input id="buscar" placeholder="Buscar por paciente, estudio, DNI o N° de reclamo..."
               oninput="filtrarLista()" />
           </div>
           <select class="filter-select" id="filtroOrden" onchange="filtrarLista()">
@@ -947,6 +947,12 @@ function cargarStats(s) {
           r.estado !== 'recitar'
         );
       }
+
+      // N° de reclamo (1/10/2026, a pedido): "519" o "#519" exacto muestra
+      // ese reclamo activo aunque esté en otro estado que el filtro elegido.
+      const nroBuscado = /^#?\d+$/.test(busq.trim()) ? busq.trim().replace('#', '') : '';
+      const porNro = nroBuscado ? todosLosReclamos.filter(r => !r.archivado && String(r.nroReclamo) === nroBuscado) : [];
+      if (porNro.length) data = porNro;
 
       if (orden === 'urgente') {
         data.sort((a, b) => {

@@ -114,6 +114,20 @@
       width:100%;padding:10px;}
     .btn-toggle:hover{background:rgba(245,158,11,.08);}
 
+    /* Apartado Revisión (reclamos que el médico marcó "No está en PEL") */
+    #revisiones{padding-bottom:0;}
+    #revisiones:empty{display:none;}
+    .seccion-titulo{display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:600;color:var(--text2);
+      text-transform:uppercase;letter-spacing:.05em;}
+    .seccion-titulo span{background:rgba(6,182,212,.15);color:var(--info);padding:2px 9px;border-radius:100px;}
+    .rev-card{border-color:rgba(6,182,212,.35);}
+    .rev-badge{background:rgba(6,182,212,.12);color:var(--info);}
+    .rev-respuesta{display:flex;flex-direction:column;gap:10px;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+    .rev-chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .rev-chip{padding:6px 12px;border-radius:100px;background:var(--surface2);border:1px solid var(--border);
+      color:var(--text2);font-family:'DM Sans',sans-serif;font-size:.78rem;cursor:pointer;transition:all .15s;}
+    .rev-chip:hover{border-color:var(--info);color:var(--text);}
+
     .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
       background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
       padding:12px 20px;font-size:.85rem;opacity:0;pointer-events:none;transition:all .25s;z-index:999;}
@@ -132,6 +146,7 @@
     <a href="../index.html" class="nav-back">← Cambiar rol</a>
   </nav>
 
+  <div class="wrap" id="revisiones"></div>
   <div class="wrap" id="wrap">
     <div class="spinner"></div>
   </div>
@@ -145,6 +160,7 @@
     let _horaSeleccionada = {}; // pedidoId -> { mins, hora }
     let _fechaSeleccionada = {}; // pedidoId -> 'dd/MM/yyyy', elegida en la franja de guía
     let _estudiosElegidos = {};  // pedidoId -> [nombres de estudio de la agenda]
+    let _revisiones = [];        // reclamos que el médico marcó "No está en PEL → revisar"
 
     function toast(msg, tipo) {
       const el = document.getElementById('toast');
@@ -176,10 +192,72 @@
       return `${d}/${m}/${y}`;
     }
 
+    function actualizarBadge() {
+      document.getElementById('contadorBadge').textContent =
+        _pedidos.length + (_pedidos.length === 1 ? ' pedido autorizado' : ' pedidos autorizados') +
+        (_revisiones.length ? ` · ${_revisiones.length} en revisión` : '');
+    }
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+
+    // Apartado Revisión (1/10/2026, a pedido): reclamos que el médico marcó
+    // "No está en PEL → revisar" en medico.html. El técnico revisa (reenvía
+    // las imágenes a PEL, etc.) y responde — la respuesta le aparece al
+    // médico en la tarjeta del reclamo y sale de esta lista.
+    const RESPUESTAS_REVISION = ['Reenviado a PEL', 'Ya estaba en PEL', 'El estudio no se realizó'];
+
+    function renderRevisiones() {
+      actualizarBadge();
+      const cont = document.getElementById('revisiones');
+      if (!_revisiones.length) { cont.innerHTML = ''; return; }
+      cont.innerHTML = `<div class="seccion-titulo">🔎 Revisión — no están en PEL <span>${_revisiones.length}</span></div>` +
+        _revisiones.map(r => `
+        <div class="card rev-card">
+          <div class="card-head">
+            <div>
+              <div class="card-nombre">${esc(r.apellido)}, ${esc(r.nombre)}</div>
+              <div class="card-meta">
+                <span>Reclamo #${esc(r.nroReclamo)}</span>
+                <span>DNI <b>${esc(r.dni)}</b></span>
+                <span>Estudio del ${esc(r.fechaEstudio || '—')}</span>
+              </div>
+            </div>
+            <span class="card-badge rev-badge">${esc(r.estudio)}</span>
+          </div>
+          <div class="card-diag">🩺 Médico${r.revisionPedidaEn ? ' (' + esc(r.revisionPedidaEn) + ')' : ''}: ${esc(r.revisionMotivo)}</div>
+          <div class="rev-respuesta">
+            <div class="rev-chips">${RESPUESTAS_REVISION.map(t =>
+              `<button type="button" class="rev-chip" onclick="document.getElementById('rev-resp-${esc(r.id)}').value = this.textContent">${t}</button>`).join('')}</div>
+            <input id="rev-resp-${esc(r.id)}" placeholder="Qué se revisó o qué se hizo" />
+            <button class="btn btn-confirmar" id="btn-rev-${esc(r.id)}" onclick="confirmarRevision('${esc(r.id)}')">✔ Listo, revisado</button>
+          </div>
+        </div>`).join('');
+    }
+
+    async function confirmarRevision(id) {
+      const respuesta = (document.getElementById(`rev-resp-${id}`)?.value || '').trim();
+      if (!respuesta) { toast('Elegí o escribí qué se revisó', 'error'); return; }
+      const btn = document.getElementById(`btn-rev-${id}`);
+      btn.disabled = true;
+      btn.textContent = 'Guardando...';
+      try {
+        await responderRevision(id, respuesta);
+        _revisiones = _revisiones.filter(r => r.id !== id);
+        renderRevisiones();
+        toast('✅ Revisión respondida — el médico ya la ve', 'ok');
+      } catch (err) {
+        toast('❌ Error: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '✔ Listo, revisado';
+      }
+    }
+
     function render() {
       const wrap = document.getElementById('wrap');
-      document.getElementById('contadorBadge').textContent =
-        _pedidos.length + (_pedidos.length === 1 ? ' pedido autorizado' : ' pedidos autorizados');
+      actualizarBadge();
 
       if (!_pedidos.length) {
         wrap.innerHTML = `
@@ -481,9 +559,15 @@
 
     async function cargar() {
       try {
-        const [todos, config] = await Promise.all([getPedidosTurno(), resonanciaPwaConfig()]);
+        // Revisiones aparte: si fallan, los pedidos se tienen que ver igual.
+        const [todos, config, revisiones] = await Promise.all([
+          getPedidosTurno(), resonanciaPwaConfig(),
+          getRevisiones().catch(err => { console.error('Revisiones:', err); return []; }),
+        ]);
         _pedidos = todos.filter(p => p.estado === 'autorizado');
         _estudiosConfig = config.estudios || {};
+        _revisiones = revisiones || [];
+        renderRevisiones();
         render();
       } catch (err) {
         if (err.message === 'PIN inválido') { _sesionVencida(); return; }

@@ -164,6 +164,23 @@ async function updateReclamo(id, changes) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+// "No está en PEL → revisar": el médico lo pide, el técnico responde
+// (apartado Revisión de tecnicos.html).
+async function pedirRevision(id, motivo) {
+  const result = await apiPost({ action: 'pedirRevision', id, motivo });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
+async function responderRevision(id, respuesta) {
+  const result = await apiPost({ action: 'responderRevision', id, respuesta });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
+async function getRevisiones() {
+  const result = await apiGet({ action: 'listarRevisiones' });
+  if (!result.ok) throw new Error(result.error);
+  return result.revisiones;
+}
 async function cerrarInternadoNoRealizado(id) {
   const result = await apiPost({ action: 'cerrarInternadoNoRealizado', id });
   if (!result.ok) throw new Error(result.error);
