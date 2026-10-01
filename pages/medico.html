@@ -122,6 +122,8 @@
     .tipo-chip.diagnostico{background:rgba(167,139,250,.1);border:1px solid rgba(167,139,250,.25);color:#a78bfa;}
     .tipo-chip.turno{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.3);color:var(--danger);}
     .tipo-chip.internado{background:rgba(236,72,153,.12);border:1px solid rgba(236,72,153,.3);color:var(--internado);}
+    .tipo-chip.internado-no{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.3);color:var(--warn);}
+    .tipo-chip.internado-prox{background:rgba(136,146,170,.1);border:1px solid rgba(136,146,170,.25);color:var(--text2);}
 
     .card-detail{background:var(--surface2);border-radius:10px;padding:14px;
       display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;}
@@ -187,6 +189,12 @@
       color:var(--recitar);cursor:pointer;font-family:'DM Sans',sans-serif;
       font-size:.8rem;font-weight:500;transition:all .2s;text-align:left;}
     .btn-recitar:hover{background:rgba(6,182,212,.15);}
+    .btn-no-realizado{padding:8px 14px;border-radius:var(--r);width:100%;margin-top:8px;
+      background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);
+      color:var(--warn);cursor:pointer;font-family:'DM Sans',sans-serif;
+      font-size:.8rem;font-weight:500;transition:all .2s;text-align:left;}
+    .btn-no-realizado:hover{background:rgba(245,158,11,.16);}
+    .btn-no-realizado:disabled{opacity:.5;cursor:wait;}
     .recitar-form{background:rgba(6,182,212,.05);border:1px solid rgba(6,182,212,.2);
       border-radius:var(--r);padding:10px;display:none;flex-direction:column;gap:8px;
       margin-top:4px;}
@@ -534,7 +542,7 @@
         'resuelto':    'Resueltos',
         'todos':       'Todos los reclamos',
         'recitados':   'Recitados confirmados',
-        'internado':   '🏥 Internados atrasados para informar',
+        'internado':   '🏥 Internados pendientes (atrasados primero)',
       };
       document.getElementById('seccionTitulo').textContent =
         titulos[filtro] || 'Reclamos';
@@ -852,12 +860,24 @@
       actualizarInternadosBadge();
     }
 
-    // Un internado "atrasado" es, por definición, cualquiera que siga
-    // pendiente de informar — no hay un umbral de días separado: un
+    // Un internado "atrasado" es cualquiera que siga pendiente de informar
+    // con el estudio ya hecho — no hay un umbral de días separado: un
     // paciente internado esperando el informe para operarse no puede
     // esperar semanas como sí puede esperar un reclamo ambulatorio típico.
+    // Desde 1/10/2026 el servidor cruza con RIS (r.internadoRis, ver
+    // src/repo/risInternados.js en el backend): los de turno hoy o futuro,
+    // sin turno todavía o no realizados no cuentan. Sin ese dato (falló la
+    // consulta a RIS) se cuenta como antes.
+    const RIS_NO_ATRASADO = ['no_realizado', 'proximo', 'sin_turno'];
+    function esInternadoAtrasado(r) {
+      return !!r.esInternado && r.estado === 'pendiente' && !RIS_NO_ATRASADO.includes(r.internadoRis);
+    }
+    function esInternadoNoRealizado(r) {
+      return !!r.esInternado && r.estado === 'pendiente' && r.internadoRis === 'no_realizado';
+    }
+
     function actualizarInternadosBadge() {
-      const count = todosLosReclamos.filter(r => r.esInternado && r.estado === 'pendiente').length;
+      const count = todosLosReclamos.filter(esInternadoAtrasado).length;
       document.getElementById('internadosCount').textContent = count;
       const btn = document.getElementById('internadosLinkBtn');
       btn.disabled = count === 0;
@@ -941,7 +961,8 @@
     }
 
     function prioridad(r) {
-      if (r.esInternado && r.estado === 'pendiente') return 40;
+      if (esInternadoAtrasado(r))    return 40;
+      if (esInternadoNoRealizado(r)) return 35;
       if (r.reclamoTurno && r.estado !== 'recitado') return 30;
       if (r.estado === 'recitado')   return 25;
       if (r.reclamoDiagnostico)      return 20;
@@ -950,7 +971,7 @@
     }
 
     function getPrioridadBar(r) {
-      if (r.esInternado && r.estado === 'pendiente') return '<div class="prioridad-bar internado-bar"></div>';
+      if (esInternadoAtrasado(r)) return '<div class="prioridad-bar internado-bar"></div>';
       if (r.estado === 'recitado')   return '<div class="prioridad-bar recitado-bar"></div>';
       if (r.reclamoTurno)            return '<div class="prioridad-bar alta"></div>';
       if (r.reclamoDiagnostico)      return '<div class="prioridad-bar media"></div>';
@@ -1040,11 +1061,24 @@
           🔄 Recitado · Nuevo turno: ${r.recitarFechaNuevo || 'pendiente'}
         </div>`;
 
+      const noRealizadoHtml = esInternadoNoRealizado(r) ? `
+        <button class="btn-no-realizado" id="btn-nr-${r.id}"
+          onclick="cerrarNoRealizado('${r.id}')">⚠️ No se realizó → cerrar</button>` : '';
+
       return `<div class="resolve-area">
         ${comentario}
         ${resolveButtons}
+        ${noRealizadoHtml}
         ${recitarHtml}
       </div>`;
+    }
+
+    function chipInternado(r) {
+      if (r.estado !== 'pendiente')        return `<div class="tipo-chip internado">🏥 Internado</div>`;
+      if (r.internadoRis === 'no_realizado') return `<div class="tipo-chip internado-no">⚠️ Internado — no realizado según RIS</div>`;
+      if (r.internadoRis === 'proximo')      return `<div class="tipo-chip internado-prox">📅 Internado — turno ${r.fechaEstudio}</div>`;
+      if (r.internadoRis === 'sin_turno')    return `<div class="tipo-chip internado-prox">📅 Internado — esperando turno</div>`;
+      return `<div class="tipo-chip internado">🏥 Internado — atrasado</div>`;
     }
 
     function renderCard(r) {
@@ -1055,11 +1089,10 @@
       const resuelto   = r.estado === 'resuelto';
       const esRecitado = r.estado === 'recitado';
       const esUrgente  = !!r.reclamoTurno && !resuelto && !esRecitado;
-      const esInternadoAtrasado = !!r.esInternado && r.estado === 'pendiente';
+      const internadoAtrasado = esInternadoAtrasado(r);
 
       const tiposHtml = [
-        r.esInternado
-          ? `<div class="tipo-chip internado">🏥 Internado${esInternadoAtrasado ? ' — atrasado' : ''}</div>` : '',
+        r.esInternado ? chipInternado(r) : '',
         r.reclamoTurno
           ? `<div class="tipo-chip turno">🚨 Turno médico${r.reclamoTurno !== 'Si' ? ': ' + r.reclamoTurno : ' próximo'}</div>` : '',
         r.reclamoDiagnostico
@@ -1075,7 +1108,7 @@
           ${esUrgente  ? 'urgente-turno'  : ''}
           ${esRecitado ? 'recitado-estado' : ''}
           ${resuelto   ? 'resuelto'        : ''}
-          ${esInternadoAtrasado ? 'internado-atrasado' : ''}">
+          ${internadoAtrasado ? 'internado-atrasado' : ''}">
           <div>
             ${getPrioridadBar(r)}
             <div class="card-top">
@@ -1145,6 +1178,25 @@
       } catch(e) {
         toast('❌ Error: ' + e.message, 'error');
         if (btn) { btn.disabled = false; btn.textContent = '🩻 Marcar placas reimpresas'; }
+      }
+    }
+
+    // Internado cuyo estudio nunca se hizo (RIS no lo tiene atendido): se
+    // archiva con una nota, no se borra (cerrarInternadoNoRealizado en api.js).
+    async function cerrarNoRealizado(id) {
+      const r = todosLosReclamos.find(x => x.id === id);
+      const quien = r ? `${r.apellido}, ${r.nombre}` : 'este paciente';
+      if (!confirm(`¿Cerrar el reclamo de ${quien}?\n\nRIS no lo tiene atendido: el estudio no se hizo. ` +
+        'Se archiva (no se borra) y deja de contar como atrasado.')) return;
+      const btn = document.getElementById(`btn-nr-${id}`);
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Cerrando...'; }
+      try {
+        await cerrarInternadoNoRealizado(id);
+        await recargar();
+        toast('✅ Reclamo cerrado: el estudio no se realizó.');
+      } catch(e) {
+        toast('❌ Error: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '⚠️ No se realizó → cerrar'; }
       }
     }
 

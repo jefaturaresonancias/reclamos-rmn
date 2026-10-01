@@ -164,6 +164,11 @@ async function updateReclamo(id, changes) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+async function cerrarInternadoNoRealizado(id) {
+  const result = await apiPost({ action: 'cerrarInternadoNoRealizado', id });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
 async function resolverReclamo(id, comentario) {
   const result = await apiPost({ action: 'resolver', id, comentario });
   if (!result.ok) throw new Error(result.error);
