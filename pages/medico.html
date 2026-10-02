@@ -118,6 +118,13 @@
     .reclamo-card.internado-atrasado{border-color:rgba(236,72,153,.4);
       background:linear-gradient(135deg,rgba(236,72,153,.06),var(--surface));}
     .reclamo-card.resuelto{opacity:.7;}
+    .reclamo-card.cancelado{opacity:.8;border-color:rgba(245,158,11,.35);}
+    .badge-cancelado{background:rgba(245,158,11,.14);color:var(--warn);}
+    .cancelado-banner{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);
+      border-radius:var(--r);padding:10px 14px;font-size:.8rem;color:var(--warn);margin-top:10px;}
+    .cancelado-banner small{color:var(--text2);}
+    .internados-link-sec{margin-top:8px;background:transparent;border-style:dashed;text-decoration:none;
+      display:block;text-align:center;}
 
     .card-top{display:flex;align-items:flex-start;gap:12px;margin-bottom:12px;}
     .card-num-badge{min-width:38px;height:38px;border-radius:10px;background:var(--surface2);
@@ -407,6 +414,8 @@
         onmouseout="this.style.opacity='1'"></span>
     </div>
     <div class="nav-right">
+      <a href="internados.html" class="nav-analitica-btn"
+        style="background:rgba(236,72,153,.12);border-color:rgba(236,72,153,.3);color:var(--internado)">🏥 Internados</a>
       <a href="ordenes.html" class="nav-analitica-btn">🗂️ Órdenes</a>
       <button onclick="localStorage.clear();location.reload();"
         style="background:none;border:1px solid #252a38;color:#4f5870;padding:5px 10px;
@@ -490,6 +499,7 @@
       <div class="internados-count" id="internadosCount">0</div>
       <div class="internados-label">atrasados para informar</div>
       <button class="internados-link" id="internadosLinkBtn" onclick="verInternadosAtrasados()">Ver listado →</button>
+      <a class="internados-link internados-link-sec" href="internados.html">🏥 Circuito completo →</a>
       <div class="internados-extra" id="internadosExtra"></div>
     </div>
   </aside>
@@ -998,6 +1008,12 @@
       // Los que están en revisión con técnicos no aparecen en ninguna lista
       // hasta que respondan — sí si se los busca por N° (barra lateral).
       data = data.filter(r => !r.enRevision);
+      // Internados que no se hicieron (estado 'cancelado', 2/10/2026): fuera
+      // de las listas de trabajo, pero al buscarlos aparecen con el motivo.
+      if (busq && !porNro.length) {
+        data = data.concat(todosLosReclamos.filter(r => r.estado === 'cancelado' && !data.includes(r) &&
+          ((r.apellido + ' ' + r.nombre).toLowerCase().includes(busq) || String(r.dni).includes(busq))));
+      }
       if (porNro.length) data = porNro;
 
       data.sort((a, b) => {
@@ -1075,6 +1091,10 @@
       if (resuelto) {
         return `<div style="display:flex;align-items:flex-start;padding-top:4px">
           <span style="font-size:2rem">✅</span></div>`;
+      }
+      if (r.estado === 'cancelado') {
+        return `<div style="display:flex;align-items:flex-start;padding-top:4px">
+          <span style="font-size:2rem">🚫</span></div>`;
       }
 
       const regionStatus = r.regionStatus || {};
@@ -1196,6 +1216,7 @@
           ${esUrgente  ? 'urgente-turno'  : ''}
           ${esRecitado ? 'recitado-estado' : ''}
           ${resuelto   ? 'resuelto'        : ''}
+          ${r.estado === 'cancelado' ? 'cancelado' : ''}
           ${internadoAtrasado ? 'internado-atrasado' : ''}">
           <div>
             ${getPrioridadBar(r)}
@@ -1246,11 +1267,17 @@
             <div class="badges">
               ${resuelto   ? '<span class="badge badge-resuelto">✅ Resuelto</span>'  : ''}
               ${esRecitado ? `<span class="badge badge-recitado">🔄 Recitado · Turno: ${r.recitarFechaNuevo || 'pendiente'}</span>` : ''}
-              ${!resuelto && !esRecitado ? '<span class="badge badge-pendiente">⏳ Pendiente</span>' : ''}
+              ${r.estado === 'cancelado' ? '<span class="badge badge-cancelado">🚫 Cancelado — no se realizó</span>' : ''}
+              ${!resuelto && !esRecitado && r.estado !== 'cancelado' ? '<span class="badge badge-pendiente">⏳ Pendiente</span>' : ''}
               ${r.retraso ? `<span class="badge ${
                 r.retraso >= 90 ? 'badge-dias-critico' : r.retraso >= 30 ? 'badge-dias-alerta' : 'badge-dias'
               }">${r.retraso}d</span>` : ''}
             </div>
+            ${r.estado === 'cancelado' ? `
+              <div class="cancelado-banner">
+                <strong>🚫 No se realizó el estudio:</strong> ${escHtml(r.canceladoMotivo || 'sin motivo cargado')}
+                <small>— ${escHtml(r.canceladoPor || '')}${r.canceladoEn ? ', ' + escHtml(r.canceladoEn) : ''}</small>
+              </div>` : ''}
             ${resuelto && r.comentarioMedico ? `
               <div class="resuelto-banner">
                 <strong>✅ Comentario médico:</strong>
@@ -1299,7 +1326,7 @@
       const r = todosLosReclamos.find(x => x.id === id);
       const quien = r ? `${r.apellido}, ${r.nombre}` : 'este paciente';
       if (!confirm(`¿Cerrar el reclamo de ${quien}?\n\nRIS no lo tiene atendido: el estudio no se hizo. ` +
-        'Se archiva (no se borra) y deja de contar como atrasado.')) return;
+        'Queda como cancelado (no se borra): deja de contar como atrasado y al buscarlo se ve el motivo.')) return;
       const btn = document.getElementById(`btn-nr-${id}`);
       if (btn) { btn.disabled = true; btn.textContent = '⏳ Cerrando...'; }
       try {
@@ -1508,6 +1535,11 @@
       // No se guarda nada en localStorage a propósito:
       // debe reaparecer en cada carga hasta que pasen los 3 días
     }
+
+    // Link desde la página Internados ("Informar en Médicos →"): llega con
+    // ?buscar=#519 y abre ya filtrado.
+    const _buscarInicial = new URLSearchParams(location.search).get('buscar');
+    if (_buscarInicial) document.getElementById('buscar').value = _buscarInicial;
 
     verificarConfig(() => verificarPin(async () => {
       // recargar() y getConfig() son independientes (planillas distintas):

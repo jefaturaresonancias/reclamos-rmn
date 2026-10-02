@@ -944,7 +944,9 @@ function cargarStats(s) {
           r.estado !== 'resuelto' &&
           r.estado !== 'entregado' &&
           r.estado !== 'recitado' &&
-          r.estado !== 'recitar'
+          r.estado !== 'recitar' &&
+          // Internado que no se hizo: solo aparece si se lo busca (2/10/2026).
+          (r.estado !== 'cancelado' || !!busq)
         );
       }
 
@@ -1030,6 +1032,7 @@ function cargarStats(s) {
           pendiente:        `<span class="badge badge-pendiente">⏳ Pendiente</span>`,
           resuelto:         `<span class="badge badge-resuelto">✅ Informado</span>`,
           entregado:        `<span class="badge badge-entregado">📦 Entregado</span>`,
+          cancelado:        `<span class="badge badge-internado-no" title="${(r.canceladoMotivo || '').replace(/"/g, '&quot;')}">🚫 No se realizó${r.canceladoMotivo ? ': ' + r.canceladoMotivo.replace(/</g, '&lt;') : ''}</span>`,
           'revisado-admin': `<span class="badge badge-revisado">👁 Revisado admin</span>`,
           recitado:         `<span class="badge badge-recitado">🔄 Recitado</span>`,
         }[r.estado] || '';

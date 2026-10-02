@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Internados — Reclamos RMN</title>
+  <link rel="icon" type="image/x-icon" href="../favicon.ico" />
+  <link rel="apple-touch-icon" sizes="180x180" href="../icon-180.png" />
+  <link rel="manifest" href="../manifest.json" />
+  <meta name="theme-color" content="#ec4899" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <!--
+    Internados (2/10/2026, a pedido de jefatura): todo el circuito de un
+    internado en una sola página — pedido de piso (por autorizar /
+    autorizado / rechazado), turno, informe (para informar / en revisión /
+    no realizado según RIS) y los que no se hicieron (estado 'cancelado',
+    cargado desde la agenda de resonancia-pwa o desde Médicos). Junta
+    listarPedidosTurno + dashboard (con internadoRis, ver
+    src/repo/risInternados.js en el backend). Mismo PIN que Médicos.
+  -->
+  <style>
+    :root{--bg:#0d0f14;--surface:#13161e;--surface2:#1a1e29;--border:#252a38;
+      --accent:#4f7cff;--warn:#f59e0b;--danger:#ef4444;--success:#10b981;
+      --recitar:#06b6d4;--internado:#ec4899;--text:#e8ecf4;--text2:#8892aa;--text3:#4f5870;--r:12px;}
+    *{margin:0;padding:0;box-sizing:border-box;}
+    body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;}
+    button{font-family:inherit;}
+    button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--internado);outline-offset:2px;}
+
+    nav{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 32px;
+      border-bottom:1px solid var(--border);background:rgba(13,15,20,.9);
+      backdrop-filter:blur(12px);position:sticky;top:0;z-index:100;}
+    .nav-brand{display:flex;align-items:center;gap:10px;}
+    .nav-title{font-family:'DM Serif Display',serif;font-size:1.1rem;}
+    .nav-badge{font-size:.7rem;background:rgba(236,72,153,.15);color:var(--internado);padding:3px 10px;border-radius:100px;}
+    .nav-right{display:flex;align-items:center;gap:12px;}
+    .nav-btn{background:none;border:1px solid var(--border);color:var(--text2);padding:6px 12px;border-radius:8px;
+      cursor:pointer;font-size:.8rem;text-decoration:none;transition:color .2s,border-color .2s;}
+    .nav-btn:hover{color:var(--text);border-color:var(--text3);}
+
+    .page{max-width:1240px;margin:0 auto;padding:28px 24px 60px;display:flex;flex-direction:column;gap:22px;}
+
+    /* Etapas del circuito: activas a la izquierda, cerradas aparte */
+    .etapas{display:flex;gap:10px;overflow-x:auto;padding-bottom:4px;}
+    .etapas-grupo{display:flex;gap:8px;}
+    .etapas-sep{flex-shrink:0;width:1px;background:var(--border);margin:4px 4px;}
+    .etapa-tile{flex-shrink:0;min-width:112px;padding:10px 12px;border-radius:var(--r);background:var(--surface);
+      border:1px solid var(--border);color:var(--text2);cursor:pointer;text-align:left;transition:border-color .15s,background .15s;}
+    .etapa-tile:hover{border-color:var(--text3);}
+    .etapa-tile.activa{border-color:var(--c);background:var(--cb);}
+    .etapa-tile .n{display:block;font-size:1.5rem;font-weight:700;line-height:1.1;color:var(--c);font-variant-numeric:tabular-nums;}
+    .etapa-tile .l{display:block;font-size:.72rem;margin-top:2px;white-space:nowrap;}
+    .etapa-tile.cero .n{color:var(--text3);}
+
+    .buscar-wrap{position:relative;max-width:440px;}
+    .buscar-wrap span{position:absolute;left:12px;top:50%;transform:translateY(-50%);font-size:.85rem;opacity:.6;}
+    #buscar{width:100%;padding:10px 12px 10px 34px;background:var(--surface);border:1px solid var(--border);
+      border-radius:var(--r);color:var(--text);font-family:inherit;font-size:.85rem;outline:none;}
+    #buscar:focus{border-color:var(--internado);}
+
+    .seccion{display:flex;flex-direction:column;gap:10px;}
+    .seccion > summary{list-style:none;cursor:pointer;}
+    .seccion > summary::-webkit-details-marker{display:none;}
+    .seccion-titulo{display:flex;align-items:center;gap:8px;font-size:.78rem;font-weight:600;color:var(--text2);
+      text-transform:uppercase;letter-spacing:.06em;}
+    .seccion-titulo .cnt{color:var(--c);background:var(--cb);
+      padding:2px 9px;border-radius:100px;letter-spacing:0;}
+    details.seccion > summary .seccion-titulo::after{content:'▸';color:var(--text3);margin-left:2px;}
+    details.seccion[open] > summary .seccion-titulo::after{content:'▾';}
+    .vacio{font-size:.8rem;color:var(--text3);padding:2px 0 6px;}
+    .grilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;}
+
+    .caso{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--c);border-radius:var(--r);
+      padding:14px 16px;display:flex;flex-direction:column;gap:8px;}
+    .caso-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;}
+    .caso-nombre{font-family:'DM Serif Display',serif;font-size:1.02rem;line-height:1.25;}
+    .caso-nro{flex-shrink:0;font-size:.72rem;color:var(--text2);background:var(--surface2);padding:3px 8px;border-radius:6px;
+      font-variant-numeric:tabular-nums;}
+    .caso-meta{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:.75rem;color:var(--text2);}
+    .caso-meta b{color:var(--text);font-weight:600;}
+    .caso-estudio{font-size:.8rem;color:var(--text);}
+    .caso-dx{font-size:.76rem;color:var(--text2);background:var(--surface2);border-radius:8px;padding:6px 9px;}
+    .caso-estado{font-size:.78rem;border-radius:8px;padding:7px 10px;color:var(--c);
+      background:var(--cb);border:1px solid var(--cbd);}
+    .caso-estado small{color:var(--text2);}
+    .caso-acciones{display:flex;flex-wrap:wrap;gap:8px;}
+    .btn{padding:7px 13px;border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer;border:1px solid;
+      background:transparent;text-decoration:none;display:inline-flex;align-items:center;gap:4px;transition:background .15s;}
+    .btn:disabled{opacity:.5;cursor:wait;}
+    .btn-ok{color:var(--success);border-color:rgba(16,185,129,.4);}
+    .btn-ok:hover{background:rgba(16,185,129,.12);}
+    .btn-no{color:var(--danger);border-color:rgba(239,68,68,.4);}
+    .btn-no:hover{background:rgba(239,68,68,.1);}
+    .btn-warn{color:var(--warn);border-color:rgba(245,158,11,.4);}
+    .btn-warn:hover{background:rgba(245,158,11,.1);}
+    .btn-link{color:var(--internado);border-color:rgba(236,72,153,.4);}
+    .btn-link:hover{background:rgba(236,72,153,.1);}
+    .mas{font-size:.75rem;color:var(--text3);}
+
+    .estado-carga{text-align:center;color:var(--text3);padding:60px 0;}
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);
+      border:1px solid var(--border);border-radius:var(--r);padding:12px 20px;font-size:.85rem;opacity:0;pointer-events:none;
+      transition:all .25s;z-index:999;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    .toast.ok{border-color:var(--success);color:var(--success);}
+    .toast.error{border-color:var(--danger);color:var(--danger);}
+    @media (max-width:640px){
+      nav{padding:12px 16px;}
+      .page{padding:20px 16px 48px;}
+      .grilla{grid-template-columns:1fr;}
+    }
+    @media (prefers-reduced-motion:reduce){*{transition:none !important;}}
+  </style>
+</head>
+<body>
+  <nav>
+    <div class="nav-brand">
+      <span>🏥</span>
+      <span class="nav-title">Internados</span>
+      <span class="nav-badge">Circuito completo</span>
+    </div>
+    <div class="nav-right">
+      <button class="nav-btn" onclick="cargar()">🔄 Actualizar</button>
+      <a href="medico.html" class="nav-btn">← Médicos</a>
+    </div>
+  </nav>
+
+  <main class="page">
+    <div class="etapas" id="etapas"></div>
+    <div class="buscar-wrap">
+      <span>🔍</span>
+      <input id="buscar" placeholder="Buscar por apellido, DNI o N° de reclamo..." oninput="render()" autocomplete="off" />
+    </div>
+    <div id="secciones"><div class="estado-carga">Cargando…</div></div>
+  </main>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="../js/api.js"></script>
+  <script>
+    // Etapas en el orden del circuito. `cerrada`: va aparte y plegada.
+    const ETAPAS = [
+      { id: 'por_autorizar', icono: '⏳', titulo: 'Por autorizar', c: '#f59e0b' },
+      { id: 'autorizado',    icono: '✅', titulo: 'Autorizados — esperando turno', corto: 'Autorizados', c: '#10b981' },
+      { id: 'con_turno',     icono: '📅', titulo: 'Con turno', c: '#06b6d4' },
+      { id: 'para_informar', icono: '🏥', titulo: 'Para informar', c: '#ec4899' },
+      { id: 'revision',      icono: '🔎', titulo: 'En revisión (técnicos)', corto: 'En revisión', c: '#4f7cff' },
+      { id: 'no_realizado',  icono: '⚠️', titulo: 'Sin atención en RIS', c: '#f59e0b' },
+      { id: 'cancelado',     icono: '🚫', titulo: 'No se realizó', c: '#8892aa', cerrada: true },
+      { id: 'informado',     icono: '✔', titulo: 'Informados', c: '#10b981', cerrada: true },
+      { id: 'rechazado',     icono: '✕', titulo: 'Rechazados', c: '#ef4444', cerrada: true },
+    ];
+    const MAX_CERRADOS = 30; // informados/rechazados/no realizados: los más recientes
+
+    let _casos = [];      // { pedido, reclamo, etapa }
+    let _filtro = null;   // id de etapa elegida arriba, o null = todas
+    const _abiertas = new Set(); // etapas cerradas que se desplegaron a mano (sobreviven al refresco)
+
+    // Color de la etapa + fondo/borde translúcidos (hex con alfa: anda en navegadores viejos).
+    const colores = e => `--c:${e.c};--cb:${e.c}1a;--cbd:${e.c}40`;
+
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
+    function toast(msg, tipo) {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = 'toast show' + (tipo ? ' ' + tipo : '');
+      clearTimeout(window._toastTimer);
+      window._toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+    }
+    // 'dd/mm/aaaa[ hh:mm]' -> 'aaaammdd[hhmm]' para ordenar
+    function clave(s) {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})(?: (\d{2}):(\d{2}))?/.exec(s || '');
+      return m ? m[3] + m[2] + m[1] + (m[4] || '00') + (m[5] || '00') : '';
+    }
+
+    // Un caso = pedido de piso + su reclamo (o solo el reclamo, si se cargó
+    // sin pedido). La etapa sale del reclamo cuando está en el dashboard; si
+    // ya se archivó, de lo que trae el pedido (reclamoEstado/informado).
+    function etapa({ pedido: p, reclamo: r }) {
+      if (p && p.estado === 'pendiente') return 'por_autorizar';
+      if (p && p.estado === 'rechazado') return 'rechazado';
+      if (r) {
+        if (r.estado === 'cancelado') return 'cancelado';
+        if (r.estado === 'pendiente') {
+          if (r.enRevision) return 'revision';
+          if (r.internadoRis === 'no_realizado') return 'no_realizado';
+          if (r.internadoRis === 'proximo') return 'con_turno';
+          if (r.internadoRis === 'sin_turno') return p && p.estado === 'turno_asignado' ? 'con_turno' : 'autorizado';
+          return 'para_informar';
+        }
+        if (r.estado === 'recitar' || r.estado === 'recitado') return 'para_informar';
+        return 'informado';
+      }
+      if (p) {
+        if (p.reclamoEstado === 'cancelado') return 'cancelado';
+        if (p.informado || p.reclamoArchivado) return 'informado';
+        if (p.estado === 'autorizado') return 'autorizado';
+        if (p.estado === 'turno_asignado') return 'con_turno';
+      }
+      return 'informado';
+    }
+
+    // Orden dentro de cada etapa: lo que espera hace más tiempo primero en
+    // las activas; lo más reciente primero en las cerradas.
+    function ordenar(id, a, b) {
+      const pa = a.pedido, pb = b.pedido, ra = a.reclamo, rb = b.reclamo;
+      const turno = (p, r) => p && p.fechaTurno ? clave(p.fechaTurno + ' ' + (p.horaTurno || '00:00')) : clave(r && r.fechaEstudio);
+      const pedido = p => clave(p && p.creadoEn);
+      if (id === 'por_autorizar' || id === 'autorizado') return pedido(pa).localeCompare(pedido(pb));
+      if (id === 'con_turno') return turno(pa, ra).localeCompare(turno(pb, rb));
+      if (id === 'para_informar' || id === 'no_realizado' || id === 'revision') return turno(pa, ra).localeCompare(turno(pb, rb));
+      return (turno(pb, rb) || pedido(pb)).localeCompare(turno(pa, ra) || pedido(pa));
+    }
+
+    async function cargar() {
+      try {
+        const [pedidos, dash] = await Promise.all([getPedidosTurno(), getDashboard()]);
+        const reclamos = (dash.list || []).filter(r => r.esInternado);
+        const porId = new Map(reclamos.map(r => [r.id, r]));
+        const usados = new Set();
+        const casos = pedidos.map(p => {
+          const r = p.reclamoTurnoId ? porId.get(p.reclamoTurnoId) || null : null;
+          if (r) usados.add(r.id);
+          return { pedido: p, reclamo: r };
+        });
+        reclamos.filter(r => !usados.has(r.id)).forEach(r => casos.push({ pedido: null, reclamo: r }));
+        casos.forEach(c => { c.etapa = etapa(c); });
+        _casos = casos;
+        render();
+      } catch (err) {
+        if (err.message === 'PIN inválido') { verificarPin(cargar); return; }
+        document.getElementById('secciones').innerHTML =
+          `<div class="estado-carga">⚠️ No se pudo cargar: ${esc(err.message)}</div>`;
+      }
+    }
+
+    function coincide(c, q) {
+      if (!q) return true;
+      const p = c.pedido, r = c.reclamo, base = r || p;
+      const nro = String((r && r.nroReclamo) || (p && p.reclamoNro) || '');
+      const qNro = q.replace(/^#/, '');
+      if (/^\d+$/.test(qNro) && nro === qNro) return true;
+      return (base.apellido + ' ' + base.nombre).toLowerCase().includes(q) || String(base.dni).includes(q);
+    }
+
+    function render() {
+      const q = document.getElementById('buscar').value.trim().toLowerCase();
+      const visibles = _casos.filter(c => coincide(c, q));
+      const porEtapa = Object.fromEntries(ETAPAS.map(e => [e.id, []]));
+      visibles.forEach(c => porEtapa[c.etapa].push(c));
+      ETAPAS.forEach(e => porEtapa[e.id].sort((a, b) => ordenar(e.id, a, b)));
+
+      const tile = e => {
+        const n = porEtapa[e.id].length;
+        return `<button type="button" class="etapa-tile${_filtro === e.id ? ' activa' : ''}${n ? '' : ' cero'}" style="${colores(e)}"
+          onclick="elegirEtapa('${e.id}')" aria-pressed="${_filtro === e.id}">
+          <span class="n">${n}</span><span class="l">${e.icono} ${esc(e.corto || e.titulo)}</span></button>`;
+      };
+      document.getElementById('etapas').innerHTML =
+        `<div class="etapas-grupo">${ETAPAS.filter(e => !e.cerrada).map(tile).join('')}</div>
+         <div class="etapas-sep"></div>
+         <div class="etapas-grupo">${ETAPAS.filter(e => e.cerrada).map(tile).join('')}</div>`;
+
+      const mostrar = ETAPAS.filter(e => !_filtro || _filtro === e.id);
+      document.getElementById('secciones').innerHTML = mostrar.map(e => {
+        const items = porEtapa[e.id];
+        const recorte = e.cerrada && !_filtro && !q ? items.slice(0, MAX_CERRADOS) : items;
+        const titulo = `<div class="seccion-titulo" style="${colores(e)}">${e.icono} ${esc(e.titulo)} <span class="cnt">${items.length}</span></div>`;
+        const cuerpo = items.length
+          ? `<div class="grilla">${recorte.map(c => tarjeta(c, e)).join('')}</div>` +
+            (recorte.length < items.length ? `<div class="mas">Mostrando los ${recorte.length} más recientes — buscá o tocá la etapa arriba para ver todos.</div>` : '')
+          : `<div class="vacio">Nada en esta etapa.</div>`;
+        // Las cerradas van plegadas salvo que se las elija o se esté buscando.
+        if (e.cerrada) {
+          return `<details class="seccion" data-etapa="${e.id}" ontoggle="_abiertas[this.open ? 'add' : 'delete'](this.dataset.etapa)"${_filtro || q || _abiertas.has(e.id) ? ' open' : ''} style="margin-top:14px"><summary>${titulo}</summary>${cuerpo}</details>`;
+        }
+        return `<section class="seccion" style="margin-top:14px">${titulo}${cuerpo}</section>`;
+      }).join('');
+    }
+
+    function elegirEtapa(id) {
+      _filtro = _filtro === id ? null : id;
+      render();
+    }
+
+    function tarjeta(c, e) {
+      const p = c.pedido, r = c.reclamo, base = r || p;
+      const nro = (r && r.nroReclamo) || (p && p.reclamoNro);
+      const estudio = (r && r.estudio) || (p && p.estudio) || '';
+      const turno = p && p.fechaTurno ? `${p.fechaTurno} ${p.horaTurno || ''}`.trim() : (r && r.fechaEstudio) || '';
+      const meta = [
+        `DNI <b>${esc(base.dni)}</b>`,
+        p ? `${esc(p.sectorInternacion)} · Cama ${esc(p.cama)}` : '',
+        p && p.medicoSolicitante ? `👨‍⚕️ ${esc(p.medicoSolicitante)}` : '',
+        p ? `Pedido ${esc(p.creadoEn)}` : '',
+        turno ? `Turno <b>${esc(turno)}</b>` : '',
+      ].filter(Boolean).map(x => `<span>${x}</span>`).join('');
+
+      return `<article class="caso" style="${colores(e)}">
+        <div class="caso-top">
+          <div class="caso-nombre">${esc(base.apellido)}, ${esc(base.nombre)}</div>
+          ${nro ? `<span class="caso-nro">#${esc(nro)}</span>` : ''}
+        </div>
+        <div class="caso-meta">${meta}</div>
+        <div class="caso-estudio">${esc(estudio)}</div>
+        ${p && p.diagnosticoPresuntivo ? `<div class="caso-dx">🩺 ${esc(p.diagnosticoPresuntivo)}</div>` : ''}
+        ${detalleEtapa(c, e)}
+      </article>`;
+    }
+
+    function linkMedico(nro, texto) {
+      return nro ? `<a class="btn btn-link" href="medico.html?buscar=${encodeURIComponent('#' + nro)}">${texto}</a>` : '';
+    }
+
+    function detalleEtapa(c, e) {
+      const p = c.pedido, r = c.reclamo;
+      const nro = (r && r.nroReclamo) || (p && p.reclamoNro);
+      switch (e.id) {
+        case 'por_autorizar':
+          return `<div class="caso-acciones">
+            <button class="btn btn-ok" id="aut-${p.id}" onclick="autorizar('${p.id}')">✔ Autorizar</button>
+            <button class="btn btn-no" id="rec-${p.id}" onclick="rechazar('${p.id}')">✕ Rechazar</button></div>`;
+        case 'autorizado':
+          return `<div class="caso-estado">Autorizado${p && p.autorizadoEn ? ' el ' + esc(p.autorizadoEn) : ''} — falta que técnicos le den el turno.</div>`;
+        case 'con_turno':
+          return `<div class="caso-estado">📅 Turno ${esc(p && p.fechaTurno ? `${p.fechaTurno} ${p.horaTurno || ''}` : (r && r.fechaEstudio) || '—')}
+            <small>— si no se hace, técnicos lo marcan "No se realizó" desde la agenda.</small></div>`;
+        case 'para_informar':
+          return `<div class="caso-estado">Estudio hecho${r && r.retraso ? `, <b>${r.retraso} día${r.retraso === 1 ? '' : 's'}</b> esperando informe` : ''}.</div>
+            <div class="caso-acciones">${linkMedico(nro, 'Informar en Médicos →')}</div>`;
+        case 'revision':
+          return `<div class="caso-estado">🔎 ${esc(r.revisionMotivo || 'No se encuentra en PEL')}
+            <small>— pedido el ${esc(r.revisionPedidaEn)}, esperando respuesta de técnicos.</small></div>`;
+        case 'no_realizado':
+          return `<div class="caso-estado">RIS no lo tiene atendido el día del turno.</div>
+            <div class="caso-acciones">
+              <button class="btn btn-warn" id="nr-${esc(r.id)}" onclick="cerrarNoRealizado('${esc(r.id)}')">🚫 No se realizó → cerrar</button>
+              ${linkMedico(nro, 'Ver en Médicos →')}</div>`;
+        case 'cancelado':
+          return r
+            ? `<div class="caso-estado">🚫 ${esc(r.canceladoMotivo || 'No se realizó')}
+                <small>— ${esc(r.canceladoPor)}${r.canceladoEn ? ', ' + esc(r.canceladoEn) : ''}</small></div>`
+            : `<div class="caso-estado">🚫 No se realizó.</div>`;
+        case 'informado':
+          return `<div class="caso-estado">✔ Informado.</div>`;
+        case 'rechazado':
+          return `<div class="caso-estado">✕ ${esc(p.motivoRechazo || 'Sin motivo cargado')}</div>
+            <div class="caso-acciones"><button class="btn btn-ok" id="reab-${p.id}" onclick="reabrir('${p.id}')">↺ Volver a pendiente</button></div>`;
+      }
+      return '';
+    }
+
+    async function accion(btnId, textoEnCurso, fn, ok) {
+      const btn = document.getElementById(btnId);
+      const textoOriginal = btn ? btn.textContent : '';
+      if (btn) { btn.disabled = true; btn.textContent = textoEnCurso; }
+      try {
+        await fn();
+        toast(ok, 'ok');
+        await cargar();
+      } catch (err) {
+        toast('❌ ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
+      }
+    }
+    function autorizar(id) {
+      accion(`aut-${id}`, 'Autorizando…', () => autorizarPedidoTurno(id), '✔ Pedido autorizado');
+    }
+    function rechazar(id) {
+      const motivo = prompt('¿Por qué se rechaza este pedido de turno?');
+      if (motivo === null) return;
+      if (!motivo.trim()) { toast('El motivo es obligatorio', 'error'); return; }
+      accion(`rec-${id}`, 'Rechazando…', () => rechazarPedidoTurno(id, motivo.trim()), '✕ Pedido rechazado');
+    }
+    function reabrir(id) {
+      accion(`reab-${id}`, 'Reabriendo…', () => reabrirPedidoTurno(id), '↺ Pedido vuelto a pendiente');
+    }
+    function cerrarNoRealizado(id) {
+      const c = _casos.find(x => x.reclamo && x.reclamo.id === id);
+      const quien = c ? `${c.reclamo.apellido}, ${c.reclamo.nombre}` : 'este paciente';
+      if (!confirm(`¿Cerrar el reclamo de ${quien}?\n\nRIS no lo tiene atendido: el estudio no se hizo. ` +
+        'Queda como "No se realizó" (no se borra) y al buscarlo se ve el motivo.')) return;
+      accion(`nr-${id}`, 'Cerrando…', () => cerrarInternadoNoRealizado(id), '🚫 Cerrado como no realizado');
+    }
+
+    verificarConfig(() => verificarPin(() => {
+      cargar();
+      setInterval(cargar, 60000);
+    }));
+  </script>
+</body>
+</html>
