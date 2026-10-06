@@ -315,6 +315,14 @@
       return nro ? `<a class="btn btn-link" href="medico.html?buscar=${encodeURIComponent('#' + nro)}">${texto}</a>` : '';
     }
 
+    // "↩ Revertir y rechazar" (6/10/2026): solo con pedido de piso detrás,
+    // autorizado o con turno — ver confirmarYRevertirPedido (js/api.js).
+    function accionRevertir(p) {
+      return p && ['autorizado', 'turno_asignado'].includes(p.estado)
+        ? `<div class="caso-acciones"><button class="btn btn-no" id="rev-${p.id}" onclick="revertir('${p.id}')">↩ Revertir y rechazar</button></div>`
+        : '';
+    }
+
     function detalleEtapa(c, e) {
       const p = c.pedido, r = c.reclamo;
       const nro = (r && r.nroReclamo) || (p && p.reclamoNro);
@@ -324,10 +332,12 @@
             <button class="btn btn-ok" id="aut-${p.id}" onclick="autorizar('${p.id}')">✔ Autorizar</button>
             <button class="btn btn-no" id="rec-${p.id}" onclick="rechazar('${p.id}')">✕ Rechazar</button></div>`;
         case 'autorizado':
-          return `<div class="caso-estado">Autorizado${p && p.autorizadoEn ? ' el ' + esc(p.autorizadoEn) : ''} — falta que técnicos le den el turno.</div>`;
+          return `<div class="caso-estado">Autorizado${p && p.autorizadoEn ? ' el ' + esc(p.autorizadoEn) : ''} — falta que técnicos le den el turno.</div>
+            ${accionRevertir(p)}`;
         case 'con_turno':
           return `<div class="caso-estado">📅 Turno ${esc(p && p.fechaTurno ? `${p.fechaTurno} ${p.horaTurno || ''}` : (r && r.fechaEstudio) || '—')}
-            <small>— si no se hace, técnicos lo marcan "No se realizó" desde la agenda.</small></div>`;
+            <small>— si no se hace, técnicos lo marcan "No se realizó" desde la agenda.</small></div>
+            ${accionRevertir(p)}`;
         case 'para_informar':
           return `<div class="caso-estado">Estudio hecho${r && r.retraso ? `, <b>${r.retraso} día${r.retraso === 1 ? '' : 's'}</b> esperando informe` : ''}.</div>
             <div class="caso-acciones">${linkMedico(nro, 'Informar en Médicos →')}</div>`;
@@ -377,6 +387,23 @@
     }
     function reabrir(id) {
       accion(`reab-${id}`, 'Reabriendo…', () => reabrirPedidoTurno(id), '↺ Pedido vuelto a pendiente');
+    }
+    async function revertir(id) {
+      const c = _casos.find(x => x.pedido && String(x.pedido.id) === String(id));
+      if (!c) return;
+      const btn = document.getElementById(`rev-${id}`);
+      if (btn) { btn.disabled = true; btn.textContent = 'Revirtiendo…'; }
+      try {
+        const r = await confirmarYRevertirPedido(c.pedido);
+        if (r) {
+          toast(r.turnoAnulado ? '↩ Revertido — turno anulado en la agenda' : '↩ Autorización revertida', 'ok');
+          await cargar();
+          return;
+        }
+      } catch (err) {
+        toast('❌ ' + err.message, 'error');
+      }
+      if (btn) { btn.disabled = false; btn.textContent = '↩ Revertir y rechazar'; }
     }
     function cerrarNoRealizado(id) {
       const c = _casos.find(x => x.reclamo && x.reclamo.id === id);

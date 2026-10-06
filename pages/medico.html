@@ -734,16 +734,24 @@
           </div>
         </div>`;
       }
+      // "↩ Revertir y rechazar" (6/10/2026, a pedido): para corregir una
+      // autorización hecha por error — ver confirmarYRevertirPedido (js/api.js).
+      const btnRevertir = `
+          <div class="pedido-turno-actions">
+            <button class="btn-rechazar" id="btn-rev-${p.id}" onclick="revertirPedido('${p.id}')">↩ Revertir y rechazar</button>
+          </div>`;
       if (p.estado === 'turno_asignado') {
         return `<div class="pedido-turno-card turno_asignado">${cabecera}
           <div class="pedido-turno-diag" style="color:var(--recitar);background:rgba(6,182,212,.08);">
             📅 <strong>Turno:</strong> ${p.fechaTurno || '—'} ${p.horaTurno || ''}</div>
+          ${btnRevertir}
         </div>`;
       }
       // autorizado — esperando que técnicos/administrativo le den el turno
       return `<div class="pedido-turno-card autorizado">${cabecera}
         <div class="pedido-turno-diag" style="color:var(--success);background:rgba(16,185,129,.08);">
           ✅ Autorizado — esperando que se le asigne el turno</div>
+        ${btnRevertir}
       </div>`;
     }
 
@@ -805,6 +813,22 @@
       } catch (e) {
         toast('❌ Error: ' + e.message, 'error');
         if (btn) { btn.disabled = false; btn.textContent = '↺ Volver a pendiente'; }
+      }
+    }
+
+    async function revertirPedido(id) {
+      const p = pedidosTurnoData.find(x => String(x.id) === String(id));
+      if (!p) return;
+      const btn = document.getElementById(`btn-rev-${id}`);
+      try {
+        if (btn) { btn.disabled = true; btn.textContent = 'Revirtiendo...'; }
+        const r = await confirmarYRevertirPedido(p);
+        if (!r) { if (btn) { btn.disabled = false; btn.textContent = '↩ Revertir y rechazar'; } return; }
+        toast(r.turnoAnulado ? '↩ Revertido — turno anulado en la agenda' : '↩ Autorización revertida');
+        await recargar();
+      } catch (e) {
+        toast('❌ Error: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '↩ Revertir y rechazar'; }
       }
     }
 

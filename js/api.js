@@ -243,6 +243,29 @@ async function reabrirPedidoTurno(id) {
   if (!result.ok) throw new Error(result.error);
   return result.pedido;
 }
+// "↩ Revertir y rechazar" un pedido ya autorizado o con turno (6/10/2026):
+// devuelve { pedido, turnoAnulado, reclamoCancelado }.
+async function revertirPedidoTurno(id, motivo) {
+  const result = await apiPost({ action: 'revertirPedidoTurno', id, motivo });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
+
+// Botón "↩ Revertir y rechazar" (medico.html e internados.html): pide el
+// motivo, confirma (avisando si se anula un turno de la agenda) y revierte.
+// Devuelve true si se revirtió, para que la pantalla recargue.
+async function confirmarYRevertirPedido(p) {
+  const motivo = prompt(`¿Por qué se revierte la autorización de ${p.apellido}, ${p.nombre}?\n\nEl pedido pasa a Rechazado con este motivo (Piso lo ve).`);
+  if (motivo === null) return false;
+  if (!motivo.trim()) { alert('El motivo es obligatorio.'); return false; }
+  const conTurno = p.estado === 'turno_asignado' && p.fechaTurno;
+  const aviso = conTurno
+    ? `Se va a anular el turno del ${p.fechaTurno} ${p.horaTurno || ''} en la agenda de Resonancia y el pedido queda rechazado.`
+    : 'El pedido queda rechazado y se cancela el internado pendiente de informe.';
+  if (!confirm(`${aviso}\n\nMotivo: ${motivo.trim()}\n\n¿Confirmás?`)) return false;
+  const r = await revertirPedidoTurno(p.id, motivo.trim());
+  return r;
+}
 async function asignarTurnoPedido(id, turno) {
   const result = await apiPost({ action: 'asignarTurnoPedido', id, turno });
   if (!result.ok) throw new Error(result.error);
