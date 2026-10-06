@@ -39,6 +39,18 @@
     .tab-btn:hover{background:var(--surface2);color:var(--text);}
     .tab-btn.active{background:rgba(6,182,212,.12);color:var(--accent);border-color:rgba(6,182,212,.3);}
 
+    .pacs-box{margin-top:14px;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);
+      padding:12px;font-size:.75rem;line-height:1.45;color:var(--text2);}
+    .pacs-box h4{font-size:.82rem;font-weight:600;color:var(--text);margin-bottom:4px;}
+    .pacs-aviso{color:var(--warn);font-size:.72rem;font-weight:600;}
+    .pacs-item{border-top:1px solid var(--border);margin-top:10px;padding-top:10px;}
+    .pacs-nombre{font-weight:600;color:var(--text);}
+    .pacs-detalle{color:var(--text3);margin-bottom:4px;}
+    .pacs-url{color:var(--accent);word-break:break-all;text-decoration:none;}
+    .pacs-url:hover{text-decoration:underline;}
+    .pacs-cred code{font-family:ui-monospace,Consolas,monospace;color:var(--text);background:var(--bg);
+      border-radius:4px;padding:0 4px;}
+
     .right-sidebar{position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;
       background:var(--surface);border-left:1px solid var(--border);
       padding:20px 16px;display:flex;flex-direction:column;gap:20px;flex-shrink:0;}
@@ -62,6 +74,7 @@
       .left-sidebar{position:static;height:auto;flex-direction:row;flex-wrap:wrap;
         border-right:none;border-bottom:1px solid var(--border);}
       .tab-btn{width:auto;flex:1;text-align:center;}
+      .pacs-box{flex-basis:100%;margin-top:6px;}
       .right-sidebar{position:static;height:auto;border-left:none;border-top:1px solid var(--border);}
     }
 
@@ -137,6 +150,9 @@
     <aside class="left-sidebar">
       <button class="tab-btn active" id="tab-turno" onclick="cambiarVista('turno')">📅 Pedido de turno</button>
       <button class="tab-btn" id="tab-informe" onclick="cambiarVista('informe')">📄 Solicitud de informe atrasado</button>
+      <!-- Acceso a los PACS (6/10/2026): los datos los manda el backend
+           (action=pacs) recién después del PIN — este repo es público. -->
+      <div class="pacs-box" id="pacs-box" hidden></div>
     </aside>
 
     <div class="wrap">
@@ -338,6 +354,40 @@
     function cargarTodo() {
       cargarPedidos();
       cargarInternados();
+      cargarPacs();
+    }
+
+    function _esc(s) {
+      return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // Recuadro "Ver imágenes (PACS)" — los dos PACS solo abren desde la red
+    // del hospital. Si falla, el recuadro queda oculto (el resto de la
+    // pantalla ya avisa si el PIN venció). fetch directo y no apiGet: apiGet
+    // borra el PIN guardado ante cualquier "PIN inválido", y un recuadro
+    // informativo no debería poder desloguear a nadie.
+    async function cargarPacs() {
+      const box = document.getElementById('pacs-box');
+      try {
+        const qs = new URLSearchParams({ action: 'pacs', pin: getPin() }).toString();
+        const res = await (await fetch(`${getApiUrl()}?${qs}`)).json();
+        if (!res || !res.ok || !Array.isArray(res.pacs)) return;
+        box.innerHTML = `
+          <h4>🖥️ Ver imágenes (PACS)</h4>
+          <div class="pacs-aviso">Solo funcionan desde una PC dentro del hospital.</div>
+          ${res.pacs.map(p => `
+            <div class="pacs-item">
+              <div class="pacs-nombre">${_esc(p.nombre)}</div>
+              <div class="pacs-detalle">${_esc(p.detalle)}</div>
+              <a class="pacs-url" href="${_esc(p.url)}" target="_blank" rel="noopener">${_esc(p.url.replace(/^https?:\/\//, ''))}</a>
+              <div class="pacs-cred">${p.acceso
+                ? _esc(p.acceso)
+                : `Usuario: <code>${_esc(p.usuario)}</code><br>Contraseña: <code>${_esc(p.clave)}</code>`}</div>
+            </div>`).join('')}`;
+        box.hidden = false;
+      } catch (err) {
+        console.warn('PACS:', err.message);
+      }
     }
 
     function cambiarVista(v) {
