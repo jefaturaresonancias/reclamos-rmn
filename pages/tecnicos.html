@@ -113,6 +113,11 @@
     .btn-toggle{background:transparent;border:1px solid rgba(245,158,11,.3);color:var(--accent);
       width:100%;padding:10px;}
     .btn-toggle:hover{background:rgba(245,158,11,.08);}
+    /* "✔ Ya se realizó — descartar" (10/10/2026) */
+    .btn-descartar{background:transparent;border:1px solid rgba(16,185,129,.3);color:var(--success);
+      width:100%;padding:10px;margin-top:8px;}
+    .btn-descartar:hover{background:rgba(16,185,129,.08);}
+    .descartar-aviso{font-size:.78rem;color:var(--text2);line-height:1.45;}
 
     /* Apartado Revisión (reclamos que el médico marcó "No está en PEL") */
     /* Revisión + Asignar turno: una columna, o dos lado a lado cuando hay
@@ -344,6 +349,16 @@
             <button class="btn btn-confirmar" id="btn-confirmar-${p.id}" disabled
               onclick="confirmarAsignacion('${p.id}')">Confirmar turno</button>
           </div>
+
+          <button class="btn btn-descartar" onclick="toggleDescartar('${p.id}')">✔ Ya se realizó — descartar</button>
+          <div class="asignar-form" id="descartar-${p.id}">
+            <div class="descartar-aviso">Para los que se hicieron por fuera del circuito, sin turno asignado desde acá. Sale de esta lista y queda para informar con la fecha en que se hizo. No tiene vuelta atrás.</div>
+            <div class="field">
+              <label>¿Qué día se realizó?</label>
+              <input type="date" id="fecha-realizado-${p.id}" value="${inputDateDefault}" max="${inputDateDefault}" />
+            </div>
+            <button class="btn btn-confirmar" id="btn-descartar-${p.id}" onclick="confirmarDescarte('${p.id}')">Confirmar descarte</button>
+          </div>
         </div>`;
       }).join('');
 
@@ -567,6 +582,37 @@
         toast('❌ Error: ' + err.message, 'error');
         btn.disabled = false;
         btn.textContent = 'Confirmar turno';
+      }
+    }
+
+    // "✔ Ya se realizó — descartar" (10/10/2026, a pedido): internados que
+    // se hicieron por fuera del circuito. El reclamo queda para informar con
+    // esa fecha (descartarPedidoRealizado en reclamos-rmn-backend).
+    function toggleDescartar(id) {
+      const form = document.getElementById(`descartar-${id}`);
+      if (form) form.classList.toggle('visible');
+    }
+
+    async function confirmarDescarte(id) {
+      const pedido = _pedidos.find(p => p.id === id);
+      const valor = document.getElementById(`fecha-realizado-${id}`).value;
+      if (!pedido) return;
+      if (!valor) { toast('Elegí el día en que se realizó', 'error'); return; }
+      const fecha = ddmmyyyyDesdeInputDate(valor);
+      if (!confirm(`¿Descartar a ${pedido.apellido}, ${pedido.nombre} de la lista?\n\n` +
+        `Queda como realizado el ${fecha} y el médico lo ve para informar. No tiene vuelta atrás.`)) return;
+      const btn = document.getElementById(`btn-descartar-${id}`);
+      btn.disabled = true;
+      btn.textContent = 'Descartando...';
+      try {
+        await descartarPedidoRealizado(id, fecha);
+        toast('✔ Descartado — queda para informar', 'ok');
+        await cargar();
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        toast('❌ Error: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Confirmar descarte';
       }
     }
 

@@ -243,6 +243,13 @@ async function reabrirPedidoTurno(id) {
   if (!result.ok) throw new Error(result.error);
   return result.pedido;
 }
+// "✔ Ya se realizó — descartar" (técnicos, 10/10/2026): saca de la lista un
+// pedido autorizado que se hizo por fuera del circuito. fecha: dd/mm/aaaa.
+async function descartarPedidoRealizado(id, fecha) {
+  const result = await apiPost({ action: 'descartarPedidoRealizado', id, fecha });
+  if (!result.ok) throw new Error(result.error);
+  return result.pedido;
+}
 // "↩ Revertir y rechazar" un pedido ya autorizado o con turno (6/10/2026):
 // devuelve { pedido, turnoAnulado, reclamoCancelado }.
 async function revertirPedidoTurno(id, motivo) {
