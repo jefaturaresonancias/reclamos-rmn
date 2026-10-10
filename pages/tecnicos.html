@@ -49,10 +49,11 @@
     .field-row{display:flex;gap:12px;}
     .field-row .field{flex:1;}
     label{font-size:.72rem;color:var(--text2);font-weight:600;text-transform:uppercase;letter-spacing:.02em;}
-    select,input{width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);
+    select,input,textarea{width:100%;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);
       border-radius:var(--r);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.85rem;
       outline:none;transition:border-color .2s;}
-    select:focus,input:focus{border-color:var(--accent);}
+    textarea{resize:vertical;min-height:56px;}
+    select:focus,input:focus,textarea:focus{border-color:var(--accent);}
 
     .btn{padding:10px 16px;border-radius:var(--r);border:none;cursor:pointer;
       font-family:'DM Sans',sans-serif;font-size:.85rem;font-weight:600;transition:all .2s;}
@@ -346,6 +347,10 @@
               Usar otro horario (excepción — fuera de la franja 20:00–22:00)
             </label>
             <div id="slots-${p.id}"></div>
+            <div class="field">
+              <label for="comentario-${p.id}">Comentario (opcional)</label>
+              <textarea id="comentario-${p.id}" rows="2" maxlength="300" placeholder="Ej: sin informe"></textarea>
+            </div>
             <button class="btn btn-confirmar" id="btn-confirmar-${p.id}" disabled
               onclick="confirmarAsignacion('${p.id}')">Confirmar turno</button>
           </div>
@@ -556,8 +561,12 @@
       const seleccion = _horaSeleccionada[id];
       if (!pedido || !estudio || !fecha || !seleccion) return;
       const fueraDeFranja = seleccion.mins < VENTANA_INTERNADOS_DESDE || seleccion.mins >= VENTANA_INTERNADOS_HASTA;
+      // Comentario de técnicos (10/10/2026, a pedido — ej. "sin informe"):
+      // va a las observaciones del turno en la agenda y del reclamo.
+      const comentario = (document.getElementById(`comentario-${id}`)?.value || '').trim();
 
       if (!confirm(`¿Confirmar turno de ${pedido.apellido}, ${pedido.nombre} — ${estudio} — ${fecha} ${seleccion.hora}?` +
+        (comentario ? `\n\nComentario: ${comentario}` : '') +
         (fueraDeFranja ? '\n\n⚠️ Queda FUERA de la franja de internados (20:00–22:00), como excepción.' : ''))) return;
 
       const btn = document.getElementById(`btn-confirmar-${id}`);
@@ -573,9 +582,10 @@
           fecha,
           hora: seleccion.hora,
           observaciones: `Pedido de piso — Cama ${pedido.cama}, ${pedido.sectorInternacion}. Dx presuntivo: ${pedido.diagnosticoPresuntivo}` +
-            (fueraDeFranja ? ' — Turno fuera de la franja de internados (excepción).' : ''),
+            (fueraDeFranja ? ' — Turno fuera de la franja de internados (excepción).' : '') +
+            (comentario ? ` — Comentario: ${comentario}` : ''),
         });
-        await asignarTurnoPedido(id, { turnoId: res.turnoId, fecha, hora: seleccion.hora });
+        await asignarTurnoPedido(id, { turnoId: res.turnoId, fecha, hora: seleccion.hora, comentario });
         toast('✅ Turno asignado', 'ok');
         await cargar();
       } catch (err) {
