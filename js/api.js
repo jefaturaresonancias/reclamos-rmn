@@ -186,6 +186,13 @@ async function cerrarInternadoNoRealizado(id) {
   if (!result.ok) throw new Error(result.error);
   return result;
 }
+// "🚫 Estudio cancelado" (Médicos, 16/10/2026): cualquier internado pendiente
+// de informe; devuelve { nroReclamo, turnoAnulado }.
+async function cancelarEstudioInternado(id, motivo) {
+  const result = await apiPost({ action: 'cancelarEstudioInternado', id, motivo });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
 async function resolverReclamo(id, comentario) {
   const result = await apiPost({ action: 'resolver', id, comentario });
   if (!result.ok) throw new Error(result.error);

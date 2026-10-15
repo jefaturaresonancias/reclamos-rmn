@@ -215,6 +215,13 @@
       font-size:.8rem;font-weight:500;transition:all .2s;text-align:left;}
     .btn-no-realizado:hover{background:rgba(245,158,11,.16);}
     .btn-no-realizado:disabled{opacity:.5;cursor:wait;}
+    /* "🚫 Estudio cancelado" (16/10/2026) — mismo formato, en rojo */
+    .btn-cancelar-estudio{padding:8px 14px;border-radius:var(--r);width:100%;margin-top:8px;
+      background:rgba(239,68,68,.07);border:1px solid rgba(239,68,68,.3);
+      color:var(--danger);cursor:pointer;font-family:'DM Sans',sans-serif;
+      font-size:.8rem;font-weight:500;transition:all .2s;text-align:left;}
+    .btn-cancelar-estudio:hover{background:rgba(239,68,68,.15);}
+    .btn-cancelar-estudio:disabled{opacity:.5;cursor:wait;}
     .btn-revision{padding:8px 14px;border-radius:var(--r);width:100%;margin-top:8px;
       background:rgba(79,124,255,.08);border:1px solid rgba(79,124,255,.3);
       color:var(--accent);cursor:pointer;font-family:'DM Sans',sans-serif;
@@ -1195,6 +1202,13 @@
         <button class="btn-no-realizado" id="btn-nr-${r.id}"
           onclick="cerrarNoRealizado('${r.id}')">⚠️ No se realizó → cerrar</button>` : '';
 
+      // "🚫 Estudio cancelado" (16/10/2026, a pedido): cualquier internado
+      // pendiente de informe, aunque RIS no lo marque como no realizado. Si
+      // ya aparece "No se realizó → cerrar", ese alcanza.
+      const cancelarEstudioHtml = r.esInternado && r.estado === 'pendiente' && !esInternadoNoRealizado(r) ? `
+        <button class="btn-cancelar-estudio" id="btn-ce-${r.id}"
+          onclick="cancelarEstudio('${r.id}')">🚫 Estudio cancelado</button>` : '';
+
       // "No está en PEL → revisar" (1/10/2026): internado pendiente con el
       // estudio ya hecho o dudoso — no para próximos/sin turno (todavía no
       // hay nada que buscar en PEL) ni si ya está en revisión.
@@ -1208,6 +1222,7 @@
         ${resolveButtons}
         ${revisionHtml}
         ${noRealizadoHtml}
+        ${cancelarEstudioHtml}
         ${recitarHtml}
       </div>`;
     }
@@ -1370,6 +1385,29 @@
       } catch(e) {
         toast('❌ Error: ' + e.message, 'error');
         if (btn) { btn.disabled = false; btn.textContent = '⚠️ No se realizó → cerrar'; }
+      }
+    }
+
+    // "🚫 Estudio cancelado" (16/10/2026): pide el motivo, confirma y
+    // cancela el internado (y su turno en la agenda si es de hoy en adelante).
+    async function cancelarEstudio(id) {
+      const r = todosLosReclamos.find(x => x.id === id);
+      const quien = r ? `${r.apellido}, ${r.nombre}` : 'este paciente';
+      const motivo = prompt(`¿Por qué se canceló el estudio de ${quien}?\n\n(Ej: alta, suspendido por clínica, falleció)`);
+      if (motivo === null) return;
+      if (!motivo.trim()) { toast('⚠️ El motivo es obligatorio', 'warn'); return; }
+      if (!confirm(`¿Marcar el estudio de ${quien} como cancelado?\n\nMotivo: ${motivo.trim()}\n\n` +
+        'Sale de los pendientes de informe (no se borra: al buscarlo se ve el motivo). ' +
+        'Si tiene un turno de hoy en adelante en la agenda, también se anula.')) return;
+      const btn = document.getElementById(`btn-ce-${id}`);
+      if (btn) { btn.disabled = true; btn.textContent = '⏳ Cancelando...'; }
+      try {
+        const res = await cancelarEstudioInternado(id, motivo.trim());
+        await recargar();
+        toast(res.turnoAnulado ? '🚫 Estudio cancelado — también se anuló el turno en la agenda' : '🚫 Estudio cancelado');
+      } catch (e) {
+        toast('❌ Error: ' + e.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '🚫 Estudio cancelado'; }
       }
     }
 
