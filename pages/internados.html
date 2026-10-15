@@ -296,12 +296,26 @@
 
     // ── Exportar internados pendientes de informar (15/10/2026, a pedido:
     // "exportar el listado de internados pendientes de informar para los
-    // médicos"). Todos los de la etapa "Para informar", el que espera hace
-    // más primero. Excel = CSV con ';' y BOM (lo abre bien Excel en
+    // médicos"). Todos los de la etapa "Para informar", ordenados de lo más
+    // atrasado a lo menos por "días esperando" (el mismo número que muestra
+    // la tarjeta); los que no tienen fecha del estudio, al final (16/10/2026,
+    // a pedido — antes iba por fecha de turno y los sin fecha quedaban
+    // primeros). Excel = CSV con ';' y BOM (lo abre bien Excel en
     // castellano); Imprimir = hoja blanca aparte, lista para PDF.
+    function _diasEsperando(c) {
+      const d = c.reclamo && c.reclamo.retraso;
+      return typeof d === 'number' ? d : (d === '' || d == null ? null : Number(d));
+    }
+    function _ordenAtraso(a, b) {
+      const da = _diasEsperando(a), db = _diasEsperando(b);
+      if (da == null && db == null) return ordenar('para_informar', a, b);
+      if (da == null) return 1;
+      if (db == null) return -1;
+      return db - da || ordenar('para_informar', a, b);
+    }
     function _filasPendientes() {
       return _casos.filter(c => c.etapa === 'para_informar')
-        .sort((a, b) => ordenar('para_informar', a, b))
+        .sort(_ordenAtraso)
         .map(({ pedido: p, reclamo: r }) => {
           const base = r || p;
           const comentarios = [
@@ -370,7 +384,7 @@
           thead{display:table-header-group;} tr{page-break-inside:avoid;}
         </style></head><body>
         <h1>Internados pendientes de informe</h1>
-        <div class="sub">Resonancia — ${esc(hoy)} · ${filas.length} internado${filas.length === 1 ? '' : 's'} · el que espera hace más, primero</div>
+        <div class="sub">Resonancia — ${esc(hoy)} · ${filas.length} internado${filas.length === 1 ? '' : 's'} · de lo más atrasado a lo menos</div>
         <table><thead><tr>${COLUMNAS_PENDIENTES.map(([, t]) => `<th>${esc(t)}</th>`).join('')}</tr></thead>
         <tbody>${filas.map(f => `<tr>${COLUMNAS_PENDIENTES.map(([k]) =>
           `<td class="${k === 'dias' || k === 'nro' ? 'num' : k === 'dni' || k === 'fecha' ? 'nowrap' : ''}">${esc(f[k])}</td>`).join('')}</tr>`).join('')}</tbody>
