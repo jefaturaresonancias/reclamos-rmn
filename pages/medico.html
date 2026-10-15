@@ -746,6 +746,7 @@
           <div class="pedido-turno-diag" style="color:var(--recitar);background:rgba(6,182,212,.08);">
             📅 <strong>Turno:</strong> ${p.fechaTurno || '—'} ${p.horaTurno || ''}</div>
           ${lineaAutorizacionHtml(p)}
+          ${lineasTurnoHtml(p)}
           ${btnRevertir}
         </div>`;
       }

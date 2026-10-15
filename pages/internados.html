@@ -340,6 +340,7 @@
           return `<div class="caso-estado">📅 Turno ${esc(p && p.fechaTurno ? `${p.fechaTurno} ${p.horaTurno || ''}` : (r && r.fechaEstudio) || '—')}
             <small>— si no se hace, técnicos lo marcan "No se realizó" desde la agenda.</small></div>
             ${lineaAutorizacionHtml(p)}
+            ${lineasTurnoHtml(p)}
             ${accionRevertir(p)}`;
         case 'para_informar':
           return `<div class="caso-estado">Estudio hecho${r && r.retraso ? `, <b>${r.retraso} día${r.retraso === 1 ? '' : 's'}</b> esperando informe` : ''}.</div>

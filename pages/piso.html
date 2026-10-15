@@ -286,6 +286,7 @@
           ${p.estado === 'turno_asignado' && p.fechaTurno
             ? `<div class="pedido-meta">Turno: ${p.fechaTurno} ${p.horaTurno || ''}</div>` : ''}
           ${['autorizado', 'turno_asignado'].includes(p.estado) ? lineaAutorizacionHtml(p) : ''}
+          ${lineasTurnoHtml(p)}
         </div>
       `).join('');
     }
@@ -324,6 +325,7 @@
             ${p.estado === 'turno_asignado' && p.fechaTurno
               ? `<span class="meta" style="margin-left:6px">${p.fechaTurno} ${p.horaTurno || ''}</span>` : ''}
           </div>
+          ${lineasTurnoHtml(p)}
         </div>
       `).join('');
     }

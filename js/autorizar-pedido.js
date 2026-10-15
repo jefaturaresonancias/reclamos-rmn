@@ -110,3 +110,31 @@ function lineaAutorizacionHtml(p) {
   return `<div class="linea-autorizacion" style="font-size:.78rem;color:var(--text2);margin-top:6px;">
       👨‍⚕️ Autorizó <b>${_escAut(p.autorizadoPor)}</b>${p.comentarioAutorizacion ? ` — 💬 ${_escAut(p.comentarioAutorizacion)}` : ''}</div>`;
 }
+
+// Líneas del turno (15/10/2026, a pedido) para pedidos con turno asignado:
+// el comentario que técnicos dejó al asignar (ej. "sin informe"), si el
+// turno se cambió en la agenda (con el horario anterior) y si se anuló ahí.
+// Los cambios/anulaciones los registra reclamos-rmn-backend cuando sistema2
+// le avisa (turnoInternadoCambiado/Anulado). Mismo estilo que la línea de
+// autorización de arriba.
+function lineasTurnoHtml(p) {
+  if (!p || p.estado !== 'turno_asignado') return '';
+  const fecha = (iso) => {
+    try {
+      return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' });
+    } catch (_) { return ''; }
+  };
+  const lineas = [];
+  if (p.comentarioTurno) lineas.push(`💬 Técnicos: <b>${_escAut(p.comentarioTurno)}</b>`);
+  const cambios = Array.isArray(p.turnoCambios) ? p.turnoCambios : [];
+  if (cambios.length) {
+    const ult = cambios[cambios.length - 1];
+    lineas.push(`🔄 <b>Turno cambiado</b>${cambios.length > 1 ? ` (${cambios.length} veces)` : ''} — antes: ${_escAut(ult.antes || '—')}` +
+      `${ult.en ? ` · cambiado el ${_escAut(fecha(ult.en))}` : ''}${ult.por ? ` por ${_escAut(ult.por)}` : ''}`);
+  }
+  if (p.turnoAnuladoEn) {
+    lineas.push(`<span style="color:var(--danger,#ef4444);font-weight:600">⚠️ Turno anulado en la agenda el ${_escAut(p.turnoAnuladoEn)}</span>` +
+      `${p.turnoAnuladoPor ? ` (${_escAut(p.turnoAnuladoPor)})` : ''}`);
+  }
+  return lineas.map((l) => `<div class="linea-turno" style="font-size:.78rem;color:var(--text2);margin-top:6px;">${l}</div>`).join('');
+}
