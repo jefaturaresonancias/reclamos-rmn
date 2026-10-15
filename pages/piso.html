@@ -60,6 +60,8 @@
     .side-item .nom{font-weight:600;font-size:.82rem;}
     .side-item .meta{color:var(--text3);margin-top:2px;}
     .side-empty{font-size:.78rem;color:var(--text3);padding:6px 0;}
+    .fecha-palabras{font-size:.78rem;color:var(--success);min-height:1.1em;}
+    .fecha-palabras.error{color:var(--danger);}
 
     /* Seguimiento de turnos: 4 compartimentos con scroll propio que se
        reparten el alto de la columna + búsqueda por DNI (15/10/2026) */
@@ -248,7 +250,10 @@
           <input id="i-sector" placeholder="Ej: Clínica Médica — 3er piso" /></div>
         <div class="field"><label>Estudio realizado *</label>
           <input id="i-estudio" placeholder="Ej: Rm de cerebro con contraste" /></div>
-        <div class="field"><label>Fecha del estudio *</label><input type="date" id="i-fecha" /></div>
+        <div class="field"><label for="i-fecha">Fecha del estudio * (día/mes/año)</label>
+          <input type="text" id="i-fecha" inputmode="numeric" maxlength="10" autocomplete="off" placeholder="DD/MM/AAAA"
+            oninput="fechaDmyInput(this, 'i-fecha-texto')" />
+          <div class="fecha-palabras" id="i-fecha-texto"></div></div>
         <div class="field"><label>Observaciones</label>
           <textarea id="i-obs" placeholder="Detalle adicional (opcional)"></textarea></div>
 
@@ -304,6 +309,7 @@
 
   <script src="../js/api.js"></script>
   <script src="../js/autorizar-pedido.js"></script>
+  <script src="../js/fecha-dmy.js"></script>
   <script>
     let _pedidos = [];
     let _internados = [];
@@ -563,12 +569,23 @@
         cama: document.getElementById('i-cama').value.trim(),
         sectorInternacion: document.getElementById('i-sector').value.trim(),
         estudio: document.getElementById('i-estudio').value.trim(),
-        fechaEstudio: document.getElementById('i-fecha').value,
+        fechaEstudio: fechaDmyAIso(document.getElementById('i-fecha').value),
         motivo: document.getElementById('i-obs').value.trim(),
       };
       const errorEl = document.getElementById('i-error');
-      if (!data.apellido || !data.nombre || !data.dni || !data.estudio || !data.fechaEstudio) {
+      const fechaTexto = document.getElementById('i-fecha').value.trim();
+      if (!data.apellido || !data.nombre || !data.dni || !data.estudio || !fechaTexto) {
         errorEl.textContent = 'Completá todos los campos obligatorios (*).';
+        return;
+      }
+      // DD/MM/AAAA escrito a mano (js/fecha-dmy.js): nada de <input type="date">,
+      // que en las PC en inglés invertía día y mes sin aviso (#703, 15/10/2026).
+      if (!data.fechaEstudio) {
+        errorEl.textContent = 'La fecha del estudio no es válida — escribila como DD/MM/AAAA (día primero).';
+        return;
+      }
+      if (data.fechaEstudio > fechaHoyIso()) {
+        errorEl.textContent = 'La fecha del estudio no puede ser futura.';
         return;
       }
       errorEl.textContent = '';
@@ -581,6 +598,7 @@
         ['i-apellido','i-nombre','i-dni','i-cama','i-sector','i-estudio','i-fecha','i-obs'].forEach(id => {
           document.getElementById(id).value = '';
         });
+        document.getElementById('i-fecha-texto').textContent = '';
         await cargarInternados();
       } catch (err) {
         if (err.message === 'PIN inválido') { _sesionVencida(); return; }

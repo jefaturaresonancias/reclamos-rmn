@@ -119,6 +119,8 @@
       width:100%;padding:10px;margin-top:8px;}
     .btn-descartar:hover{background:rgba(16,185,129,.08);}
     .descartar-aviso{font-size:.78rem;color:var(--text2);line-height:1.45;}
+    .fecha-palabras{font-size:.78rem;color:var(--success);min-height:1.1em;}
+    .fecha-palabras.error{color:var(--danger);}
 
     /* Apartado Revisión (reclamos que el médico marcó "No está en PEL") */
     /* Revisión + Asignar turno: una columna, o dos lado a lado cuando hay
@@ -174,6 +176,7 @@
 
   <script src="../js/api.js"></script>
   <script src="../js/autorizar-pedido.js"></script>
+  <script src="../js/fecha-dmy.js"></script>
   <script>
     let _pedidos = [];
     let _estudiosConfig = {};
@@ -362,7 +365,9 @@
             <div class="descartar-aviso">Para los que se hicieron por fuera del circuito, sin turno asignado desde acá. Sale de esta lista y queda para informar con la fecha en que se hizo. No tiene vuelta atrás.</div>
             <div class="field">
               <label>¿Qué día se realizó?</label>
-              <input type="date" id="fecha-realizado-${p.id}" value="${inputDateDefault}" max="${inputDateDefault}" />
+              <input type="text" id="fecha-realizado-${p.id}" value="${fechaHoyDmy()}" inputmode="numeric" maxlength="10"
+                autocomplete="off" placeholder="DD/MM/AAAA" oninput="fechaDmyInput(this, 'fecha-realizado-texto-${p.id}')" />
+              <div class="fecha-palabras" id="fecha-realizado-texto-${p.id}">📅 ${fechaEnPalabras(fechaHoyIso())}</div>
             </div>
             <button class="btn btn-confirmar" id="btn-descartar-${p.id}" onclick="confirmarDescarte('${p.id}')">Confirmar descarte</button>
           </div>
@@ -609,10 +614,13 @@
 
     async function confirmarDescarte(id) {
       const pedido = _pedidos.find(p => p.id === id);
-      const valor = document.getElementById(`fecha-realizado-${id}`).value;
+      const fecha = document.getElementById(`fecha-realizado-${id}`).value.trim();
       if (!pedido) return;
-      if (!valor) { toast('Elegí el día en que se realizó', 'error'); return; }
-      const fecha = ddmmyyyyDesdeInputDate(valor);
+      // DD/MM/AAAA escrito a mano (js/fecha-dmy.js), no <input type="date">:
+      // en las PC en inglés invertía día y mes sin aviso (15/10/2026).
+      const iso = fechaDmyAIso(fecha);
+      if (!iso) { toast('Escribí el día en que se realizó como DD/MM/AAAA (día primero)', 'error'); return; }
+      if (iso > fechaHoyIso()) { toast('La fecha en que se realizó no puede ser futura', 'error'); return; }
       if (!confirm(`¿Descartar a ${pedido.apellido}, ${pedido.nombre} de la lista?\n\n` +
         `Queda como realizado el ${fecha} y el médico lo ve para informar. No tiene vuelta atrás.`)) return;
       const btn = document.getElementById(`btn-descartar-${id}`);
