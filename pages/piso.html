@@ -61,6 +61,32 @@
     .side-item .meta{color:var(--text3);margin-top:2px;}
     .side-empty{font-size:.78rem;color:var(--text3);padding:6px 0;}
 
+    /* Seguimiento de turnos agrupado por estado + búsqueda por DNI (15/10/2026) */
+    .side-buscar input{padding:9px 12px;font-size:.85rem;margin-bottom:14px;}
+    .grupo{margin-bottom:14px;}
+    .grupo-titulo{display:flex;align-items:center;justify-content:space-between;gap:8px;
+      font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+      padding:7px 10px;border-radius:8px;margin-bottom:8px;cursor:pointer;list-style:none;}
+    .grupo-titulo::-webkit-details-marker{display:none;}
+    .grupo-titulo::after{content:'▾';opacity:.7;}
+    .grupo:not([open]) .grupo-titulo::after{content:'▸';}
+    .grupo-cnt{margin-left:auto;background:rgba(255,255,255,.1);border-radius:999px;padding:1px 9px;font-size:.72rem;}
+    .grupo .side-item{border-left-width:3px;}
+    .g-autorizado .grupo-titulo{background:rgba(16,185,129,.12);color:var(--success);}
+    .g-autorizado .side-item{border-left-color:var(--success);}
+    .g-turno .grupo-titulo{background:rgba(6,182,212,.12);color:var(--accent);}
+    .g-turno .side-item{border-left-color:var(--accent);}
+    .g-realizado .grupo-titulo{background:rgba(167,139,250,.14);color:#c4b5fd;}
+    .g-realizado .side-item{border-left-color:#a78bfa;}
+    .side-turno{margin-top:6px;font-weight:600;font-size:.78rem;color:var(--text);}
+    .chip-hoy{background:var(--warn);color:#2a1a00;border-radius:4px;padding:1px 6px;font-size:.62rem;font-weight:800;margin-left:6px;letter-spacing:.04em;}
+    .estado-linea{margin-top:6px;font-size:.78rem;font-weight:600;}
+    .estado-linea.ok{color:var(--success);}
+    .estado-linea.turno{color:var(--accent);}
+    .estado-linea.realizado{color:#c4b5fd;}
+    .estado-linea.espera{color:var(--warn);}
+    .estado-linea.mal{color:var(--danger);}
+
     .hint{font-size:.8rem;color:var(--text2);line-height:1.5;margin-bottom:16px;}
 
     .aviso-horario{background:var(--warn);color:#2a1a00;border-radius:var(--r);
@@ -225,7 +251,11 @@
 
     <aside class="right-sidebar">
       <div class="side-card">
-        <h3>📅 Turnos autorizados y asignados</h3>
+        <h3>📅 Seguimiento de turnos</h3>
+        <div class="side-buscar">
+          <input id="buscarDni" inputmode="numeric" autocomplete="off" placeholder="🔎 Buscar estado por DNI"
+            aria-label="Buscar estado del pedido por DNI" oninput="renderTurnosLaterales()" />
+        </div>
         <div id="listaTurnosLaterales"><div class="spinner"></div></div>
       </div>
       <div class="side-card">
@@ -303,31 +333,100 @@
       }
     }
 
-    // Mismos pedidos que "Mis pedidos recientes", solo agrupados por estado
-    // — no pide nada nuevo al backend.
+    // ── Seguimiento de turnos (15/10/2026, a pedido: "se mezcla y se pierde
+    // ... que divida los autorizados sin turno, los que tienen turno y los
+    // que ya se realizaron a primera vista, y un buscar por DNI"). Mismos
+    // pedidos que "Mis pedidos recientes" — no pide nada nuevo al backend.
+    // Una vez informado (p.informado) el circuito terminó y sale de los
+    // grupos, pero se sigue encontrando con la búsqueda por DNI.
+    const DIAS_REALIZADOS = 15; // cuánto tiempo quedan a la vista los ya realizados
+
+    function _isoDeDmy(dmy) {
+      const m = /^(\d{2})\/(\d{2})\/(\d{4})/.exec(dmy || '');
+      return m ? `${m[3]}-${m[2]}-${m[1]}` : '';
+    }
+    function _hoyIso() {
+      return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+    }
+    function _ordenDmy(dmy, hora) { return _isoDeDmy(dmy) + ' ' + (hora || '') + (dmy || '').slice(11); }
+
+    // En qué grupo cae un pedido: 'autorizado' | 'turno' | 'realizado' | null
+    // (pendiente, rechazado, informado o "No se realizó": fuera de los grupos).
+    function _grupoPedido(p, hoy) {
+      if (p.informado || p.reclamoEstado === 'cancelado') return null;
+      if (p.estado === 'autorizado') return 'autorizado';
+      if (p.estado === 'realizado') return 'realizado';
+      if (p.estado === 'turno_asignado') {
+        const f = _isoDeDmy(p.fechaTurno);
+        return f && f < hoy ? 'realizado' : 'turno';
+      }
+      return null;
+    }
+
+    // Texto del estado para la búsqueda por DNI: dónde está el pedido ahora.
+    function _estadoPedido(p, hoy) {
+      const turno = `${p.fechaTurno || ''} ${p.horaTurno || ''}`.trim();
+      if (p.estado === 'pendiente') return { cls: 'espera', txt: '⏳ Esperando autorización de los médicos' };
+      if (p.estado === 'rechazado') return { cls: 'mal', txt: `✕ Rechazado${p.motivoRechazo ? ' — ' + p.motivoRechazo : ''}` };
+      if (p.reclamoEstado === 'cancelado') return { cls: 'mal', txt: '🚫 No se realizó' };
+      if (p.informado) return { cls: 'ok', txt: '📄 Ya está informado' };
+      if (p.estado === 'autorizado') return { cls: 'ok', txt: '✅ Autorizado — falta que técnicos le den el turno' };
+      if (p.estado === 'realizado') return { cls: 'realizado', txt: `✔ Realizado el ${p.fechaTurno || '—'} — esperando informe` };
+      if (p.estado === 'turno_asignado') {
+        const f = _isoDeDmy(p.fechaTurno);
+        if (f && f < hoy) return { cls: 'realizado', txt: `✔ Turno pasado (${turno}) — esperando informe` };
+        return { cls: 'turno', txt: `📅 Turno ${turno}${f === hoy ? ' — HOY' : ''}` };
+      }
+      return { cls: '', txt: p.estado };
+    }
+
+    function _itemSeguimiento(p, hoy, conEstado) {
+      const f = _isoDeDmy(p.fechaTurno);
+      const turno = p.fechaTurno && p.estado !== 'autorizado'
+        ? `<div class="side-turno">📅 ${_esc(p.fechaTurno)} ${_esc(p.horaTurno || '')}${f === hoy ? '<span class="chip-hoy">HOY</span>' : ''}</div>` : '';
+      const estado = conEstado ? (() => { const e = _estadoPedido(p, hoy); return `<div class="estado-linea ${e.cls}">${_esc(e.txt)}</div>`; })() : '';
+      return `<div class="side-item">
+          <div class="nom">${_esc(p.apellido)}, ${_esc(p.nombre)}</div>
+          <div class="meta">DNI ${_esc(p.dni)} · ${_esc(p.estudio)} · Cama ${_esc(p.cama)}</div>
+          ${conEstado ? estado : turno}
+          ${p.estado === 'autorizado' || conEstado ? lineaAutorizacionHtml(p) : ''}
+          ${lineasTurnoHtml(p)}
+        </div>`;
+    }
+
     function renderTurnosLaterales() {
       const cont = document.getElementById('listaTurnosLaterales');
-      // Una vez que el informe ya se entregó (p.informado, 15/9/2026 a
-      // pedido) el circuito terminó — desaparece de acá en vez de quedar
-      // para siempre como "turno asignado".
-      const relevantes = _pedidos.filter(p =>
-        p.estado === 'autorizado' || (p.estado === 'turno_asignado' && !p.informado));
-      if (!relevantes.length) {
-        cont.innerHTML = `<div class="side-empty">Sin turnos autorizados o asignados todavía</div>`;
+      const hoy = _hoyIso();
+      const dniBuscado = (document.getElementById('buscarDni').value || '').replace(/\D/g, '');
+
+      // Búsqueda por DNI: todos los pedidos de ese DNI, en cualquier estado.
+      if (dniBuscado.length >= 3) {
+        const encontrados = _pedidos.filter(p => String(p.dni).includes(dniBuscado))
+          .sort((a, b) => _ordenDmy(b.creadoEn).localeCompare(_ordenDmy(a.creadoEn)));
+        cont.innerHTML = encontrados.length
+          ? encontrados.map(p => _itemSeguimiento(p, hoy, true)).join('')
+          : `<div class="side-empty">No hay pedidos de turno con el DNI ${_esc(dniBuscado)}.</div>`;
         return;
       }
-      cont.innerHTML = relevantes.map(p => `
-        <div class="side-item">
-          <div class="nom">${p.apellido}, ${p.nombre}</div>
-          <div class="meta">${p.estudio} · Cama ${p.cama}</div>
-          <div style="margin-top:6px">
-            <span class="pedido-badge badge-${p.estado}">${BADGE_LABEL[p.estado] || p.estado}</span>
-            ${p.estado === 'turno_asignado' && p.fechaTurno
-              ? `<span class="meta" style="margin-left:6px">${p.fechaTurno} ${p.horaTurno || ''}</span>` : ''}
-          </div>
-          ${lineasTurnoHtml(p)}
-        </div>
-      `).join('');
+
+      const grupos = { autorizado: [], turno: [], realizado: [] };
+      _pedidos.forEach(p => { const g = _grupoPedido(p, hoy); if (g) grupos[g].push(p); });
+      const limiteRealizados = (() => { const d = new Date(hoy + 'T12:00:00'); d.setDate(d.getDate() - DIAS_REALIZADOS); return d.toISOString().slice(0, 10); })();
+      grupos.autorizado.sort((a, b) => _ordenDmy(a.creadoEn).localeCompare(_ordenDmy(b.creadoEn)));
+      grupos.turno.sort((a, b) => _ordenDmy(a.fechaTurno, a.horaTurno).localeCompare(_ordenDmy(b.fechaTurno, b.horaTurno)));
+      grupos.realizado = grupos.realizado
+        .filter(p => (_isoDeDmy(p.fechaTurno) || hoy) >= limiteRealizados)
+        .sort((a, b) => _ordenDmy(b.fechaTurno, b.horaTurno).localeCompare(_ordenDmy(a.fechaTurno, a.horaTurno)));
+
+      const seccion = (clave, cls, titulo, vacio) => `
+        <details class="grupo ${cls}" open>
+          <summary class="grupo-titulo">${titulo}<span class="grupo-cnt">${grupos[clave].length}</span></summary>
+          ${grupos[clave].length ? grupos[clave].map(p => _itemSeguimiento(p, hoy, false)).join('') : `<div class="side-empty">${vacio}</div>`}
+        </details>`;
+      cont.innerHTML =
+        seccion('autorizado', 'g-autorizado', '✅ Autorizados — sin turno', 'Ninguno esperando turno') +
+        seccion('turno', 'g-turno', '📅 Con turno', 'Ninguno con turno por delante') +
+        seccion('realizado', 'g-realizado', '✔ Realizados — esperando informe', `Ninguno en los últimos ${DIAS_REALIZADOS} días`);
     }
 
     // Estado del informe de cada internado cargado desde acá (pedido con
