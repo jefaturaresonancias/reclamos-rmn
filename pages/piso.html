@@ -29,7 +29,7 @@
       padding:6px 12px;border-radius:8px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:.8rem;}
     .nav-refresh:hover{border-color:var(--accent);color:var(--text);}
 
-    .layout{display:grid;grid-template-columns:200px 1fr 280px;gap:0;align-items:start;}
+    .layout{display:grid;grid-template-columns:200px 1fr 340px;gap:0;align-items:start;}
     .left-sidebar{position:sticky;top:57px;height:calc(100vh - 57px);
       background:var(--surface);border-right:1px solid var(--border);
       display:flex;flex-direction:column;gap:6px;padding:20px 14px;flex-shrink:0;}
@@ -51,9 +51,9 @@
     .pacs-cred code{font-family:ui-monospace,Consolas,monospace;color:var(--text);background:var(--bg);
       border-radius:4px;padding:0 4px;}
 
-    .right-sidebar{position:sticky;top:57px;height:calc(100vh - 57px);overflow-y:auto;
+    .right-sidebar{position:sticky;top:57px;height:calc(100vh - 57px);overflow:hidden;
       background:var(--surface);border-left:1px solid var(--border);
-      padding:20px 16px;display:flex;flex-direction:column;gap:20px;flex-shrink:0;}
+      padding:14px 12px;display:flex;flex-direction:column;gap:10px;flex-shrink:0;}
     .side-card h3{font-family:'DM Serif Display',serif;font-weight:400;font-size:.95rem;margin-bottom:10px;}
     .side-item{background:var(--surface2);border:1px solid var(--border);border-radius:10px;
       padding:10px 12px;font-size:.78rem;margin-bottom:8px;}
@@ -61,23 +61,38 @@
     .side-item .meta{color:var(--text3);margin-top:2px;}
     .side-empty{font-size:.78rem;color:var(--text3);padding:6px 0;}
 
-    /* Seguimiento de turnos agrupado por estado + búsqueda por DNI (15/10/2026) */
-    .side-buscar input{padding:9px 12px;font-size:.85rem;margin-bottom:14px;}
-    .grupo{margin-bottom:14px;}
-    .grupo-titulo{display:flex;align-items:center;justify-content:space-between;gap:8px;
-      font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
-      padding:7px 10px;border-radius:8px;margin-bottom:8px;cursor:pointer;list-style:none;}
-    .grupo-titulo::-webkit-details-marker{display:none;}
-    .grupo-titulo::after{content:'▾';opacity:.7;}
-    .grupo:not([open]) .grupo-titulo::after{content:'▸';}
+    /* Seguimiento de turnos: 4 compartimentos con scroll propio que se
+       reparten el alto de la columna + búsqueda por DNI (15/10/2026) */
+    .side-buscar{flex-shrink:0;}
+    .side-buscar input{padding:9px 12px;font-size:.85rem;}
+    .paneles{flex:1;min-height:0;display:flex;flex-direction:column;gap:10px;}
+    .paneles[hidden]{display:none;}
+    .panel{flex:1 1 0;min-height:0;display:flex;flex-direction:column;
+      border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--bg);}
+    .panel[hidden]{display:none;}
+    .panel-titulo{flex-shrink:0;display:flex;align-items:center;gap:8px;
+      font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:8px 10px;}
+    .panel-lista{flex:1;min-height:0;overflow-y:auto;padding:8px;scrollbar-width:thin;}
+    .panel-lista .side-item{margin-bottom:5px;padding:6px 9px;border-left-width:3px;}
+    .panel-lista .meta{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:.72rem;margin-top:1px;}
+    .panel-lista .linea-autorizacion,.panel-lista .linea-turno{margin-top:3px !important;font-size:.72rem !important;}
+    .fila-nom{display:flex;align-items:center;gap:6px;}
+    .fila-nom .nom{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .fila-nom .pedido-badge{font-size:.62rem;padding:2px 7px;flex-shrink:0;}
+    .chip-turno{flex-shrink:0;font-weight:700;font-size:.74rem;color:var(--text);}
+    .fila-nom .chip-hoy{margin-left:0;flex-shrink:0;}
+    .panel-lista .side-item:last-child{margin-bottom:0;}
+    .panel-lista .side-empty{padding:2px 2px;}
     .grupo-cnt{margin-left:auto;background:rgba(255,255,255,.1);border-radius:999px;padding:1px 9px;font-size:.72rem;}
-    .grupo .side-item{border-left-width:3px;}
-    .g-autorizado .grupo-titulo{background:rgba(16,185,129,.12);color:var(--success);}
+    .g-autorizado .panel-titulo{background:rgba(16,185,129,.12);color:var(--success);}
     .g-autorizado .side-item{border-left-color:var(--success);}
-    .g-turno .grupo-titulo{background:rgba(6,182,212,.12);color:var(--accent);}
+    .g-turno .panel-titulo{background:rgba(6,182,212,.12);color:var(--accent);}
     .g-turno .side-item{border-left-color:var(--accent);}
-    .g-realizado .grupo-titulo{background:rgba(167,139,250,.14);color:#c4b5fd;}
+    .g-realizado .panel-titulo{background:rgba(167,139,250,.14);color:#c4b5fd;}
     .g-realizado .side-item{border-left-color:#a78bfa;}
+    .g-informes .panel-titulo{background:rgba(136,146,170,.12);color:var(--text2);}
+    .panel-busqueda{flex:1 1 0;}
+    .panel-busqueda .panel-titulo{background:rgba(245,158,11,.12);color:var(--warn);}
     .side-turno{margin-top:6px;font-weight:600;font-size:.78rem;color:var(--text);}
     .chip-hoy{background:var(--warn);color:#2a1a00;border-radius:4px;padding:1px 6px;font-size:.62rem;font-weight:800;margin-left:6px;letter-spacing:.04em;}
     .estado-linea{margin-top:6px;font-size:.78rem;font-weight:600;}
@@ -102,6 +117,8 @@
       .tab-btn{width:auto;flex:1;text-align:center;}
       .pacs-box{flex-basis:100%;margin-top:6px;}
       .right-sidebar{position:static;height:auto;border-left:none;border-top:1px solid var(--border);}
+      .panel{flex:none;}
+      .panel-lista{max-height:40vh;}
     }
 
     .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;}
@@ -249,19 +266,37 @@
       </div>
     </div>
 
+    <!-- Columna derecha en 4 compartimentos con scroll propio (15/10/2026, a
+         pedido: "el scroll se hace interminable"): se reparten el alto de la
+         pantalla y la columna en sí no scrollea. Buscando por DNI, el
+         resultado ocupa toda la columna. -->
     <aside class="right-sidebar">
-      <div class="side-card">
-        <h3>📅 Seguimiento de turnos</h3>
-        <div class="side-buscar">
-          <input id="buscarDni" inputmode="numeric" autocomplete="off" placeholder="🔎 Buscar estado por DNI"
-            aria-label="Buscar estado del pedido por DNI" oninput="renderTurnosLaterales()" />
-        </div>
-        <div id="listaTurnosLaterales"><div class="spinner"></div></div>
+      <div class="side-buscar">
+        <input id="buscarDni" inputmode="numeric" autocomplete="off" placeholder="🔎 Buscar estado por DNI"
+          aria-label="Buscar estado del pedido por DNI" oninput="renderTurnosLaterales()" />
       </div>
-      <div class="side-card">
-        <h3>📄 Estado de informes</h3>
-        <div id="listaInternados"><div class="spinner"></div></div>
+      <div class="paneles" id="paneles">
+        <section class="panel g-autorizado">
+          <div class="panel-titulo">✅ Autorizados — sin turno <span class="grupo-cnt" id="cnt-autorizado">–</span></div>
+          <div class="panel-lista" id="lista-autorizado"><div class="spinner"></div></div>
+        </section>
+        <section class="panel g-turno">
+          <div class="panel-titulo">📅 Con turno <span class="grupo-cnt" id="cnt-turno">–</span></div>
+          <div class="panel-lista" id="lista-turno"><div class="spinner"></div></div>
+        </section>
+        <section class="panel g-realizado">
+          <div class="panel-titulo">✔ Realizados — esperando informe <span class="grupo-cnt" id="cnt-realizado">–</span></div>
+          <div class="panel-lista" id="lista-realizado"><div class="spinner"></div></div>
+        </section>
+        <section class="panel g-informes">
+          <div class="panel-titulo">📄 Estado de informes <span class="grupo-cnt" id="cnt-informes">–</span></div>
+          <div class="panel-lista" id="listaInternados"><div class="spinner"></div></div>
+        </section>
       </div>
+      <section class="panel panel-busqueda" id="panelBusqueda" hidden>
+        <div class="panel-titulo">🔎 Resultado de la búsqueda</div>
+        <div class="panel-lista" id="listaBusqueda"></div>
+      </section>
     </aside>
   </div>
 
@@ -380,34 +415,52 @@
       return { cls: '', txt: p.estado };
     }
 
+    // Compacta en los compartimentos (nombre + turno en un renglón, datos en
+    // otro, cortados con "…" — el title muestra todo); completa en la
+    // búsqueda por DNI, con el estado escrito.
     function _itemSeguimiento(p, hoy, conEstado) {
       const f = _isoDeDmy(p.fechaTurno);
-      const turno = p.fechaTurno && p.estado !== 'autorizado'
-        ? `<div class="side-turno">📅 ${_esc(p.fechaTurno)} ${_esc(p.horaTurno || '')}${f === hoy ? '<span class="chip-hoy">HOY</span>' : ''}</div>` : '';
-      const estado = conEstado ? (() => { const e = _estadoPedido(p, hoy); return `<div class="estado-linea ${e.cls}">${_esc(e.txt)}</div>`; })() : '';
-      return `<div class="side-item">
-          <div class="nom">${_esc(p.apellido)}, ${_esc(p.nombre)}</div>
-          <div class="meta">DNI ${_esc(p.dni)} · ${_esc(p.estudio)} · Cama ${_esc(p.cama)}</div>
-          ${conEstado ? estado : turno}
-          ${p.estado === 'autorizado' || conEstado ? lineaAutorizacionHtml(p) : ''}
+      const meta = `DNI ${p.dni} · ${p.estudio} · Cama ${p.cama}`;
+      if (conEstado) {
+        const e = _estadoPedido(p, hoy);
+        return `<div class="side-item">
+            <div class="nom">${_esc(p.apellido)}, ${_esc(p.nombre)}</div>
+            <div class="meta">${_esc(meta)}</div>
+            <div class="estado-linea ${e.cls}">${_esc(e.txt)}</div>
+            ${lineaAutorizacionHtml(p)}
+            ${lineasTurnoHtml(p)}
+          </div>`;
+      }
+      const chipTurno = p.fechaTurno && p.estado !== 'autorizado'
+        ? `<span class="chip-turno">${_esc(p.fechaTurno.slice(0, 5))} ${_esc(p.horaTurno || '')}</span>${f === hoy ? '<span class="chip-hoy">HOY</span>' : ''}` : '';
+      return `<div class="side-item" title="${_esc(`${p.apellido}, ${p.nombre} — ${meta}${p.fechaTurno ? ' — Turno ' + p.fechaTurno + ' ' + (p.horaTurno || '') : ''}`)}">
+          <div class="fila-nom"><span class="nom">${_esc(p.apellido)}, ${_esc(p.nombre)}</span>${chipTurno}</div>
+          <div class="meta">${_esc(meta)}</div>
+          ${p.estado === 'autorizado' ? lineaAutorizacionHtml(p) : ''}
           ${lineasTurnoHtml(p)}
         </div>`;
     }
 
     function renderTurnosLaterales() {
-      const cont = document.getElementById('listaTurnosLaterales');
       const hoy = _hoyIso();
       const dniBuscado = (document.getElementById('buscarDni').value || '').replace(/\D/g, '');
+      const paneles = document.getElementById('paneles');
+      const panelBusqueda = document.getElementById('panelBusqueda');
 
-      // Búsqueda por DNI: todos los pedidos de ese DNI, en cualquier estado.
+      // Búsqueda por DNI: todos los pedidos de ese DNI, en cualquier estado,
+      // ocupando toda la columna en lugar de los 4 compartimentos.
       if (dniBuscado.length >= 3) {
         const encontrados = _pedidos.filter(p => String(p.dni).includes(dniBuscado))
           .sort((a, b) => _ordenDmy(b.creadoEn).localeCompare(_ordenDmy(a.creadoEn)));
-        cont.innerHTML = encontrados.length
+        document.getElementById('listaBusqueda').innerHTML = encontrados.length
           ? encontrados.map(p => _itemSeguimiento(p, hoy, true)).join('')
           : `<div class="side-empty">No hay pedidos de turno con el DNI ${_esc(dniBuscado)}.</div>`;
+        paneles.hidden = true;
+        panelBusqueda.hidden = false;
         return;
       }
+      paneles.hidden = false;
+      panelBusqueda.hidden = true;
 
       const grupos = { autorizado: [], turno: [], realizado: [] };
       _pedidos.forEach(p => { const g = _grupoPedido(p, hoy); if (g) grupos[g].push(p); });
@@ -418,15 +471,15 @@
         .filter(p => (_isoDeDmy(p.fechaTurno) || hoy) >= limiteRealizados)
         .sort((a, b) => _ordenDmy(b.fechaTurno, b.horaTurno).localeCompare(_ordenDmy(a.fechaTurno, a.horaTurno)));
 
-      const seccion = (clave, cls, titulo, vacio) => `
-        <details class="grupo ${cls}" open>
-          <summary class="grupo-titulo">${titulo}<span class="grupo-cnt">${grupos[clave].length}</span></summary>
-          ${grupos[clave].length ? grupos[clave].map(p => _itemSeguimiento(p, hoy, false)).join('') : `<div class="side-empty">${vacio}</div>`}
-        </details>`;
-      cont.innerHTML =
-        seccion('autorizado', 'g-autorizado', '✅ Autorizados — sin turno', 'Ninguno esperando turno') +
-        seccion('turno', 'g-turno', '📅 Con turno', 'Ninguno con turno por delante') +
-        seccion('realizado', 'g-realizado', '✔ Realizados — esperando informe', `Ninguno en los últimos ${DIAS_REALIZADOS} días`);
+      const llenar = (clave, vacio) => {
+        document.getElementById(`cnt-${clave}`).textContent = grupos[clave].length;
+        document.getElementById(`lista-${clave}`).innerHTML = grupos[clave].length
+          ? grupos[clave].map(p => _itemSeguimiento(p, hoy, false)).join('')
+          : `<div class="side-empty">${vacio}</div>`;
+      };
+      llenar('autorizado', 'Ninguno esperando turno');
+      llenar('turno', 'Ninguno con turno por delante');
+      llenar('realizado', `Ninguno en los últimos ${DIAS_REALIZADOS} días`);
     }
 
     // Estado del informe de cada internado cargado desde acá (pedido con
@@ -436,19 +489,18 @@
       const cont = document.getElementById('listaInternados');
       try {
         _internados = await getInternadosPiso();
+        document.getElementById('cnt-informes').textContent = _internados.length;
         if (!_internados.length) {
           cont.innerHTML = `<div class="side-empty">Sin internados cargados todavía</div>`;
           return;
         }
         cont.innerHTML = _internados.map(i => `
-          <div class="side-item">
-            <div class="nom">${i.apellido}, ${i.nombre}</div>
-            <div class="meta">${i.estudio} · ${i.fechaEstudio || 'sin fecha'}</div>
-            <div style="margin-top:6px">
-              <span class="pedido-badge badge-${i.informado ? 'autorizado' : 'pendiente'}">
-                ${i.informado ? '✅ Informado' : '⏳ Pendiente'}
-              </span>
+          <div class="side-item" title="${_esc(`${i.apellido}, ${i.nombre} — ${i.estudio} · ${i.fechaEstudio || 'sin fecha'}`)}">
+            <div class="fila-nom">
+              <span class="nom">${_esc(i.apellido)}, ${_esc(i.nombre)}</span>
+              <span class="pedido-badge badge-${i.informado ? 'autorizado' : 'pendiente'}">${i.informado ? '✅ Informado' : '⏳ Pendiente'}</span>
             </div>
+            <div class="meta">${_esc(i.estudio)} · ${_esc(i.fechaEstudio || 'sin fecha')}</div>
           </div>
         `).join('');
       } catch (err) {
