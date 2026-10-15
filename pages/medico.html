@@ -550,6 +550,7 @@
 
   <div class="toast" id="toast"></div>
   <script src="../js/api.js"></script>
+  <script src="../js/autorizar-pedido.js"></script>
   <script>
     let filtroActual     = 'pendiente';
     let regionActual     = null;
@@ -744,6 +745,7 @@
         return `<div class="pedido-turno-card turno_asignado">${cabecera}
           <div class="pedido-turno-diag" style="color:var(--recitar);background:rgba(6,182,212,.08);">
             📅 <strong>Turno:</strong> ${p.fechaTurno || '—'} ${p.horaTurno || ''}</div>
+          ${lineaAutorizacionHtml(p)}
           ${btnRevertir}
         </div>`;
       }
@@ -751,6 +753,7 @@
       return `<div class="pedido-turno-card autorizado">${cabecera}
         <div class="pedido-turno-diag" style="color:var(--success);background:rgba(16,185,129,.08);">
           ✅ Autorizado — esperando que se le asigne el turno</div>
+        ${lineaAutorizacionHtml(p)}
         ${btnRevertir}
       </div>`;
     }
@@ -789,10 +792,16 @@
     }
 
     async function autorizarPedido(id) {
+      const p = pedidosTurnoData.find(x => String(x.id) === String(id));
+      if (!p) return;
+      // Quién autoriza (obligatorio) + comentario (opcional), 15/10/2026 —
+      // ver js/autorizar-pedido.js.
+      const datos = await pedirDatosAutorizacion(p);
+      if (!datos) return;
       const btn = document.getElementById(`btn-aut-${id}`);
       if (btn) { btn.disabled = true; btn.textContent = 'Autorizando...'; }
       try {
-        await autorizarPedidoTurno(id);
+        await autorizarPedidoTurno(id, datos);
         toast('✔ Pedido autorizado');
         await recargar();
       } catch (e) {

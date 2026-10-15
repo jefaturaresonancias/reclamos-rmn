@@ -238,6 +238,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="../js/api.js"></script>
+  <script src="../js/autorizar-pedido.js"></script>
   <script>
     let _pedidos = [];
     let _internados = [];
@@ -284,6 +285,7 @@
             ? `<div class="pedido-motivo">💬 ${p.motivoRechazo}</div>` : ''}
           ${p.estado === 'turno_asignado' && p.fechaTurno
             ? `<div class="pedido-meta">Turno: ${p.fechaTurno} ${p.horaTurno || ''}</div>` : ''}
+          ${['autorizado', 'turno_asignado'].includes(p.estado) ? lineaAutorizacionHtml(p) : ''}
         </div>
       `).join('');
     }

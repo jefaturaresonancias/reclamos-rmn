@@ -228,8 +228,10 @@ async function getPedidosTurno() {
   if (!result.ok) throw new Error(result.error);
   return result.pedidos;
 }
-async function autorizarPedidoTurno(id) {
-  const result = await apiPost({ action: 'autorizarPedidoTurno', id });
+// datos: { autorizadoPor, comentario } — del cuadro de js/autorizar-pedido.js
+// (15/10/2026). autorizadoPor es obligatorio en el backend.
+async function autorizarPedidoTurno(id, datos = {}) {
+  const result = await apiPost({ action: 'autorizarPedidoTurno', id, autorizadoPor: datos.autorizadoPor, comentario: datos.comentario });
   if (!result.ok) throw new Error(result.error);
   return result.pedido;
 }

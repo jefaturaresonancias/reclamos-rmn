@@ -173,6 +173,7 @@
   <div class="toast" id="toast"></div>
 
   <script src="../js/api.js"></script>
+  <script src="../js/autorizar-pedido.js"></script>
   <script>
     let _pedidos = [];
     let _estudiosConfig = {};
@@ -314,6 +315,7 @@
             <span class="card-badge">${p.estudio}</span>
           </div>
           <div class="card-diag">🩺 ${p.diagnosticoPresuntivo}</div>
+          ${lineaAutorizacionHtml(p)}
 
           <button class="btn btn-toggle" onclick="toggleForm('${p.id}')">📅 Asignar turno</button>
 
@@ -582,6 +584,8 @@
           fecha,
           hora: seleccion.hora,
           observaciones: `Pedido de piso — Cama ${pedido.cama}, ${pedido.sectorInternacion}. Dx presuntivo: ${pedido.diagnosticoPresuntivo}` +
+            (pedido.autorizadoPor ? ` — Autorizó: ${pedido.autorizadoPor}` : '') +
+            (pedido.comentarioAutorizacion ? ` (${pedido.comentarioAutorizacion})` : '') +
             (fueraDeFranja ? ' — Turno fuera de la franja de internados (excepción).' : '') +
             (comentario ? ` — Comentario: ${comentario}` : ''),
         });
