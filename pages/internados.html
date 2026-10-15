@@ -68,6 +68,11 @@
     details.seccion > summary .seccion-titulo::after{content:'▸';color:var(--text3);margin-left:2px;}
     details.seccion[open] > summary .seccion-titulo::after{content:'▾';}
     .vacio{font-size:.8rem;color:var(--text3);padding:2px 0 6px;}
+    /* Exportar pendientes de informar (15/10/2026) */
+    .seccion-titulo .exportar{margin-left:auto;display:flex;gap:8px;text-transform:none;letter-spacing:0;}
+    .btn-export{background:none;border:1px solid var(--c);color:var(--c);border-radius:8px;padding:5px 12px;
+      font-family:inherit;font-size:.78rem;font-weight:600;cursor:pointer;transition:background .15s;}
+    .btn-export:hover{background:var(--cb);}
     .grilla{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:12px;}
 
     .caso{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--c);border-radius:var(--r);
@@ -269,7 +274,14 @@
       document.getElementById('secciones').innerHTML = mostrar.map(e => {
         const items = porEtapa[e.id];
         const recorte = e.cerrada && !_filtro && !q ? items.slice(0, MAX_CERRADOS) : items;
-        const titulo = `<div class="seccion-titulo" style="${colores(e)}">${e.icono} ${esc(e.titulo)} <span class="cnt">${items.length}</span></div>`;
+        // Exportar pendientes de informar (15/10/2026, a pedido) — siempre
+        // todos los de la etapa, sin importar la búsqueda de arriba.
+        const exportar = e.id === 'para_informar' && _casos.some(c => c.etapa === 'para_informar')
+          ? `<span class="exportar">
+               <button type="button" class="btn-export" onclick="exportarPendientesExcel()">⬇ Excel</button>
+               <button type="button" class="btn-export" onclick="imprimirPendientes()">🖨 Imprimir / PDF</button>
+             </span>` : '';
+        const titulo = `<div class="seccion-titulo" style="${colores(e)}">${e.icono} ${esc(e.titulo)} <span class="cnt">${items.length}</span>${exportar}</div>`;
         const cuerpo = items.length
           ? `<div class="grilla">${recorte.map(c => tarjeta(c, e)).join('')}</div>` +
             (recorte.length < items.length ? `<div class="mas">Mostrando los ${recorte.length} más recientes — buscá o tocá la etapa arriba para ver todos.</div>` : '')
@@ -280,6 +292,92 @@
         }
         return `<section class="seccion" style="margin-top:14px">${titulo}${cuerpo}</section>`;
       }).join('');
+    }
+
+    // ── Exportar internados pendientes de informar (15/10/2026, a pedido:
+    // "exportar el listado de internados pendientes de informar para los
+    // médicos"). Todos los de la etapa "Para informar", el que espera hace
+    // más primero. Excel = CSV con ';' y BOM (lo abre bien Excel en
+    // castellano); Imprimir = hoja blanca aparte, lista para PDF.
+    function _filasPendientes() {
+      return _casos.filter(c => c.etapa === 'para_informar')
+        .sort((a, b) => ordenar('para_informar', a, b))
+        .map(({ pedido: p, reclamo: r }) => {
+          const base = r || p;
+          const comentarios = [
+            p && p.comentarioTurno ? 'Técnicos: ' + p.comentarioTurno : '',
+            p && p.comentarioAutorizacion ? 'Autorización: ' + p.comentarioAutorizacion : '',
+          ].filter(Boolean).join(' · ');
+          return {
+            nro: (r && r.nroReclamo) || (p && p.reclamoNro) || '',
+            paciente: `${base.apellido}, ${base.nombre}`,
+            dni: base.dni || '',
+            estudio: (r && r.estudio) || (p && p.estudio) || '',
+            fecha: p && p.fechaTurno ? `${p.fechaTurno} ${p.horaTurno || ''}`.trim() : (r && r.fechaEstudio) || '',
+            dias: r && r.retraso != null ? r.retraso : '',
+            ubicacion: p ? `${p.sectorInternacion || ''}${p.cama ? ' · Cama ' + p.cama : ''}` : '',
+            solicito: (p && p.medicoSolicitante) || '',
+            autorizo: (p && p.autorizadoPor) || '',
+            comentarios,
+          };
+        });
+    }
+
+    const COLUMNAS_PENDIENTES = [
+      ['nro', 'N° reclamo'], ['paciente', 'Paciente'], ['dni', 'DNI'], ['estudio', 'Estudio'],
+      ['fecha', 'Fecha del estudio'], ['dias', 'Días esperando'], ['ubicacion', 'Sector / cama'],
+      ['solicito', 'Médico solicitante'], ['autorizo', 'Autorizó'], ['comentarios', 'Comentarios'],
+    ];
+
+    function _hoyArchivo() {
+      return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+    }
+
+    function exportarPendientesExcel() {
+      const filas = _filasPendientes();
+      const celda = v => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
+      const csv = [COLUMNAS_PENDIENTES.map(([, t]) => celda(t)).join(';')]
+        .concat(filas.map(f => COLUMNAS_PENDIENTES.map(([k]) => celda(f[k])).join(';')))
+        .join('\r\n');
+      const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `internados-pendientes-de-informe-${_hoyArchivo()}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      toast(`⬇ Listado exportado — ${filas.length} internado${filas.length === 1 ? '' : 's'}`, 'ok');
+    }
+
+    function imprimirPendientes() {
+      const filas = _filasPendientes();
+      const hoy = new Date().toLocaleDateString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
+      const w = window.open('', '_blank');
+      if (!w) { toast('El navegador bloqueó la ventana de impresión — permití ventanas emergentes para esta página', 'error'); return; }
+      w.document.write(`<!doctype html><html lang="es"><head><meta charset="utf-8">
+        <title>Internados pendientes de informe — ${esc(hoy)}</title>
+        <style>
+          @page{size:A4 landscape;margin:12mm;}
+          body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:0;}
+          h1{font-size:16px;margin:0 0 2px;} .sub{font-size:11px;color:#555;margin-bottom:10px;}
+          table{width:100%;border-collapse:collapse;font-size:10.5px;}
+          th,td{border:1px solid #bbb;padding:4px 6px;text-align:left;vertical-align:top;}
+          th{background:#f1f1f1;font-weight:700;}
+          tr:nth-child(even) td{background:#fafafa;}
+          td.num{text-align:right;white-space:nowrap;}
+          td.nowrap{white-space:nowrap;}
+          thead{display:table-header-group;} tr{page-break-inside:avoid;}
+        </style></head><body>
+        <h1>Internados pendientes de informe</h1>
+        <div class="sub">Resonancia — ${esc(hoy)} · ${filas.length} internado${filas.length === 1 ? '' : 's'} · el que espera hace más, primero</div>
+        <table><thead><tr>${COLUMNAS_PENDIENTES.map(([, t]) => `<th>${esc(t)}</th>`).join('')}</tr></thead>
+        <tbody>${filas.map(f => `<tr>${COLUMNAS_PENDIENTES.map(([k]) =>
+          `<td class="${k === 'dias' || k === 'nro' ? 'num' : k === 'dni' || k === 'fecha' ? 'nowrap' : ''}">${esc(f[k])}</td>`).join('')}</tr>`).join('')}</tbody>
+        </table></body></html>`);
+      w.document.close();
+      w.focus();
+      setTimeout(() => w.print(), 300);
     }
 
     function elegirEtapa(id) {
