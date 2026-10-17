@@ -591,6 +591,7 @@
           observaciones: `Pedido de piso — Cama ${pedido.cama}, ${pedido.sectorInternacion}. Dx presuntivo: ${pedido.diagnosticoPresuntivo}` +
             (pedido.autorizadoPor ? ` — Autorizó: ${pedido.autorizadoPor}` : '') +
             (pedido.comentarioAutorizacion ? ` (${pedido.comentarioAutorizacion})` : '') +
+            (pedido.conInforme === false ? ' — SIN INFORME' : pedido.conInforme === true ? ' — Con informe' : '') +
             (fueraDeFranja ? ' — Turno fuera de la franja de internados (excepción).' : '') +
             (comentario ? ` — Comentario: ${comentario}` : ''),
         });

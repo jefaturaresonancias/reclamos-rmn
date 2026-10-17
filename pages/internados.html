@@ -153,6 +153,7 @@
       { id: 'revision',      icono: '🔎', titulo: 'En revisión (técnicos)', corto: 'En revisión', c: '#4f7cff' },
       { id: 'no_realizado',  icono: '⚠️', titulo: 'Sin atención en RIS', c: '#f59e0b' },
       { id: 'cancelado',     icono: '🚫', titulo: 'No se realizó', c: '#8892aa', cerrada: true },
+      { id: 'sin_informe',   icono: '📄', titulo: 'Realizados sin informe', corto: 'Sin informe', c: '#f59e0b', cerrada: true },
       { id: 'informado',     icono: '✔', titulo: 'Informados', c: '#10b981', cerrada: true },
       { id: 'rechazado',     icono: '✕', titulo: 'Rechazados', c: '#ef4444', cerrada: true },
     ];
@@ -201,6 +202,14 @@
         return 'informado';
       }
       if (p) {
+        // Autorizado "sin informe" (16/10/2026): no tiene reclamo de informe,
+        // el circuito termina cuando se hace el estudio.
+        if (p.conInforme === false) {
+          if (p.turnoAnuladoEn) return 'cancelado';
+          const hoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).replace(/-/g, '');
+          const pasado = p.fechaTurno && clave(p.fechaTurno).slice(0, 8) < hoy;
+          if (p.estado === 'realizado' || (p.estado === 'turno_asignado' && pasado)) return 'sin_informe';
+        }
         if (p.reclamoEstado === 'cancelado') return 'cancelado';
         if (p.informado || p.reclamoArchivado) return 'informado';
         if (p.estado === 'autorizado') return 'autorizado';
@@ -472,6 +481,10 @@
             : `<div class="caso-estado">🚫 No se realizó.</div>`;
         case 'informado':
           return `<div class="caso-estado">✔ Informado.</div>`;
+        case 'sin_informe':
+          return `<div class="caso-estado">✔ Realizado${p.fechaTurno ? ' el ' + esc(`${p.fechaTurno} ${p.horaTurno || ''}`.trim()) : ''} — autorizado sin informe.</div>
+            ${lineaAutorizacionHtml(p)}
+            ${lineasTurnoHtml(p)}`;
         case 'rechazado':
           return `<div class="caso-estado">✕ ${esc(p.motivoRechazo || 'Sin motivo cargado')}</div>
             <div class="caso-acciones"><button class="btn btn-ok" id="reab-${p.id}" onclick="reabrir('${p.id}')">↺ Volver a pendiente</button></div>`;

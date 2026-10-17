@@ -41,6 +41,14 @@ function _estilosModalAutorizar() {
       border:1px solid var(--border);border-radius:8px;color:var(--text);font:inherit;font-size:.9rem;}
     .aut-modal-box textarea{resize:vertical;min-height:70px;}
     .aut-modal-box select:focus,.aut-modal-box textarea:focus{outline:2px solid var(--success);outline-offset:1px;}
+    .aut-informe{border:none;margin:0;padding:0;min-width:0;}
+    .aut-informe legend{font-size:.72rem;color:var(--text2);font-weight:600;margin-bottom:4px;padding:0;}
+    .aut-informe-opciones{display:flex;gap:10px;}
+    .aut-modal-box label.aut-opcion{flex:1;display:flex;align-items:center;gap:8px;margin:0;padding:9px 12px;
+      background:var(--surface2);border:1px solid var(--border);border-radius:8px;cursor:pointer;
+      font-size:.88rem;font-weight:600;color:var(--text);}
+    .aut-modal-box label.aut-opcion:has(input:checked){border-color:var(--success);background:rgba(16,185,129,.12);}
+    .aut-modal-box label.aut-opcion input{accent-color:var(--success);margin:0;}
     .aut-modal-error{font-size:.78rem;color:var(--danger);min-height:1em;}
     .aut-modal-acciones{display:flex;gap:10px;justify-content:flex-end;}
     .aut-modal-acciones button{padding:9px 16px;border-radius:9px;font:inherit;font-weight:600;font-size:.85rem;cursor:pointer;border:none;}
@@ -50,7 +58,9 @@ function _estilosModalAutorizar() {
   document.head.appendChild(st);
 }
 
-// Devuelve { autorizadoPor, comentario } o null si se cancela.
+// Devuelve { autorizadoPor, comentario, conInforme } o null si se cancela.
+// Con/sin informe (16/10/2026, a pedido) es obligatorio y sin opción
+// preelegida, por el mismo motivo que el médico: que se elija a conciencia.
 function pedirDatosAutorizacion(p) {
   _estilosModalAutorizar();
   return new Promise((resolve) => {
@@ -67,6 +77,13 @@ function pedirDatosAutorizacion(p) {
             ${MEDICOS_AUTORIZANTES.map((m) => `<option value="${_escAut(m)}">${_escAut(m)}</option>`).join('')}
           </select>
         </div>
+        <fieldset class="aut-informe">
+          <legend>¿Va con informe?</legend>
+          <div class="aut-informe-opciones">
+            <label class="aut-opcion"><input type="radio" name="autInforme" value="si"> 📄 Con informe</label>
+            <label class="aut-opcion"><input type="radio" name="autInforme" value="no"> 🚫 Sin informe</label>
+          </div>
+        </fieldset>
         <div>
           <label for="autComentario">Comentario <span>(opcional — lo ven técnicos y piso)</span></label>
           <textarea id="autComentario" rows="3" maxlength="1000" placeholder="Ej.: con contraste, prioritario, coordinar con anestesia…"></textarea>
@@ -91,7 +108,17 @@ function pedirDatosAutorizacion(p) {
         select.focus();
         return;
       }
-      cerrar({ autorizadoPor: select.value, comentario: overlay.querySelector('#autComentario').value.trim() });
+      const informe = overlay.querySelector('input[name="autInforme"]:checked');
+      if (!informe) {
+        overlay.querySelector('#autError').textContent = 'Marcá si va con informe o sin informe.';
+        overlay.querySelector('input[name="autInforme"]').focus();
+        return;
+      }
+      cerrar({
+        autorizadoPor: select.value,
+        comentario: overlay.querySelector('#autComentario').value.trim(),
+        conInforme: informe.value === 'si',
+      });
     };
     const alTeclado = (e) => { if (e.key === 'Escape') cerrar(null); };
 
@@ -103,12 +130,24 @@ function pedirDatosAutorizacion(p) {
   });
 }
 
-// Línea "quién autorizó + comentario" para mostrar en las tarjetas
-// (vacía en los pedidos autorizados antes del 15/10/2026, que no lo tienen).
+// Etiqueta "📄 Con informe" / "🚫 Sin informe" que marcó el médico al
+// autorizar (16/10/2026) — vacía en los autorizados antes de esa fecha.
+function etiquetaInformeHtml(p) {
+  if (!p || p.conInforme == null) return '';
+  const [txt, color, fondo] = p.conInforme
+    ? ['📄 Con informe', 'var(--success,#10b981)', 'rgba(16,185,129,.15)']
+    : ['🚫 Sin informe', 'var(--warn,#f59e0b)', 'rgba(245,158,11,.18)'];
+  return `<span class="etiqueta-informe" style="display:inline-block;padding:1px 7px;border-radius:6px;font-size:.74rem;font-weight:700;white-space:nowrap;color:${color};background:${fondo};">${txt}</span>`;
+}
+
+// Línea "quién autorizó + con/sin informe + comentario" para mostrar en las
+// tarjetas (vacía en los pedidos autorizados antes del 15/10/2026, que no
+// lo tienen).
 function lineaAutorizacionHtml(p) {
   if (!p || !p.autorizadoPor) return '';
+  const etiqueta = etiquetaInformeHtml(p);
   return `<div class="linea-autorizacion" style="font-size:.78rem;color:var(--text2);margin-top:6px;">
-      👨‍⚕️ Autorizó <b>${_escAut(p.autorizadoPor)}</b>${p.comentarioAutorizacion ? ` — 💬 ${_escAut(p.comentarioAutorizacion)}` : ''}</div>`;
+      👨‍⚕️ Autorizó <b>${_escAut(p.autorizadoPor)}</b>${etiqueta ? ' ' + etiqueta : ''}${p.comentarioAutorizacion ? ` — 💬 ${_escAut(p.comentarioAutorizacion)}` : ''}</div>`;
 }
 
 // Líneas del turno (15/10/2026, a pedido) para pedidos con turno asignado:

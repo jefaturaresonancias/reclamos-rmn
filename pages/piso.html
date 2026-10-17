@@ -83,6 +83,7 @@
     .fila-nom .pedido-badge{font-size:.62rem;padding:2px 7px;flex-shrink:0;}
     .chip-turno{flex-shrink:0;font-weight:700;font-size:.74rem;color:var(--text);}
     .fila-nom .chip-hoy{margin-left:0;flex-shrink:0;}
+    .fila-nom .etiqueta-informe{flex-shrink:0;font-size:.64rem !important;padding:1px 5px !important;}
     .panel-lista .side-item:last-child{margin-bottom:0;}
     .panel-lista .side-empty{padding:2px 2px;}
     .grupo-cnt{margin-left:auto;background:rgba(255,255,255,.1);border-radius:999px;padding:1px 9px;font-size:.72rem;}
@@ -356,7 +357,7 @@
             ? `<div class="pedido-motivo">💬 ${p.motivoRechazo}</div>` : ''}
           ${p.estado === 'turno_asignado' && p.fechaTurno
             ? `<div class="pedido-meta">Turno: ${p.fechaTurno} ${p.horaTurno || ''}</div>` : ''}
-          ${['autorizado', 'turno_asignado'].includes(p.estado) ? lineaAutorizacionHtml(p) : ''}
+          ${['autorizado', 'turno_asignado', 'realizado'].includes(p.estado) ? lineaAutorizacionHtml(p) : ''}
           ${lineasTurnoHtml(p)}
         </div>
       `).join('');
@@ -412,10 +413,12 @@
       if (p.reclamoEstado === 'cancelado') return { cls: 'mal', txt: '🚫 No se realizó' };
       if (p.informado) return { cls: 'ok', txt: '📄 Ya está informado' };
       if (p.estado === 'autorizado') return { cls: 'ok', txt: '✅ Autorizado — falta que técnicos le den el turno' };
-      if (p.estado === 'realizado') return { cls: 'realizado', txt: `✔ Realizado el ${p.fechaTurno || '—'} — esperando informe` };
+      // Autorizado "sin informe" (16/10/2026): no hay informe que esperar.
+      const informe = p.conInforme === false ? 'sin informe' : 'esperando informe';
+      if (p.estado === 'realizado') return { cls: 'realizado', txt: `✔ Realizado el ${p.fechaTurno || '—'} — ${informe}` };
       if (p.estado === 'turno_asignado') {
         const f = _isoDeDmy(p.fechaTurno);
-        if (f && f < hoy) return { cls: 'realizado', txt: `✔ Turno pasado (${turno}) — esperando informe` };
+        if (f && f < hoy) return { cls: 'realizado', txt: `✔ Turno pasado (${turno}) — ${informe}` };
         return { cls: 'turno', txt: `📅 Turno ${turno}${f === hoy ? ' — HOY' : ''}` };
       }
       return { cls: '', txt: p.estado };
@@ -437,8 +440,11 @@
             ${lineasTurnoHtml(p)}
           </div>`;
       }
-      const chipTurno = p.fechaTurno && p.estado !== 'autorizado'
-        ? `<span class="chip-turno">${_esc(p.fechaTurno.slice(0, 5))} ${_esc(p.horaTurno || '')}</span>${f === hoy ? '<span class="chip-hoy">HOY</span>' : ''}` : '';
+      // Con turno o realizado: el con/sin informe va como etiqueta junto al
+      // nombre (en "autorizado" ya está en la línea de autorización).
+      const chipTurno = (p.fechaTurno && p.estado !== 'autorizado'
+        ? `<span class="chip-turno">${_esc(p.fechaTurno.slice(0, 5))} ${_esc(p.horaTurno || '')}</span>${f === hoy ? '<span class="chip-hoy">HOY</span>' : ''}` : '') +
+        (p.estado !== 'autorizado' ? etiquetaInformeHtml(p) : '');
       return `<div class="side-item" title="${_esc(`${p.apellido}, ${p.nombre} — ${meta}${p.fechaTurno ? ' — Turno ' + p.fechaTurno + ' ' + (p.horaTurno || '') : ''}`)}">
           <div class="fila-nom"><span class="nom">${_esc(p.apellido)}, ${_esc(p.nombre)}</span>${chipTurno}</div>
           <div class="meta">${_esc(meta)}</div>
