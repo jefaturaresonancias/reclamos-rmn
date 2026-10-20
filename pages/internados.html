@@ -130,6 +130,9 @@
     </div>
   </nav>
 
+  <!-- Aviso de Resonancia (20/10/2026) — lo publica técnicos, ver js/aviso-servicio.js -->
+  <div class="aviso-servicio-wrap" id="aviso-servicio"></div>
+
   <main class="page">
     <div class="etapas" id="etapas"></div>
     <div class="buscar-wrap">
@@ -143,6 +146,7 @@
 
   <script src="../js/api.js"></script>
   <script src="../js/autorizar-pedido.js"></script>
+  <script src="../js/aviso-servicio.js"></script>
   <script>
     // Etapas en el orden del circuito. `cerrada`: va aparte y plegada.
     const ETAPAS = [
@@ -551,6 +555,7 @@
     verificarConfig(() => verificarPin(() => {
       cargar();
       setInterval(cargar, 60000);
+      iniciarAvisoServicio();
     }));
   </script>
 </body>

@@ -345,6 +345,24 @@ async function resonanciaPwaAsignar(datos) {
 async function resonanciaPwaAgendaInternacion(fechaDesde, fechaHasta) {
   return _jefaturaRpc('api_tecnicos_agendaInternacionPublico', [{ pin: TECNICOS_PIN, fechaDesde, fechaHasta }]);
 }
+// Aviso de Resonancia para Piso/Médicos/Internados (20/10/2026, ej. equipo
+// fuera de servicio) — lo publica tecnicos.html y lo muestra
+// js/aviso-servicio.js. getAvisoPiso devuelve null si no hay uno vigente.
+async function getAvisoPiso() {
+  const result = await apiGet({ action: 'avisoPiso' });
+  if (!result.ok) throw new Error(result.error);
+  return result.aviso || null;
+}
+async function publicarAvisoPiso(datos) {
+  const result = await apiPost({ action: 'publicarAvisoPiso', mensaje: datos.mensaje, bloqueaPedidos: datos.bloqueaPedidos, hasta: datos.hasta, por: datos.por });
+  if (!result.ok) throw new Error(result.error);
+  return result.aviso;
+}
+async function quitarAvisoPiso(id, por) {
+  const result = await apiPost({ action: 'quitarAvisoPiso', id, por });
+  if (!result.ok) throw new Error(result.error);
+  return result;
+}
 // Turnos de internación activos de un DNI en la agenda (20/10/2026) —
 // tecnicos.html ofrece vincular uno de esos en vez de dar otro turno.
 async function resonanciaPwaTurnosInternacion(dni) {

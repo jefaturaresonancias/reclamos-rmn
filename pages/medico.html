@@ -436,6 +436,9 @@
     </div>
   </nav>
 
+  <!-- Aviso de Resonancia (20/10/2026) — lo publica técnicos, ver js/aviso-servicio.js -->
+  <div class="aviso-servicio-wrap" id="aviso-servicio"></div>
+
   <div class="layout">
   <aside class="ptg-sidebar">
     <div class="ptg-sidebar-header">
@@ -558,6 +561,7 @@
   <div class="toast" id="toast"></div>
   <script src="../js/api.js"></script>
   <script src="../js/autorizar-pedido.js"></script>
+  <script src="../js/aviso-servicio.js"></script>
   <script>
     let filtroActual     = 'pendiente';
     let regionActual     = null;
@@ -1614,6 +1618,7 @@
     if (_buscarInicial) document.getElementById('buscar').value = _buscarInicial;
 
     verificarConfig(() => verificarPin(async () => {
+      iniciarAvisoServicio();
       // recargar() y getConfig() son independientes (planillas distintas):
       // se disparan en paralelo en vez de esperar una para arrancar la otra.
       const [, regiones] = await Promise.all([

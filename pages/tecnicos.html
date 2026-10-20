@@ -161,6 +161,25 @@
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
     .toast.ok{border-color:var(--success);color:var(--success);}
     .toast.error{border-color:var(--danger);color:var(--danger);}
+    /* Aviso para Piso/Médicos/Internados (20/10/2026) */
+    .aviso-panel{max-width:720px;margin:24px auto 0;background:var(--surface);border:1px solid rgba(239,68,68,.35);
+      border-radius:16px;padding:16px 20px;display:flex;flex-direction:column;gap:12px;}
+    .aviso-panel-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+    .aviso-panel-titulo{font-weight:600;font-size:.95rem;}
+    .btn-aviso-abrir{background:rgba(239,68,68,.12);border:1px solid rgba(239,68,68,.4);color:#fca5a5;}
+    .aviso-ayuda{font-size:.75rem;color:var(--text2);line-height:1.45;}
+    .aviso-vigente{background:#7f1d1d;border:1px solid var(--danger);border-radius:12px;padding:12px 14px;
+      display:flex;flex-direction:column;gap:6px;}
+    .aviso-vigente .aviso-ayuda{color:#fecaca;}
+    .aviso-vigente-msg{font-weight:700;white-space:pre-line;overflow-wrap:anywhere;}
+    .btn-aviso-quitar{align-self:flex-start;background:var(--success);color:#04140e;}
+    .aviso-form{display:flex;flex-direction:column;gap:12px;}
+    .aviso-form[hidden]{display:none;}
+    .aviso-plantillas{display:flex;gap:8px;flex-wrap:wrap;}
+    .aviso-plantillas button{padding:7px 12px;border-radius:100px;font:inherit;font-size:.78rem;cursor:pointer;
+      background:var(--surface2);border:1px solid var(--border);color:var(--text);}
+    .aviso-plantillas button:hover{border-color:var(--danger);}
+    @media (max-width:640px){.aviso-panel{margin:16px 16px 0;}}
   </style>
 </head>
 <body>
@@ -172,6 +191,43 @@
     </div>
     <a href="../index.html" class="nav-back">← Cambiar rol</a>
   </nav>
+
+  <!-- Aviso para Piso/Médicos/Internados (20/10/2026, a pedido: ej. equipo
+       fuera de servicio). Lo muestra js/aviso-servicio.js en esas páginas. -->
+  <section class="aviso-panel">
+    <div class="aviso-panel-head">
+      <div class="aviso-panel-titulo">📢 Aviso para Piso, Médicos e Internados</div>
+      <button type="button" class="btn btn-aviso-abrir" id="btn-aviso-abrir" onclick="toggleAvisoForm()">Publicar aviso</button>
+    </div>
+    <div id="aviso-actual"></div>
+    <div class="aviso-form" id="aviso-form" hidden>
+      <div class="aviso-plantillas">
+        <button type="button" onclick="plantillaAviso('fuera')">⛔ Equipo fuera de servicio</button>
+        <button type="button" onclick="plantillaAviso('mantenimiento')">🔧 Mantenimiento</button>
+        <button type="button" onclick="plantillaAviso('demoras')">⏳ Demoras</button>
+      </div>
+      <div class="field">
+        <label for="aviso-mensaje">Mensaje</label>
+        <textarea id="aviso-mensaje" rows="3" maxlength="500" placeholder="Tocá un texto rápido de arriba o escribí el aviso"></textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="aviso-hasta">Hasta (opcional)</label>
+          <input type="text" id="aviso-hasta" maxlength="16" autocomplete="off" placeholder="DD/MM/AAAA HH:MM">
+        </div>
+        <div class="field">
+          <label for="aviso-por">Quién avisa (opcional)</label>
+          <input type="text" id="aviso-por" maxlength="80" placeholder="Técnicos">
+        </div>
+      </div>
+      <div class="aviso-ayuda">Sin "hasta", el aviso queda publicado hasta que lo quiten desde acá.</div>
+      <label class="excepcion-toggle">
+        <input type="checkbox" id="aviso-bloquea">
+        🚫 Bloquear los pedidos de turno de piso mientras esté este aviso
+      </label>
+      <button type="button" class="btn btn-confirmar" id="btn-aviso-publicar" onclick="publicarAviso()">Publicar aviso</button>
+    </div>
+  </section>
 
   <div class="columnas" id="columnas">
     <div class="wrap" id="revisiones"></div>
@@ -693,6 +749,94 @@
       }
     }
 
+    // ── Aviso para Piso/Médicos/Internados (20/10/2026) ──────────────
+    // Un solo aviso vigente: publicar uno nuevo reemplaza al anterior.
+    const PLANTILLAS_AVISO = {
+      fuera: { texto: '⛔ EL EQUIPO DE RESONANCIA ESTÁ FUERA DE SERVICIO. No se realizan estudios hasta nuevo aviso.', bloquea: true },
+      mantenimiento: { texto: '🔧 Equipo de resonancia en mantenimiento. No se realizan estudios hasta las __:__ hs.', bloquea: false },
+      demoras: { texto: '⏳ Hay demoras en la atención de los turnos de hoy.', bloquea: false },
+    };
+    let _avisoTecnicos = null;
+
+    async function cargarAvisoTecnicos() {
+      const cont = document.getElementById('aviso-actual');
+      try {
+        _avisoTecnicos = await getAvisoPiso();
+      } catch (err) {
+        cont.innerHTML = `<div class="aviso-ayuda">No se pudo leer el aviso: ${_escAut(err.message)}</div>`;
+        return;
+      }
+      const a = _avisoTecnicos;
+      cont.innerHTML = !a
+        ? '<div class="aviso-ayuda">No hay ningún aviso publicado.</div>'
+        : `<div class="aviso-vigente">
+            <div class="aviso-vigente-msg">${_escAut(a.mensaje)}</div>
+            <div class="aviso-ayuda">${a.bloqueaPedidos ? '🚫 Bloquea los pedidos de piso · ' : ''}Publicado por ${_escAut(a.publicadoPor)} el ${_escAut(a.publicadoEn)}${a.venceEn ? ' · hasta el ' + _escAut(a.venceEn) : ' · sin vencimiento'}</div>
+            <button type="button" class="btn btn-aviso-quitar" id="btn-aviso-quitar" onclick="quitarAviso()">✔ Quitar aviso</button>
+          </div>`;
+    }
+
+    function toggleAvisoForm() {
+      const form = document.getElementById('aviso-form');
+      form.hidden = !form.hidden;
+      document.getElementById('btn-aviso-abrir').textContent = form.hidden ? 'Publicar aviso' : 'Cerrar';
+      if (!form.hidden) document.getElementById('aviso-mensaje').focus();
+    }
+
+    function plantillaAviso(clave) {
+      const pl = PLANTILLAS_AVISO[clave];
+      if (!pl) return;
+      document.getElementById('aviso-mensaje').value = pl.texto;
+      document.getElementById('aviso-bloquea').checked = pl.bloquea;
+      document.getElementById('aviso-mensaje').focus();
+    }
+
+    async function publicarAviso() {
+      const mensaje = document.getElementById('aviso-mensaje').value.trim();
+      const hasta = document.getElementById('aviso-hasta').value.trim();
+      const por = document.getElementById('aviso-por').value.trim();
+      const bloqueaPedidos = document.getElementById('aviso-bloquea').checked;
+      if (!mensaje) { toast('Escribí el mensaje del aviso', 'error'); return; }
+      if (hasta && !/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}$/.test(hasta)) { toast('El "hasta" va como DD/MM/AAAA HH:MM (día primero)', 'error'); return; }
+      if (!confirm('¿Publicar este aviso en Piso, Médicos e Internados?\n\n' + mensaje +
+        (bloqueaPedidos ? '\n\n🚫 Piso no va a poder cargar pedidos de turno hasta que lo quiten.' : '') +
+        (_avisoTecnicos ? '\n\nReemplaza al aviso que está publicado ahora.' : ''))) return;
+      const btn = document.getElementById('btn-aviso-publicar');
+      btn.disabled = true;
+      btn.textContent = 'Publicando...';
+      try {
+        await publicarAvisoPiso({ mensaje, hasta, por, bloqueaPedidos });
+        toast('📢 Aviso publicado', 'ok');
+        ['aviso-mensaje', 'aviso-hasta'].forEach(id => { document.getElementById(id).value = ''; });
+        document.getElementById('aviso-bloquea').checked = false;
+        toggleAvisoForm();
+        await cargarAvisoTecnicos();
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        toast('❌ ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Publicar aviso';
+      }
+    }
+
+    async function quitarAviso() {
+      if (!_avisoTecnicos) return;
+      if (!confirm('¿Quitar el aviso?\n\n' + _avisoTecnicos.mensaje +
+        (_avisoTecnicos.bloqueaPedidos ? '\n\nPiso vuelve a poder cargar pedidos de turno.' : ''))) return;
+      const btn = document.getElementById('btn-aviso-quitar');
+      if (btn) { btn.disabled = true; btn.textContent = 'Quitando...'; }
+      try {
+        await quitarAvisoPiso(_avisoTecnicos.id, document.getElementById('aviso-por').value.trim());
+        toast('✔ Aviso quitado', 'ok');
+        await cargarAvisoTecnicos();
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        toast('❌ ' + err.message, 'error');
+        if (btn) { btn.disabled = false; btn.textContent = '✔ Quitar aviso'; }
+      }
+    }
+
     function _sesionVencida() {
       toast('El PIN cambió o venció — ingresalo de nuevo', 'error');
       verificarPin(cargar);
@@ -705,6 +849,7 @@
           getPedidosTurno(), resonanciaPwaConfig(),
           getRevisiones().catch(err => { console.error('Revisiones:', err); return []; }),
         ]);
+        cargarAvisoTecnicos();
         _pedidos = todos.filter(p => p.estado === 'autorizado');
         // Turnos de la agenda que ya son de algún pedido: no se ofrecen para vincular.
         _turnosVinculados = new Set(todos.filter(p => p.turnoId).map(p => String(p.turnoId)));

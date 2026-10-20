@@ -107,6 +107,8 @@
 
     .hint{font-size:.8rem;color:var(--text2);line-height:1.5;margin-bottom:16px;}
 
+    .pedido-bloqueado{background:rgba(239,68,68,.12);border:1px solid var(--danger,#ef4444);color:var(--text);
+      border-radius:var(--r);padding:12px 14px;font-size:.85rem;font-weight:600;margin-bottom:10px;}
     .aviso-horario{background:var(--warn);color:#2a1a00;border-radius:var(--r);
       padding:16px 20px;font-size:.85rem;font-weight:800;line-height:1.5;
       text-align:center;margin-bottom:18px;box-shadow:0 4px 16px rgba(245,158,11,.35);}
@@ -193,6 +195,9 @@
     <a href="../index.html" class="nav-back">← Cambiar rol</a>
   </nav>
 
+  <!-- Aviso de Resonancia (20/10/2026) — lo publica técnicos, ver js/aviso-servicio.js -->
+  <div class="aviso-servicio-wrap" id="aviso-servicio"></div>
+
   <div class="layout">
     <aside class="left-sidebar">
       <button class="tab-btn active" id="tab-turno" onclick="cambiarVista('turno')">📅 Pedido de turno</button>
@@ -233,6 +238,7 @@
         </div>
 
         <div class="error-msg" id="f-error"></div>
+        <div class="pedido-bloqueado" id="f-bloqueo" hidden></div>
         <button class="btn btn-primary" id="btn-enviar" onclick="enviarPedido()">Enviar pedido</button>
       </div>
 
@@ -310,6 +316,7 @@
 
   <script src="../js/api.js"></script>
   <script src="../js/autorizar-pedido.js"></script>
+  <script src="../js/aviso-servicio.js"></script>
   <script src="../js/fecha-dmy.js"></script>
   <script>
     let _pedidos = [];
@@ -620,7 +627,30 @@
       verificarPin(cargarTodo);
     }
 
+    // Aviso de Resonancia que bloquea pedidos (20/10/2026, ej. equipo fuera
+    // de servicio): mientras esté vigente no se puede enviar. El servidor
+    // también lo rechaza (por si la página quedó abierta desde antes).
+    let _avisoActual = null;
+    let _revisarAviso = null;
+    function _aplicarBloqueoPedidos() {
+      const bloquea = !!(_avisoActual && _avisoActual.bloqueaPedidos);
+      const btn = document.getElementById('btn-enviar');
+      const caja = document.getElementById('f-bloqueo');
+      caja.hidden = !bloquea;
+      caja.textContent = bloquea ? '⛔ Los pedidos de turno están suspendidos mientras siga el aviso de Resonancia (arriba).' : '';
+      btn.disabled = bloquea;
+      btn.textContent = bloquea ? 'Pedidos suspendidos' : 'Enviar pedido';
+    }
+    function _iniciarAviso() {
+      if (_revisarAviso) return;
+      _revisarAviso = iniciarAvisoServicio({
+        contenedorId: 'aviso-servicio',
+        alCambiar: (aviso) => { _avisoActual = aviso; _aplicarBloqueoPedidos(); },
+      });
+    }
+
     async function enviarPedido() {
+      if (_avisoActual && _avisoActual.bloqueaPedidos) { _aplicarBloqueoPedidos(); return; }
       const data = {
         apellido: document.getElementById('f-apellido').value.trim(),
         nombre: document.getElementById('f-nombre').value.trim(),
@@ -669,13 +699,15 @@
       } catch (err) {
         if (err.message === 'PIN inválido') { _sesionVencida(); return; }
         errorEl.textContent = 'Error: ' + err.message;
+        if (/No se pueden pedir turnos/.test(err.message) && _revisarAviso) _revisarAviso();
       } finally {
         btn.disabled = false;
         btn.textContent = 'Enviar pedido';
+        _aplicarBloqueoPedidos();
       }
     }
 
-    verificarConfig(() => verificarPin(cargarTodo));
+    verificarConfig(() => verificarPin(() => { cargarTodo(); _iniciarAviso(); }));
   </script>
 </body>
 </html>
