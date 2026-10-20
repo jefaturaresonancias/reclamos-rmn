@@ -345,6 +345,11 @@ async function resonanciaPwaAsignar(datos) {
 async function resonanciaPwaAgendaInternacion(fechaDesde, fechaHasta) {
   return _jefaturaRpc('api_tecnicos_agendaInternacionPublico', [{ pin: TECNICOS_PIN, fechaDesde, fechaHasta }]);
 }
+// Turnos de internación activos de un DNI en la agenda (20/10/2026) —
+// tecnicos.html ofrece vincular uno de esos en vez de dar otro turno.
+async function resonanciaPwaTurnosInternacion(dni) {
+  return _jefaturaRpc('api_tecnicos_turnosInternacionPublico', [{ pin: TECNICOS_PIN, dni }]);
+}
 async function entregarReclamo(id) {
   const result = await apiPost({ action: 'entregar', id });
   if (!result.ok) throw new Error(result.error);

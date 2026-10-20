@@ -119,6 +119,14 @@
       width:100%;padding:10px;margin-top:8px;}
     .btn-descartar:hover{background:rgba(16,185,129,.08);}
     .descartar-aviso{font-size:.78rem;color:var(--text2);line-height:1.45;}
+    /* Ya tiene turno de internación en la agenda (20/10/2026) */
+    .turno-existente{margin-top:10px;padding:10px 12px;border-radius:8px;font-size:.8rem;line-height:1.45;
+      background:rgba(6,182,212,.08);border:1px solid rgba(6,182,212,.35);color:var(--text);}
+    .turno-existente:empty{display:none;}
+    .turno-existente .fila{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;}
+    .turno-existente .btn-vincular{padding:6px 12px;border-radius:8px;font:inherit;font-weight:600;font-size:.78rem;
+      cursor:pointer;background:var(--info);color:#04161a;border:none;}
+    .turno-existente small{color:var(--text2);}
     .fecha-palabras{font-size:.78rem;color:var(--success);min-height:1.1em;}
     .fecha-palabras.error{color:var(--danger);}
 
@@ -179,6 +187,7 @@
   <script src="../js/fecha-dmy.js"></script>
   <script>
     let _pedidos = [];
+    let _turnosVinculados = new Set();
     let _estudiosConfig = {};
     let _horaSeleccionada = {}; // pedidoId -> { mins, hora }
     let _fechaSeleccionada = {}; // pedidoId -> 'dd/MM/yyyy', elegida en la franja de guía
@@ -319,6 +328,7 @@
           </div>
           <div class="card-diag">🩺 ${p.diagnosticoPresuntivo}</div>
           ${lineaAutorizacionHtml(p)}
+          <div class="turno-existente" id="existente-${p.id}"></div>
 
           <button class="btn btn-toggle" onclick="toggleForm('${p.id}')">📅 Asignar turno</button>
 
@@ -390,6 +400,50 @@
         });
         _renderEstudios(p.id);
       });
+      _pedidos.forEach(p => _buscarTurnoExistente(p));
+    }
+
+    // ¿Ya le dieron turno de internación en la agenda? (20/10/2026, a
+    // pedido: que no se dé un segundo turno al mismo internado). Si hay uno
+    // activo que no es de ningún pedido, se ofrece vincular ese en vez de
+    // crear otro. Si la consulta falla, no se muestra nada: el circuito de
+    // siempre sigue igual.
+    async function _buscarTurnoExistente(p) {
+      const cont = document.getElementById(`existente-${p.id}`);
+      if (!cont) return;
+      try {
+        const { turnos } = await resonanciaPwaTurnosInternacion(p.dni);
+        const libres = (turnos || []).filter(t => !_turnosVinculados.has(String(t.turnoId)));
+        if (!libres.length) { cont.innerHTML = ''; return; }
+        cont.innerHTML = `📌 <b>Ya tiene turno de internación en la agenda</b> — si es el de este pedido, vinculalo en vez de dar otro:` +
+          libres.map(t => `<div class="fila">
+              <span><b>${_escAut(t.fecha)} ${_escAut(t.hora)}</b> — ${_escAut(t.estudio)}${t.tecnicoAsigno ? ` <small>(lo dio ${_escAut(t.tecnicoAsigno)})</small>` : ''}</span>
+              <button type="button" class="btn-vincular" onclick="vincularTurnoExistente('${p.id}', '${_escAut(t.turnoId)}', '${_escAut(t.fecha)}', '${_escAut(t.hora)}', this)">🔗 Vincular este turno</button>
+            </div>`).join('');
+      } catch (err) {
+        console.warn('Turnos existentes en la agenda:', err.message);
+        cont.innerHTML = '';
+      }
+    }
+
+    async function vincularTurnoExistente(id, turnoId, fecha, hora, btn) {
+      const pedido = _pedidos.find(p => p.id === id);
+      if (!pedido) return;
+      const comentario = (document.getElementById(`comentario-${id}`)?.value || '').trim();
+      if (!confirm(`¿Vincular el turno del ${fecha} ${hora} al pedido de ${pedido.apellido}, ${pedido.nombre}?\n\n` +
+        'No se crea un turno nuevo: el pedido pasa a "turno asignado" con ese turno y piso lo ve.')) return;
+      btn.disabled = true;
+      btn.textContent = 'Vinculando...';
+      try {
+        await asignarTurnoPedido(id, { turnoId, fecha, hora, comentario });
+        toast('🔗 Turno vinculado al pedido', 'ok');
+        await cargar();
+      } catch (err) {
+        if (err.message === 'PIN inválido') { _sesionVencida(); return; }
+        toast('❌ Error: ' + err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = '🔗 Vincular este turno';
+      }
     }
 
     function _renderEstudios(id) {
@@ -652,6 +706,8 @@
           getRevisiones().catch(err => { console.error('Revisiones:', err); return []; }),
         ]);
         _pedidos = todos.filter(p => p.estado === 'autorizado');
+        // Turnos de la agenda que ya son de algún pedido: no se ofrecen para vincular.
+        _turnosVinculados = new Set(todos.filter(p => p.turnoId).map(p => String(p.turnoId)));
         _estudiosConfig = config.estudios || {};
         _revisiones = revisiones || [];
         renderRevisiones();
