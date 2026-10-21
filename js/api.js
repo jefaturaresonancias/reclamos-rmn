@@ -233,7 +233,24 @@ async function crearPedidoTurno(data) {
 async function getPedidosTurno() {
   const result = await apiGet({ action: 'listarPedidosTurno' });
   if (!result.ok) throw new Error(result.error);
+  _marcarAnuladosCubiertos(result.pedidos);
   return result.pedidos;
+}
+
+// Turno anulado en la agenda pero el paciente tiene turno vigente por OTRO
+// pedido (21/10/2026, a pedido: el aviso solo tiene que salir si el
+// paciente se quedó sin turno — caso real: pedido repetido, se anuló uno de
+// los dos turnos). p.cubiertoPor = { id, fechaTurno, horaTurno } de ese
+// otro pedido; lineasTurnoHtml (autorizar-pedido.js) lo muestra en gris en
+// vez del aviso rojo.
+function _marcarAnuladosCubiertos(pedidos) {
+  const dniDe = (p) => String(p.dni || '').replace(/\D/g, '').replace(/^0+/, '');
+  (pedidos || []).forEach((p) => {
+    if (!p.turnoAnuladoEn) return;
+    const otro = pedidos.find((q) => q.id !== p.id && dniDe(q) && dniDe(q) === dniDe(p) &&
+      q.estado === 'turno_asignado' && !q.turnoAnuladoEn);
+    if (otro) p.cubiertoPor = { id: otro.id, fechaTurno: otro.fechaTurno, horaTurno: otro.horaTurno };
+  });
 }
 // datos: { autorizadoPor, comentario, conInforme } — del cuadro de
 // js/autorizar-pedido.js (15 y 16/10/2026). autorizadoPor y conInforme

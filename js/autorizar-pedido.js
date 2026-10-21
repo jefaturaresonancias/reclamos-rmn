@@ -171,7 +171,12 @@ function lineasTurnoHtml(p) {
     lineas.push(`🔄 <b>Turno cambiado</b>${cambios.length > 1 ? ` (${cambios.length} veces)` : ''} — antes: ${_escAut(ult.antes || '—')}` +
       `${ult.en ? ` · cambiado el ${_escAut(fecha(ult.en))}` : ''}${ult.por ? ` por ${_escAut(ult.por)}` : ''}`);
   }
-  if (p.turnoAnuladoEn) {
+  if (p.turnoAnuladoEn && p.cubiertoPor) {
+    // El paciente tiene turno por otro pedido (ver _marcarAnuladosCubiertos
+    // en api.js): no es un paciente sin turno, no va el aviso rojo.
+    const c = p.cubiertoPor;
+    lineas.push(`↪ Tiene turno por otro pedido (#${_escAut(c.id)}${c.fechaTurno ? `, ${_escAut(c.fechaTurno.slice(0, 5))} ${_escAut(c.horaTurno || '')}` : ''})`);
+  } else if (p.turnoAnuladoEn) {
     lineas.push(`<span style="color:var(--danger,#ef4444);font-weight:600">⚠️ Turno anulado en la agenda el ${_escAut(p.turnoAnuladoEn)}</span>` +
       `${p.turnoAnuladoPor ? ` (${_escAut(p.turnoAnuladoPor)})` : ''}`);
   }
