@@ -36,7 +36,12 @@
     .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;}
     .card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px;}
     .card-nombre{font-family:'DM Serif Display',serif;font-size:1.05rem;font-weight:400;}
-    .card-meta{font-size:.78rem;color:var(--text2);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;}
+    .card-meta{font-size:.78rem;color:var(--text2);margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;}
+    /* Copiar DNI (27/10/2026) */
+    .btn-copiar{margin-left:6px;padding:1px 6px;border-radius:6px;font-size:.75rem;line-height:1.4;cursor:pointer;
+      background:var(--surface2);border:1px solid var(--border);color:var(--text2);}
+    .btn-copiar:hover{border-color:var(--accent);color:var(--text);}
+    .btn-copiar.copiado{border-color:var(--success);color:var(--success);}
     .card-badge{font-size:.7rem;background:rgba(245,158,11,.15);color:var(--accent);
       padding:3px 10px;border-radius:100px;font-weight:600;white-space:nowrap;}
     .card-diag{font-size:.8rem;color:var(--text2);background:var(--surface2);
@@ -376,8 +381,10 @@
             <div>
               <div class="card-nombre">${p.apellido}, ${p.nombre}</div>
               <div class="card-meta">
-                <span>DNI <b>${p.dni}</b></span>
+                <span>DNI <b>${_escAut(p.dni)}</b><button type="button" class="btn-copiar" title="Copiar DNI"
+                  onclick="copiarDni('${_escAut(p.dni)}', this)">📋</button></span>
                 <span>${p.sectorInternacion} · Cama ${p.cama}</span>
+                ${p.medicoSolicitante ? `<span>👨‍⚕️ Lo pidió <b>${_escAut(p.medicoSolicitante)}</b></span>` : ''}
               </div>
             </div>
             <span class="card-badge">${p.estudio}</span>
@@ -835,6 +842,24 @@
         toast('❌ ' + err.message, 'error');
         if (btn) { btn.disabled = false; btn.textContent = '✔ Quitar aviso'; }
       }
+    }
+
+    // 📋 junto al DNI (27/10/2026, a pedido: copiarlo rápido para cargarlo en
+    // el RIS). Portapapeles moderno y, si el navegador no lo deja, el viejo.
+    async function copiarDni(dni, btn) {
+      let ok = false;
+      try { await navigator.clipboard.writeText(dni); ok = true; } catch (_) {
+        const t = document.createElement('textarea');
+        t.value = dni; t.style.position = 'fixed'; t.style.opacity = '0';
+        document.body.appendChild(t); t.select();
+        try { ok = document.execCommand('copy'); } catch (_) { ok = false; }
+        t.remove();
+      }
+      if (!ok) { toast('No se pudo copiar el DNI', 'error'); return; }
+      btn.textContent = '✓';
+      btn.classList.add('copiado');
+      setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('copiado'); }, 1500);
+      toast('📋 DNI ' + dni + ' copiado', 'ok');
     }
 
     function _sesionVencida() {
