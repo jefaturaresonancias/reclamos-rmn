@@ -163,21 +163,27 @@ function lineasTurnoHtml(p) {
       return new Date(iso).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Argentina/Buenos_Aires' });
     } catch (_) { return ''; }
   };
+  // "02/11/2026 20:00" → "02/11 20:00"
+  const corta = (s) => String(s || '').replace(/(\d{2}\/\d{2})\/\d{4}/, '$1').trim();
   const lineas = [];
   if (p.comentarioTurno) lineas.push(`💬 Técnicos: <b>${_escAut(p.comentarioTurno)}</b>`);
   const cambios = Array.isArray(p.turnoCambios) ? p.turnoCambios : [];
   if (cambios.length) {
+    // Con flecha, de la fecha vieja a la nueva (30/10/2026, a pedido: el
+    // "antes: <fecha>" solo se leía como si fuera la fecha del turno).
     const ult = cambios[cambios.length - 1];
-    lineas.push(`🔄 <b>Turno cambiado</b>${cambios.length > 1 ? ` (${cambios.length} veces)` : ''} — antes: ${_escAut(ult.antes || '—')}` +
-      `${ult.en ? ` · cambiado el ${_escAut(fecha(ult.en))}` : ''}${ult.por ? ` por ${_escAut(ult.por)}` : ''}`);
+    const despues = ult.despues || `${p.fechaTurno || ''} ${p.horaTurno || ''}`;
+    lineas.push(`🔄 <b>Turno cambiado</b>${cambios.length > 1 ? ` (${cambios.length} veces)` : ''}: ${_escAut(corta(ult.antes) || '—')} → <b>${_escAut(corta(despues) || '—')}</b>` +
+      `${ult.en ? ` · el ${_escAut(fecha(ult.en))}` : ''}${ult.por ? ` por ${_escAut(ult.por)}` : ''}`);
   }
+  const turnoActual = corta(`${p.fechaTurno || ''} ${p.horaTurno || ''}`);
   if (p.turnoAnuladoEn && p.cubiertoPor) {
     // El paciente tiene turno por otro pedido (ver _marcarAnuladosCubiertos
     // en api.js): no es un paciente sin turno, no va el aviso rojo.
     const c = p.cubiertoPor;
     lineas.push(`↪ Tiene turno por otro pedido (#${_escAut(c.id)}${c.fechaTurno ? `, ${_escAut(c.fechaTurno.slice(0, 5))} ${_escAut(c.horaTurno || '')}` : ''})`);
   } else if (p.turnoAnuladoEn) {
-    lineas.push(`<span style="color:var(--danger,#ef4444);font-weight:600">⚠️ Turno anulado en la agenda el ${_escAut(p.turnoAnuladoEn)}</span>` +
+    lineas.push(`<span style="color:var(--danger,#ef4444);font-weight:600">⚠️ ${turnoActual ? `El turno del ${_escAut(turnoActual)} se anuló` : 'Turno anulado'} en la agenda el ${_escAut(p.turnoAnuladoEn)}</span>` +
       `${p.turnoAnuladoPor ? ` (${_escAut(p.turnoAnuladoPor)})` : ''}`);
   }
   return lineas.map((l) => `<div class="linea-turno" style="font-size:.78rem;color:var(--text2);margin-top:6px;">${l}</div>`).join('');
