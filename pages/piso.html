@@ -172,6 +172,17 @@
     .pedido-motivo{font-size:.78rem;color:var(--danger);background:rgba(239,68,68,.08);
       border-radius:8px;padding:6px 10px;}
     .empty{text-align:center;padding:30px 20px;color:var(--text3);font-size:.85rem;}
+    /* Archivados de "Mis pedidos recientes" (20/11/2026) */
+    .archivo{margin-top:6px;border-top:1px solid var(--border);padding-top:14px;}
+    .archivo > summary{display:flex;align-items:center;gap:8px;cursor:pointer;list-style:none;
+      font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);}
+    .archivo > summary::-webkit-details-marker{display:none;}
+    .archivo > summary::before{content:'▸';color:var(--text3);}
+    .archivo[open] > summary::before{content:'▾';}
+    .archivo[open] > summary{margin-bottom:10px;}
+    .archivo .grupo-cnt{margin-left:0;}
+    .archivo-nota{font-size:.75rem;color:var(--text3);line-height:1.45;margin-bottom:10px;}
+    .archivo .pedido-row{opacity:.85;}
     .spinner{width:24px;height:24px;border:3px solid var(--border);border-top-color:var(--accent);
       border-radius:50%;animation:spin .8s linear infinite;margin:30px auto;}
     @keyframes spin{to{transform:rotate(360deg)}}
@@ -339,19 +350,45 @@
       realizado: '✔ Realizado',
     };
 
+    // Archivados (20/11/2026, a pedido: "para que la lista no sea
+    // interminable"): sin búsqueda, la lista muestra lo que está en curso y
+    // los ya realizados, informados o cancelados y los rechazados de más de
+    // 7 días van plegados al final — misma regla que Médicos
+    // (pedidoArchivado, js/autorizar-pedido.js). Buscando se ven todos.
+    let _archivoAbierto = false; // desplegado a mano: sobrevive a "Actualizar"
+
     function renderPedidos() {
       const busq = (document.getElementById('buscar').value || '').toLowerCase();
-      let data = _pedidos;
-      if (busq) data = data.filter(p =>
-        (p.apellido + ' ' + p.nombre).toLowerCase().includes(busq) ||
-        String(p.dni).includes(busq));
-
       const cont = document.getElementById('listaPedidos');
-      if (!data.length) {
-        cont.innerHTML = `<div class="empty">${busq ? 'Sin resultados' : 'Todavía no cargaste ningún pedido'}</div>`;
+      if (busq) {
+        const data = _pedidos.filter(p =>
+          (p.apellido + ' ' + p.nombre).toLowerCase().includes(busq) ||
+          String(p.dni).includes(busq));
+        cont.innerHTML = data.length ? data.map(_filaPedido).join('') : `<div class="empty">Sin resultados</div>`;
         return;
       }
-      cont.innerHTML = data.map(p => `
+      if (!_pedidos.length) {
+        cont.innerHTML = `<div class="empty">Todavía no cargaste ningún pedido</div>`;
+        return;
+      }
+      const hoy = hoyIsoAR();
+      const enCurso = _pedidos.filter(p => !pedidoArchivado(p, hoy));
+      const archivados = _pedidos.filter(p => pedidoArchivado(p, hoy))
+        .sort((a, b) => clavePedidoArchivado(b).localeCompare(clavePedidoArchivado(a)));
+      const visibles = archivados.slice(0, MAX_ARCHIVADOS_VISIBLES);
+      cont.innerHTML =
+        (enCurso.length ? enCurso.map(_filaPedido).join('') : `<div class="empty">Ningún pedido en curso</div>`) +
+        (archivados.length ? `
+          <details class="archivo"${_archivoAbierto ? ' open' : ''} ontoggle="_archivoAbierto = this.open">
+            <summary>🗄 Archivados <span class="grupo-cnt">${archivados.length}</span></summary>
+            <div class="archivo-nota">Ya realizados, informados o cancelados, y rechazados de más de ${DIAS_RECHAZADOS_VISIBLES} días. Para encontrar uno, buscalo arriba por apellido o DNI.</div>
+            ${visibles.map(_filaPedido).join('')}
+            ${archivados.length > visibles.length ? `<div class="archivo-nota">Mostrando los ${visibles.length} más recientes de ${archivados.length}.</div>` : ''}
+          </details>` : '');
+    }
+
+    function _filaPedido(p) {
+      return `
         <div class="pedido-row">
           <div class="pedido-top">
             <div>
@@ -367,7 +404,7 @@
           ${['autorizado', 'turno_asignado', 'realizado'].includes(p.estado) ? lineaAutorizacionHtml(p) : ''}
           ${lineasTurnoHtml(p)}
         </div>
-      `).join('');
+      `;
     }
 
     async function cargarPedidos() {

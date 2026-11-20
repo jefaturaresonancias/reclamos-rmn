@@ -7,6 +7,10 @@
 // Para sumar o sacar un médico: editar MEDICOS_AUTORIZANTES acá — es la
 // única lista (el backend solo exige que venga un nombre).
 //
+// También tiene lo que comparten las tarjetas de pedidos (líneas de
+// autorización y de turno) y, al final, qué pedidos van al archivo en
+// Médicos y Piso (pedidoArchivado, 20/11/2026).
+//
 // A propósito NO se preselecciona el último médico usado: si la misma
 // compu la usan varios, autorizar con el nombre de otro sin darse cuenta
 // es justo lo que esto busca evitar.
@@ -187,4 +191,55 @@ function lineasTurnoHtml(p) {
       `${p.turnoAnuladoPor ? ` (${_escAut(p.turnoAnuladoPor)})` : ''}`);
   }
   return lineas.map((l) => `<div class="linea-turno" style="font-size:.78rem;color:var(--text2);margin-top:6px;">${l}</div>`).join('');
+}
+
+// ── Pedidos archivados (20/11/2026, a pedido de jefatura: "los internados
+// autorizados que se realizaron y los rechazados tenemos que archivarlos de
+// alguna manera para que la lista no sea interminable"). No toca la base:
+// decide qué sale de las listas de trabajo de Médicos ("Pedidos de turno")
+// y de Piso ("Mis pedidos recientes"), que los juntan plegados al final en
+// "🗄 Archivados"; buscando por DNI o apellido se siguen encontrando.
+// Archivado = ya se hizo (turno de ayer o antes, o "ya se realizó" de
+// técnicos), ya está informado, se canceló, o se rechazó hace más de
+// DIAS_RECHAZADOS_VISIBLES días. Un turno anulado en la agenda sin otro que
+// lo cubra sigue a la vista: ese paciente se quedó sin turno.
+const DIAS_RECHAZADOS_VISIBLES = 7;
+const MAX_ARCHIVADOS_VISIBLES = 30; // sin búsqueda, los más recientes
+
+function hoyIsoAR() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' });
+}
+
+// 'dd/mm/aaaa[ hh:mm]' -> 'aaaa-mm-dd[ hh:mm]' ('' si no es una fecha)
+function _isoPedido(dmy) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}:\d{2}))?/.exec(String(dmy || '').trim());
+  return m ? `${m[3]}-${m[2]}-${m[1]}${m[4] ? ' ' + m[4] : ''}` : '';
+}
+
+// hoy: 'aaaa-mm-dd' (hora argentina); si no viene, se calcula.
+function pedidoArchivado(p, hoy) {
+  if (!p || p.estado === 'pendiente') return false;
+  const dia = hoy || hoyIsoAR();
+  if (p.estado === 'rechazado') {
+    // autorizadoEn también guarda el día del rechazo (o de la reversión).
+    const f = (_isoPedido(p.autorizadoEn) || _isoPedido(p.creadoEn)).slice(0, 10);
+    if (!f) return false;
+    const limite = new Date(dia + 'T12:00:00Z');
+    limite.setUTCDate(limite.getUTCDate() - DIAS_RECHAZADOS_VISIBLES);
+    return f < limite.toISOString().slice(0, 10);
+  }
+  if (p.informado || p.reclamoEstado === 'cancelado' || p.estado === 'realizado') return true;
+  if (p.estado === 'turno_asignado') {
+    if (p.turnoAnuladoEn && !p.cubiertoPor) return false;
+    const f = _isoPedido(p.fechaTurno).slice(0, 10);
+    return !!f && f < dia;
+  }
+  return false; // autorizado, esperando turno
+}
+
+// Para ordenar el archivo: lo que se cerró más recientemente, primero.
+function clavePedidoArchivado(p) {
+  if (!p) return '';
+  if (p.estado === 'rechazado') return _isoPedido(p.autorizadoEn) || _isoPedido(p.creadoEn);
+  return _isoPedido(`${p.fechaTurno || ''} ${p.horaTurno || ''}`) || _isoPedido(p.creadoEn);
 }

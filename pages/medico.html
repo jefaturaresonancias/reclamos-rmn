@@ -292,6 +292,16 @@
     .btn-autorizar{background:var(--success);color:#04140e;}
     .btn-rechazar{background:transparent;border:1px solid #ef4444 !important;color:#ef4444;}
     .ptg-empty{font-size:.78rem;color:var(--text3);padding:8px 0;}
+    /* Archivados (20/11/2026): plegados al final del panel de pedidos */
+    .ptg-archivo > summary{cursor:pointer;list-style:none;margin-bottom:0;}
+    .ptg-archivo > summary::-webkit-details-marker{display:none;}
+    .ptg-archivo > summary::after{content:'▸';color:var(--text3);margin-left:auto;}
+    .ptg-archivo[open] > summary::after{content:'▾';}
+    .ptg-archivo[open] > summary{margin-bottom:10px;}
+    .ptg-nota{font-size:.74rem;color:var(--text3);line-height:1.45;margin-bottom:10px;}
+    .pedido-turno-card.archivado{opacity:.85;}
+    .ptg-busqueda{font-size:.75rem;color:var(--accent);line-height:1.45;background:rgba(79,124,255,.08);
+      border:1px solid rgba(79,124,255,.25);border-radius:8px;padding:7px 10px;word-break:break-word;}
 
     .rctr-modal-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.6);
       display:none;align-items:center;justify-content:center;padding:20px;}
@@ -459,7 +469,7 @@
     <div class="search-wrap" style="display:flex;gap:10px;align-items:center;">
       <div style="flex:1;position:relative;">
         <span class="search-icon">🔍</span>
-        <input id="buscar" placeholder="Buscar por apellido, DNI o N° de reclamo..." oninput="renderLista()" />
+        <input id="buscar" placeholder="Buscar por apellido, DNI o N° de reclamo..." oninput="renderLista(); renderPedidosTurnoMedico()" />
       </div>
       <button onclick="abrirSolicitarRecitado()"
         style="flex-shrink:0;background:rgba(6,182,212,.1);border:1px solid rgba(6,182,212,.3);
@@ -746,6 +756,15 @@
           </div>
         </div>`;
       }
+      // Archivado (20/11/2026): ya se hizo, se informó o se canceló — queda
+      // para consultar, sin botones (ver pedidoArchivado en autorizar-pedido.js).
+      if (pedidoArchivado(p)) {
+        return `<div class="pedido-turno-card archivado">${cabecera}
+          <div class="pedido-turno-diag">${escHtml(_textoPedidoArchivado(p))}</div>
+          ${lineaAutorizacionHtml(p)}
+          ${lineasTurnoHtml(p)}
+        </div>`;
+      }
       // "↩ Revertir y rechazar" (6/10/2026, a pedido): para corregir una
       // autorización hecha por error — ver confirmarYRevertirPedido (js/api.js).
       const btnRevertir = `
@@ -770,37 +789,86 @@
       </div>`;
     }
 
-    function renderPedidosTurnoMedico() {
-      const porEstado = {
-        pendiente: pedidosTurnoData.filter(p => p.estado === 'pendiente'),
-        autorizado: pedidosTurnoData.filter(p => p.estado === 'autorizado'),
-        // Una vez que el informe ya se entregó (p.informado — expuesto por
-        // listarPedidosTurno() en el backend, 15/9/2026 a pedido), el
-        // circuito del pedido terminó: desaparece de "con turno asignado"
-        // en vez de quedar ahí para siempre.
-        turno_asignado: pedidosTurnoData.filter(p => p.estado === 'turno_asignado' && !p.informado),
-        rechazado: pedidosTurnoData.filter(p => p.estado === 'rechazado'),
-      };
+    // Qué dice la tarjeta de un pedido archivado.
+    function _textoPedidoArchivado(p) {
+      if (p.reclamoEstado === 'cancelado') return '🚫 No se realizó — cancelado';
+      const informe = p.informado ? 'informado'
+        : p.conInforme === false ? 'sin informe' : 'esperando informe (sigue en la lista de reclamos)';
+      if (p.estado === 'realizado') return `✔ Realizado el ${p.fechaTurno || '—'}, fuera del circuito de turnos — ${informe}`;
+      const turno = `${p.fechaTurno || ''} ${p.horaTurno || ''}`.trim();
+      if (turno) return `✔ Turno del ${turno} — ${informe}`;
+      return p.informado ? '📄 Informado' : '✔ Cerrado';
+    }
 
-      mostrarAlertaPedidosTurnoSiCorresponde(porEstado.pendiente.length);
+    // El buscador de arriba también filtra este panel (20/11/2026, a pedido:
+    // "¿el buscar por DNI también busca en los solicitados, rechazados o
+    // autorizados?"): apellido, DNI o N° de reclamo, archivados incluidos.
+    function _pedidoCoincideBusqueda(p, q) {
+      if (!q) return true;
+      if (/^#\d+$/.test(q)) return String(p.reclamoNro || '') === q.slice(1);
+      if (/^[\d.\s-]+$/.test(q)) {
+        const dig = q.replace(/\D/g, '');
+        return !!dig && (String(p.dni || '').includes(dig) || String(p.reclamoNro || '') === dig);
+      }
+      return `${p.apellido || ''} ${p.nombre || ''}`.toLowerCase().includes(q);
+    }
+
+    // Pedidos archivados (20/11/2026, a pedido: "los internados autorizados
+    // que se realizaron y los rechazados tenemos que archivarlos... para que
+    // la lista no sea interminable"). La regla es pedidoArchivado() (la misma
+    // que usa Piso): ya hechos, informados o cancelados, y rechazados de más
+    // de 7 días. Antes, "Con turno asignado" se vaciaba recién al entregarse
+    // el informe (los "sin informe", nunca) y los rechazados quedaban para
+    // siempre. El informe pendiente no se pierde: el reclamo del internado
+    // sigue en la lista del centro hasta que se informa.
+    let _ptgArchivoAbierto = false; // desplegado a mano: sobrevive al refresco de 30 s
+
+    function renderPedidosTurnoMedico() {
+      const hoy = hoyIsoAR();
+      const q = (document.getElementById('buscar')?.value || '').trim().toLowerCase();
+      const activos = [], archivados = [];
+      pedidosTurnoData.forEach(p => (pedidoArchivado(p, hoy) ? archivados : activos).push(p));
+      archivados.sort((a, b) => clavePedidoArchivado(b).localeCompare(clavePedidoArchivado(a)));
+
+      // El cartel de "tenés N para autorizar" cuenta todos, no solo lo que
+      // coincide con la búsqueda.
+      mostrarAlertaPedidosTurnoSiCorresponde(activos.filter(p => p.estado === 'pendiente').length);
 
       const grupos = [
-        { key: 'pendiente', titulo: '⏳ Pendientes de revisión' },
-        { key: 'autorizado', titulo: '✅ Autorizados' },
-        { key: 'turno_asignado', titulo: '📅 Con turno asignado' },
-        { key: 'rechazado', titulo: '✕ Rechazados' },
+        { titulo: '⏳ Pendientes de revisión', items: activos.filter(p => p.estado === 'pendiente') },
+        { titulo: '✅ Autorizados', items: activos.filter(p => p.estado === 'autorizado') },
+        { titulo: '📅 Con turno asignado', items: activos.filter(p => p.estado === 'turno_asignado') },
+        { titulo: `✕ Rechazados — últimos ${DIAS_RECHAZADOS_VISIBLES} días`, items: activos.filter(p => p.estado === 'rechazado') },
       ];
-
-      document.getElementById('listaPedidosTurno').innerHTML = grupos.map(g => {
-        const items = porEstado[g.key];
-        return `
+      const grupoHtml = (g) => `
           <div>
-            <div class="ptg-group-title">${g.titulo} <span class="ptg-group-count">${items.length}</span></div>
-            ${items.length
-              ? items.map(_pedidoTurnoCard).join('')
+            <div class="ptg-group-title">${g.titulo} <span class="ptg-group-count">${g.items.length}</span></div>
+            ${g.items.length
+              ? g.items.map(_pedidoTurnoCard).join('')
               : `<div class="ptg-empty">Sin pedidos en esta categoría</div>`}
           </div>`;
-      }).join('');
+      const cont = document.getElementById('listaPedidosTurno');
+
+      // Buscando: solo lo que coincide, en cualquier estado.
+      if (q) {
+        const coincide = p => _pedidoCoincideBusqueda(p, q);
+        const conResultados = grupos.map(g => ({ titulo: g.titulo, items: g.items.filter(coincide) }))
+          .concat([{ titulo: '🗄 Archivados', items: archivados.filter(coincide) }])
+          .filter(g => g.items.length);
+        cont.innerHTML = `<div class="ptg-busqueda">🔎 Filtrado por la búsqueda de arriba: «${escHtml(q)}»</div>` +
+          (conResultados.length ? conResultados.map(grupoHtml).join('')
+            : `<div class="ptg-empty">Ningún pedido de turno coincide con la búsqueda.</div>`);
+        return;
+      }
+
+      const visibles = archivados.slice(0, MAX_ARCHIVADOS_VISIBLES);
+      cont.innerHTML = grupos.map(grupoHtml).join('') + `
+          <details class="ptg-archivo"${_ptgArchivoAbierto ? ' open' : ''} ontoggle="_ptgArchivoAbierto = this.open">
+            <summary class="ptg-group-title">🗄 Archivados <span class="ptg-group-count">${archivados.length}</span></summary>
+            <div class="ptg-nota">Ya realizados, informados o cancelados, y rechazados de más de ${DIAS_RECHAZADOS_VISIBLES} días. Para encontrar uno, buscalo arriba por apellido o DNI.</div>
+            ${visibles.length ? visibles.map(_pedidoTurnoCard).join('') : `<div class="ptg-empty">Nada archivado todavía</div>`}
+            ${archivados.length > visibles.length ? `<div class="ptg-nota">Mostrando los ${visibles.length} más recientes de ${archivados.length}.</div>` : ''}
+          </details>`;
     }
 
     async function autorizarPedido(id) {
@@ -1002,6 +1070,7 @@
       const input = document.getElementById('buscar');
       input.value = '#' + nro;
       renderLista();
+      renderPedidosTurnoMedico();
       document.getElementById('lista').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
 
