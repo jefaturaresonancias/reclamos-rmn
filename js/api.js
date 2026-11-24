@@ -19,11 +19,16 @@ function clearPin() { sessionStorage.removeItem(PIN_KEY); }
 function verificarConfig(callback) { callback(); }
 
 // Pantalla de PIN — protege todo el sistema (nombre, DNI, diagnóstico,
-// informes de pacientes) mientras no haya un login real. El PIN se valida
-// contra el propio Apps Script (PropertiesService → PIN_APP), nunca vive en
-// el código. Se llama después de verificarConfig(), porque para validar el
-// PIN hace falta que la URL del Apps Script ya esté configurada.
+// informes de pacientes) mientras no haya un login real. El PIN nunca vive
+// en el código: lo valida el backend (PIN_APP; en Piso, PIN_PISO).
+// 24/11/2026: botón 👁 para ver lo que se escribió, y un problema de
+// conexión ya no se muestra como "PIN incorrecto" — médicos de piso creían
+// que el PIN estaba mal cuando el pedido ni llegaba al servidor.
+const PIN_TIMEOUT_MS = 20000;
 function mostrarPantallaPin(onSuccess) {
+  // Solo cambia el texto (qué habilita cada PIN lo decide el servidor):
+  // piso.html se marca con <body data-pin="piso">.
+  const nombrePin = document.body.dataset.pin === 'piso' ? 'PIN de piso' : 'PIN de administrativo';
   const overlay = document.createElement('div');
   overlay.id = 'pin-overlay';
   overlay.innerHTML = `
@@ -37,11 +42,19 @@ function mostrarPantallaPin(onSuccess) {
       #pin-box .pin-icon{font-size:2rem;}
       #pin-box h2{font-family:'DM Serif Display',serif;font-weight:400;font-size:1.2rem;color:#e8ecf4;}
       #pin-box p{font-size:.8rem;color:#8892aa;line-height:1.5;}
-      #pin-input{width:100%;padding:12px 14px;background:#1a1e29;border:1px solid #252a38;
+      #pin-campo{position:relative;}
+      #pin-input{width:100%;padding:12px 48px;background:#1a1e29;border:1px solid #252a38;
         border-radius:10px;color:#e8ecf4;font-size:1.2rem;letter-spacing:.3em;text-align:center;
         outline:none;transition:border-color .2s;}
       #pin-input:focus{border-color:#4f7cff;}
-      #pin-error{font-size:.78rem;color:#ef4444;min-height:1.1em;}
+      #btn-pin-ver{position:absolute;right:6px;top:50%;transform:translateY(-50%);
+        width:38px;height:38px;border:none;border-radius:8px;background:transparent;
+        color:#8892aa;font-size:1.1rem;line-height:1;cursor:pointer;transition:background .2s;}
+      #btn-pin-ver:hover{background:#252a38;}
+      #btn-pin-ver[aria-pressed="true"]{background:#2a3a6a;color:#e8ecf4;}
+      #btn-pin-ver:focus-visible{outline:2px solid #4f7cff;outline-offset:1px;}
+      #pin-error{font-size:.78rem;color:#ef4444;min-height:1.1em;line-height:1.45;}
+      #pin-error.conexion{color:#f5a524;}
       #btn-pin-entrar{padding:12px 20px;border-radius:10px;background:#4f7cff;border:none;
         color:#fff;font-family:'DM Sans',sans-serif;font-size:.9rem;font-weight:500;
         cursor:pointer;transition:all .2s;width:100%;}
@@ -51,9 +64,14 @@ function mostrarPantallaPin(onSuccess) {
     <div id="pin-box">
       <div class="pin-icon">🔒</div>
       <h2>Acceso restringido</h2>
-      <p>Este sistema tiene datos de pacientes. Ingresá el PIN de administrativo para continuar.</p>
-      <input id="pin-input" type="password" autocomplete="off" placeholder="••••" />
-      <div id="pin-error"></div>
+      <p>Este sistema tiene datos de pacientes. Ingresá el ${nombrePin} para continuar.</p>
+      <div id="pin-campo">
+        <input id="pin-input" type="password" autocomplete="off" autocapitalize="off"
+          autocorrect="off" spellcheck="false" placeholder="••••" aria-label="PIN" />
+        <button id="btn-pin-ver" type="button" aria-pressed="false"
+          aria-label="Mostrar el PIN" title="Mostrar lo que escribiste">👁</button>
+      </div>
+      <div id="pin-error" aria-live="polite"></div>
       <button id="btn-pin-entrar">Entrar</button>
     </div>`;
   document.body.appendChild(overlay);
@@ -61,37 +79,86 @@ function mostrarPantallaPin(onSuccess) {
   const input = document.getElementById('pin-input');
   const error = document.getElementById('pin-error');
   const btn   = document.getElementById('btn-pin-entrar');
+  const ver   = document.getElementById('btn-pin-ver');
   input.focus();
+
+  ver.addEventListener('click', () => {
+    const mostrar = input.type === 'password';
+    input.type = mostrar ? 'text' : 'password';
+    ver.setAttribute('aria-pressed', String(mostrar));
+    ver.setAttribute('aria-label', mostrar ? 'Ocultar el PIN' : 'Mostrar el PIN');
+    ver.title = mostrar ? 'Ocultar el PIN' : 'Mostrar lo que escribiste';
+    input.focus();
+  });
+
+  function mostrarError(texto, esDeConexion) {
+    error.textContent = texto;
+    error.classList.toggle('conexion', !!esDeConexion);
+  }
 
   async function intentar() {
     const pin = input.value.trim();
-    if (!pin) return;
+    if (!pin || btn.disabled) return;
     btn.disabled = true;
-    error.textContent = '';
+    btn.textContent = 'Verificando…';
+    mostrarError('');
     try {
-      // 'config' no expone datos de pacientes pero sí requiere PIN válido —
-      // sirve como pedido liviano para confirmar que el PIN es correcto.
-      const url = getApiUrl();
-      const res = await fetch(`${url}?action=config&pin=${encodeURIComponent(pin)}`);
-      const data = await res.json();
-      if (data.ok) {
+      const r = await _validarPin(pin);
+      if (r.ok) {
         setPin(pin);
         overlay.remove();
         onSuccess();
+      } else if (r.pinIncorrecto) {
+        // Se deja lo escrito (seleccionado): con 👁 se ve qué se tipeó, y
+        // escribir de nuevo lo reemplaza.
+        mostrarError('❌ PIN incorrecto. Tocá 👁 para ver lo que escribiste.');
+        input.focus();
+        input.select();
       } else {
-        throw new Error(data.error || 'PIN inválido');
+        mostrarError(r.mensaje, true);
+        input.focus();
       }
-    } catch (err) {
-      error.textContent = '❌ PIN incorrecto';
-      input.value = '';
-      input.focus();
     } finally {
       btn.disabled = false;
+      btn.textContent = 'Entrar';
     }
   }
 
   btn.addEventListener('click', intentar);
   input.addEventListener('keydown', e => { if (e.key === 'Enter') intentar(); });
+}
+
+// Le pregunta al servidor si el PIN sirve. 'config' no expone datos de
+// pacientes pero sí requiere PIN válido — es el pedido más liviano para
+// confirmarlo. Separa "el servidor dijo que no" ({ pinIncorrecto }) de
+// "no se pudo preguntar" ({ mensaje }).
+async function _validarPin(pin) {
+  const NO_REVISADO = 'el PIN no se pudo revisar.';
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), PIN_TIMEOUT_MS);
+  let res;
+  try {
+    res = await fetch(`${getApiUrl()}?action=config&pin=${encodeURIComponent(pin)}`, { signal: ctrl.signal });
+  } catch (err) {
+    return {
+      mensaje: err && err.name === 'AbortError'
+        ? `📡 El servidor no responde: ${NO_REVISADO} Probá de nuevo en un momento.`
+        : `📡 Sin conexión con el servidor: ${NO_REVISADO} Revisá el Wi-Fi o los datos y probá de nuevo.`,
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+  if (!res.ok) return { mensaje: `⚠️ Error del servidor (HTTP ${res.status}): ${NO_REVISADO} Probá de nuevo en un momento.` };
+  let data;
+  try {
+    data = await res.json();
+  } catch (err) {
+    return { mensaje: `⚠️ Respuesta inesperada del servidor: ${NO_REVISADO} Probá de nuevo en un momento.` };
+  }
+  if (data && data.ok) return { ok: true };
+  if (data && data.error === 'PIN inválido') return { pinIncorrecto: true };
+  console.warn('Validación de PIN:', data && data.error);
+  return { mensaje: `⚠️ El servidor tuvo un problema: ${NO_REVISADO} Probá de nuevo en un momento.` };
 }
 
 function verificarPin(callback) {
